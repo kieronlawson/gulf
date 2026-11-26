@@ -66,6 +66,7 @@
     for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-screen') === name ? 'true' : 'false');
     if (name !== 'day') stopPlay();   /* Play moves the Day screen's pinned time, so it stops when Day is left */
     if (name === 'now') state.nowStep = 0;
+    if (name === 'day') fitChart();   /* a draw while the screen was hidden used default sizes */
     if (name !== 'week' && name !== state.mapScreen) moveMap(name);
     else if (name === 'now') renderGulf();
     if (name === 'now') { startPosition(); renderNowSide(); } else stopPosition();
@@ -342,15 +343,15 @@
       }
     });
 
-    /* The display redraws when its width changes, or, in the wide layout, the height it is given. */
-    var lastW = 0, lastH = 0, pending = false;
+    /* The display redraws when its box no longer matches the size it was drawn for: a new width, or, in the
+       wide layout, a new height. */
+    var pending = false;
     function onResize() {
       if (pending) return;
       pending = true;
       window.requestAnimationFrame(function () {
         pending = false;
-        var w = Math.floor(host.clientWidth), h = isWide() ? Math.floor(host.parentNode.clientHeight) : 0;
-        if (w && (w !== lastW || h !== lastH)) { lastW = w; lastH = h; renderChart(); }
+        fitChart();
         renderTimebar();
       });
     }
@@ -386,7 +387,6 @@
     wireMapGestures();
     wireNow();
     renderAll();
-    lastW = Math.floor(host.clientWidth);
     loadWeather(false);
 
     /* The service worker keeps the page and its fonts on the device for use without a connection.
