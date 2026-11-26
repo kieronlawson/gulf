@@ -644,6 +644,7 @@
   function renderGulf() {
     var t = mapTime(), el = $('mapTime');
     if (el) el.textContent = state.pin != null ? E.fmtDay(t) + ' ' + E.fmtTime(t) : 'Now, ' + E.fmtTime(t);
+    $('mapTitle').textContent = state.pin != null ? 'Gulf at the pinned time' : 'Gulf now';
     renderOverlay(); renderProbe();
   }
 

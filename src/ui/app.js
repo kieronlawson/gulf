@@ -146,8 +146,8 @@
     /* Time bar. */
     $('tbNow').addEventListener('click', unpin);
     $('tbPlay').addEventListener('click', startPlay);
-    $('tbBack').addEventListener('click', function () { stopPlay(); pinTime((state.pin != null ? state.pin : Date.now()) - 30 * MIN); });
-    $('tbFwd').addEventListener('click', function () { stopPlay(); pinTime((state.pin != null ? state.pin : Date.now()) + 30 * MIN); });
+    $('tbBack').addEventListener('click', function () { stopPlay(); pinTime(tbStart() - 30 * MIN); });
+    $('tbFwd').addEventListener('click', function () { stopPlay(); pinTime(tbStart() + 30 * MIN); });
     var track = $('tbTrack'), dragging = false;
     function dragTo(e) {
       var t = tbTimeAt(e.clientX);
@@ -168,7 +168,7 @@
     });
     track.addEventListener('pointercancel', function () { dragging = false; state.cursor = null; renderTimebar(); drawCursor(); renderReadout(); });
     track.addEventListener('keydown', function (e) {
-      var base = state.pin != null ? state.pin : Math.round(Date.now() / (5 * MIN)) * 5 * MIN, step = (e.shiftKey ? 60 : 10) * MIN, R = tbRange();
+      var base = tbStart(), step = (e.shiftKey ? 60 : 10) * MIN, R = tbRange();
       if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); stopPlay(); pinTime(base - step); }
       else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); stopPlay(); pinTime(base + step); }
       else if (e.key === 'Home') { e.preventDefault(); stopPlay(); pinTime(R.a); }
