@@ -117,7 +117,7 @@
     var r = curRoute();
     if (!r) return;
     var a = r.a; r.a = r.b; r.b = a;
-    renderRoute();
+    renderRoute(); nowGoTitle();
   }
   function toggleDayDisplay() {
     var r = state.routes.day;
