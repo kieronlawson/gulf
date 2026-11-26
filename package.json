@@ -1,0 +1,17 @@
+{
+  "name": "gulf",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hauraki Gulf fishing almanac: tides, sun, moon, solunar periods, weather, and a map of wind, flow and chop.",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "@neaps/tide-database": "0.10.20260924",
+    "@neaps/tide-predictor": "0.11.0",
+    "astronomy-engine": "2.1.19",
+    "esbuild": "0.28.2"
+  }
+}
