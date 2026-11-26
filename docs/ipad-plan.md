@@ -63,7 +63,7 @@ Each step ends with a working page that the owner can try on the iPad. Logic tha
 | 1 | Screen frame: Week, Day and Now buttons, spot, Tables, Sync and forecast age in the top bar. Tables behind a button. Load on return to the foreground, and try again 10 minutes after a failed load. Split `src/ui.js` into shared code and one file per part. Screenshot tool gets iPad sizes, a screen choice and a mocked position. | Done. Until step 5, the Day screen scrolls inside the frame. Now says which step brings it. |
 | 2 | Windows in `engine.js`, with Node tests. Limits button in the top bar, and its editor. | Done. Until step 3 builds Week, the Day screen lists the day's windows. |
 | 3 | Week screen. | Done. A tap on a window or on a best-window card opens Day with the window's start pinned. |
-| 4 | Map zoom: presets, pinch, plus and minus. | |
+| 4 | Map zoom: presets, pinch, plus and minus. | Done. Until step 6 adds home, the third preset centers on the selected spot. Zoom stops at 6, where the coastline still reads. |
 | 5 | Day screen: map beside the day display, time bar with −30 min, +30 min and Play. | |
 | 6 | Saved marks and home: place, name, move, delete. | |
 | 7 | Where to go: marks and suggested water, lowest chop first, for Day and Now. | |

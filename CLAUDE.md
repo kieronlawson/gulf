@@ -24,6 +24,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 | `tools/` | The scripts that produced the data, and the screenshot tool. |
 | `docs/ipad-plan.md` | The agreed next step. |
 | `.github/workflows/pages.yml` | Tests, builds and publishes `dist/` to GitHub Pages on every push to `main`. Tests and builds each pull request without publishing. |
+| `.claude/approvals.yml` | The Claude Approvals policy. A change merges once Claude's Code Review passes. It is in observe mode. |
 
 The page scripts are plain globals, loaded in this order: `Astronomy`, `Neaps`, `DATA`, `Engine`, then the UI. The build inlines `astronomy-engine` and a bundle of `@neaps/tide-predictor`.
 
@@ -75,6 +76,8 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 **Week.** The Week screen shows today and the next six days. Every row shares one range of local hours: from the hour before the earliest first light to the hour after the latest last light. Wind over the limit and hours with no forecast are drawn only between first light and last light. A best-window card lists the major period that overlaps the window most, and the high and low waters inside it.
 
 **Flow.** The current model has cells of about 8 km. It does not resolve the channels. `loadFlowField` in `src/ui/map.js` is the only code that knows the source, so a better source can replace it there.
+
+**Map view.** The map's view is a center and a zoom, `view` in `src/ui/map.js`. At zoom 1 the whole map fits its frame, and the viewBox takes the frame's shape. Zoom stops at 6, because the coastline and the current model hold no finer detail. Pins, labels, arrows and the probe keep one size on screen at any zoom. Arrows sit 22 map units apart, or 11 once 22 units would be 70 px or more on screen. The presets are Whole Gulf, Inner Gulf, and 10 nautical miles around the selected spot.
 
 **Chop.** The page measures fetch on a raster of the coastline, takes wave height and period from the JONSWAP growth curves, then applies a wave and current factor. The rating steps are 0.15, 0.3, 0.5 and 0.8 m. The owner has not yet confirmed these against the boat.
 
