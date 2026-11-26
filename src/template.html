@@ -35,9 +35,20 @@
   <main class="stack">
 
     <section class="screen" id="screen-week" data-screen="week" aria-label="Week" hidden>
-      <div class="unit">
-        <h2 class="stage"><span class="idx">01</span>Week</h2>
-        <p class="later">The Week screen comes in a later step. It will show the next seven days from first light to last light, and mark the hours when the wind stays inside your limits.</p>
+      <div class="week">
+        <div class="unit week-main">
+          <h2 class="stage"><span class="idx">01</span>Next 7 days, first light to last light<span class="stage-note">Tap a window to open that day.</span></h2>
+          <button type="button" class="limitchips" id="weekLimits" aria-haspopup="dialog">
+            <span class="k">Your limits</span><span class="chip" id="wkLimWind"></span><span class="chip" id="wkLimHours"></span><span class="chip">First light to last light</span>
+          </button>
+          <div class="wk-axis" id="wkAxis" aria-hidden="true"></div>
+          <div class="wk-rows" id="wkRows"></div>
+          <div class="wk-legend" id="wkLegend"></div>
+        </div>
+        <aside class="unit week-best" aria-labelledby="wkBestTitle">
+          <h2 class="stage" id="wkBestTitle"><span class="idx">02</span>Best windows<span class="stage-note">Longest first</span></h2>
+          <div class="wk-best" id="wkBest"></div>
+        </aside>
       </div>
     </section>
 

@@ -18,7 +18,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 | `src/template.html` | Page markup. `build.mjs` replaces each `/*__NAME__*/` marker. |
 | `src/style.css` | All styles. Color tokens are on `:root`, for light and dark. |
 | `src/engine.js` | Time, tides, sun, moon, solunar. No DOM. Exposes the global `Engine`. |
-| `src/ui/` | Everything on screen. `build.mjs` joins these files, in the order its `UI_FILES` list gives, inside one function, so they share one scope. `core.js` holds the helpers, the state and the spot forecast. `day.js`, `tables.js` and `map.js` each draw one part. `app.js` holds the state changes and the wiring, and runs last. |
+| `src/ui/` | Everything on screen. `build.mjs` joins these files, in the order its `UI_FILES` list gives, inside one function, so they share one scope. `core.js` holds the helpers, the state and the spot forecast. `day.js`, `tables.js`, `map.js` and `week.js` each draw one part. `app.js` holds the state changes and the wiring, and runs last. |
 | `data/` | Auckland harmonic constants and tidal levels, the spots, the coastline. |
 | `test/` | Node tests. `test/engine.mjs` loads the engine as the page does. |
 | `tools/` | The scripts that produced the data, and the screenshot tool. |
@@ -71,6 +71,8 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 **Weather.** The browser fetches Open-Meteo. Each spot gets a forecast and marine data. The map gets a grid of 83 water points: wind from the forecast service, current from the marine service. The page keeps the last loaded data in `localStorage` under keys that start with `gulf-almanac-`. A load runs when the page opens, once a minute if the data is over an hour old, when the page returns to the foreground, and when the owner presses Sync. After a failed load, automatic loads wait 10 minutes. Sync, a return to the page and a restored connection try at once.
 
 **Windows.** `Engine.windows` finds them. A window is a stretch between first light and last light (civil dawn and dusk) when the sustained wind stays at or under the owner's limit for the owner's minimum time or longer. Each hourly forecast value stands for the half hour either side of its time. The wind is compared in whole knots, as the page shows it. A missing hour ends a window. Gusts and chop do not close a window. The owner sets the two limits under Limits, and the iPad stores them; the defaults are 15 kn and 3 h. `Engine.rankWindows` puts the longest first. `test/windows.test.mjs` covers these rules.
+
+**Week.** The Week screen shows today and the next six days. Every row shares one range of local hours: from the hour before the earliest first light to the hour after the latest last light. Wind over the limit and hours with no forecast are drawn only between first light and last light. A best-window card lists the major period that overlaps the window most, and the high and low waters inside it.
 
 **Flow.** The current model has cells of about 8 km. It does not resolve the channels. `loadFlowField` in `src/ui/map.js` is the only code that knows the source, so a better source can replace it there.
 
