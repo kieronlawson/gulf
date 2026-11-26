@@ -1,0 +1,88 @@
+/* Gulf Almanac service worker. It keeps the page and its fonts on the device, so the page opens without a
+   connection, as on the boat.
+
+   The page comes from the network first, so a new version shows as soon as there is a connection. The
+   stored copy serves when the network fails, or when it has not answered after 4 seconds. Fonts come from
+   the stored copy first. Forecasts do not pass through here: the page keeps them in localStorage.
+
+   build.mjs fills in VERSION, a hash of the page, so every new build installs a new worker. */
+
+var VERSION = '__VERSION__';
+var FONT_CSS = '__FONT_CSS__';
+var PAGE = 'gulf-almanac-page-' + VERSION, FONTS = 'gulf-almanac-fonts';
+var WAIT_MS = 4000;
+
+/* The font files for Latin text. Other scripts' files are stored when a page first uses them. */
+var SUBSETS = ['latin', 'latin-ext'];
+
+self.addEventListener('install', function (e) {
+  e.waitUntil(Promise.all([
+    caches.open(PAGE).then(function (c) { return c.add(new Request('./', { cache: 'reload' })); }),
+    storeFonts().catch(function () { /* the fonts are stored on their first use instead */ })
+  ]).then(function () { return self.skipWaiting(); }));
+});
+
+/* The font stylesheet lists one file per script. Its comments name each script: a comment such as
+   "latin" stands before the @font-face rule for that script. */
+function storeFonts() {
+  return caches.open(FONTS).then(function (c) {
+    return fetch(FONT_CSS, { mode: 'cors' }).then(function (r) {
+      if (!r.ok) throw new Error('font stylesheet ' + r.status);
+      return r.clone().text().then(function (css) {
+        var urls = [];
+        css.split('/*').forEach(function (part) {
+          var end = part.indexOf('*/');
+          if (end < 0 || SUBSETS.indexOf(part.slice(0, end).trim()) < 0) return;
+          var m = /url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/.exec(part);
+          if (m && urls.indexOf(m[1]) < 0) urls.push(m[1]);
+        });
+        return c.put(FONT_CSS, r).then(function () {
+          return Promise.all(urls.map(function (u) { return c.add(new Request(u, { mode: 'cors' })); }));
+        });
+      });
+    });
+  });
+}
+
+/* A new worker removes the copies of the page that earlier versions stored. */
+self.addEventListener('activate', function (e) {
+  e.waitUntil(caches.keys().then(function (keys) {
+    return Promise.all(keys.map(function (k) {
+      if (k.indexOf('gulf-almanac-page-') === 0 && k !== PAGE) return caches.delete(k);
+      return null;
+    }));
+  }).then(function () { return self.clients.claim(); }));
+});
+
+self.addEventListener('fetch', function (e) {
+  var req = e.request, url = new URL(req.url);
+  if (req.method !== 'GET') return;
+  if (req.mode === 'navigate' && url.origin === self.location.origin) e.respondWith(page(req));
+  else if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') e.respondWith(font(req));
+});
+
+/* The page: the network's answer when it is good and comes within WAIT_MS, and the stored copy otherwise.
+   A good answer replaces the stored copy, even when it comes too late to be shown. An error from the
+   server, such as a 404 or a 503, gives way to the stored copy when there is one. */
+function page(req) {
+  return caches.open(PAGE).then(function (c) {
+    var stored = function () { return c.match('./'); };
+    var net = fetch(req).then(function (r) {
+      if (r.ok && r.type === 'basic') { c.put('./', r.clone()); return r; }
+      return stored().then(function (s) { return s || r; });
+    });
+    var late = new Promise(function (resolve) { setTimeout(resolve, WAIT_MS); }).then(stored);
+    return Promise.race([net.catch(stored), late]).then(function (r) { return r || net; });
+  });
+}
+
+function font(req) {
+  return caches.open(FONTS).then(function (c) {
+    return c.match(req, { ignoreVary: true }).then(function (hit) {
+      return hit || fetch(req).then(function (r) {
+        if (r.ok) c.put(req, r.clone());
+        return r;
+      });
+    });
+  });
+}

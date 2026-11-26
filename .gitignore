@@ -1,3 +1,5 @@
 node_modules/
 dist/
+# Screenshots stay out of the repository. The icons are the one exception.
 *.png
+!src/icons/*.png

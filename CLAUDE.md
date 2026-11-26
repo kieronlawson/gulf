@@ -7,9 +7,10 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 | Command | Result |
 |---|---|
 | `npm install` | Installs the build dependencies. Use the Node version in `.nvmrc`; the publish workflow uses it too. |
-| `npm run build` | Writes `dist/index.html`, one self-contained file. |
+| `npm run build` | Writes `dist/index.html`, one self-contained file, and beside it the service worker `sw.js`, the web app manifest and two icons. |
 | `npm test` | Checks tide predictions against the LINZ 2028 table for Auckland, one day of sun, moon and solunar values against recorded results, the rules that find windows, and the leave-by time. |
 | `python3 tools/screenshot.py` | Renders the built page with a mocked forecast, at an iPad size or a phone size, on any of the three screens. Needs Python Playwright. Read the header of the file for options. |
+| `python3 tools/icon.py` | Renders `src/icons/icon.svg` to the two PNG icons in `src/icons/`. Run it after a change to the drawing, and commit the PNGs. |
 
 ## Layout
 
@@ -17,11 +18,13 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 |---|---|
 | `src/template.html` | Page markup. `build.mjs` replaces each `/*__NAME__*/` marker. |
 | `src/style.css` | All styles. Color tokens are on `:root`, for light and dark. |
-| `src/engine.js` | Time, tides, sun, moon, solunar. No DOM. Exposes the global `Engine`. |
+| `src/engine.js` | Time, tides, sun, moon, solunar, windows and the leave-by time. No DOM. Exposes the global `Engine`. |
+| `src/sw.js` | The service worker. `build.mjs` fills in its version and the font stylesheet's address. |
+| `src/icons/` | The Home Screen icon: the drawing, and the PNGs that `tools/icon.py` renders from it. |
 | `src/ui/` | Everything on screen. `build.mjs` joins these files, in the order its `UI_FILES` list gives, inside one function, so they share one scope. `core.js` holds the helpers, the state and the spot forecast. `day.js`, `tables.js`, `map.js` and `week.js` each draw one part. `marks.js` holds the saved marks and home, and `wheretogo.js` the list of places to go. `now.js` holds the Now screen and the iPad's position. `app.js` holds the state changes and the wiring, and runs last. |
 | `data/` | Auckland harmonic constants and tidal levels, the spots, the coastline. |
 | `test/` | Node tests. `test/engine.mjs` loads the engine as the page does. |
-| `tools/` | The scripts that produced the data, and the screenshot tool. |
+| `tools/` | The scripts that produced the data, the screenshot tool and the icon tool. |
 | `docs/ipad-plan.md` | The agreed next step. |
 | `.github/workflows/pages.yml` | Tests, builds and publishes `dist/` to GitHub Pages on every push to `main`. Tests and builds each pull request without publishing. |
 | `.claude/approvals.yml` | The Claude Approvals policy. A change merges once Claude's Code Review passes, and Claude then approves it. The policy is enforced. |
@@ -30,7 +33,7 @@ The page scripts are plain globals, loaded in this order: `Astronomy`, `Neaps`, 
 
 ## Rules
 
-1. The product stays static, with no server. A service worker file may join `index.html`; see the plan.
+1. The product stays static, with no server. Beside `index.html`, `dist/` holds only the service worker, the web app manifest and the two icons.
 2. Show every time in Pacific/Auckland time, whatever the device time zone. Use `Engine.parts`, `Engine.midnight`, `Engine.addDays` and `Engine.fmtTime`. Do not use the local getters of `Date`.
 3. Never invent data. A forecast that is missing shows as missing.
 4. Use US English spelling. Proper names keep theirs: "Waitematā Harbour".
@@ -78,6 +81,8 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 **Flow.** The current model has cells of about 8 km. It does not resolve the channels. `loadFlowField` in `src/ui/map.js` is the only code that knows the source, so a better source can replace it there.
 
 **Screen layout.** The wide layout applies from 1000 px wide and 700 px tall: `isWide` in `src/ui/core.js` and the media query at the end of `src/style.css` use the same test. In it, the frame fills the window and the page does not scroll. Below 700 px of height, as on an iPad mini in Safari, the screens stack and the page scrolls. Day puts the map on the left, the day on the right and the time bar along the bottom, and the day display takes the height that is left. Now puts the map on the left and the rest on the right, where the list of places scrolls in its part. On narrow screens, Now stacks its parts with the map last.
+
+**Offline.** The service worker stores the page and the Latin font files on the device, so the page opens without a connection. It serves the page from the network first and falls back to the stored copy when the network fails, returns an error, or takes over 4 seconds. A new build therefore shows as soon as the device is online, and each build installs a new worker, which removes the old copy of the page. Fonts come from the stored copy first. The worker does not handle forecasts; the page keeps those in `localStorage`. Browsers run a service worker only on https or on `localhost`, so a page opened from a file, as by `tools/screenshot.py`, runs without one. To test the worker, serve `dist/` on `localhost`.
 
 **Saved places.** The owner saves the probe's point as a numbered mark or as home, from the probe reading under the map. The iPad stores them in `localStorage` under `gulf-almanac-marks` and `gulf-almanac-home`, as latitude and longitude. A deleted mark's number goes to the next new mark. A place may sit on land in the simplified coastline, as a marina often does; there the page gives a position and no wind, flow or chop estimate. Once home is set, the map's third preset centers on it.
 

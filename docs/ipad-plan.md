@@ -51,7 +51,7 @@ Wireframes: https://claude.ai/artifact/LZJbcXCBTyxqeHZdmehFqo
 
 ## Storage on the iPad
 
-Safari deletes a site's stored data after seven days of Safari use in which the owner did not use the site. A page opened from the Home Screen keeps its own count of days, so its data stays. Saved marks and home live in that storage, so the owner should open the page from the Home Screen.
+Safari deletes a site's stored data after seven days of Safari use in which the owner did not use the site. A page opened from the Home Screen keeps its own count of days, so its data stays. Saved marks and home live in that storage, so the owner should open the page from the Home Screen. The service worker's copy of the page and its fonts also live there.
 
 ## Build order
 
@@ -69,5 +69,5 @@ Each step ends with a working page that the owner can try on the iPad. Logic tha
 | 7 | Where to go: marks and suggested water, lowest chop first, for Day and Now. | Done for Day. The list sits under the map, where there is room. Now uses it in step 8. |
 | 8 | Now screen, with the iPad's position. | Done. The map moves between Day and Now, and each keeps its own view. Without a position, Now measures from the selected spot. Run home shows the distance, sunset and last light. |
 | 9 | Run home and leave-by. | Done. Boat speed and margin sit under Limits and start unset. The run is a straight line to home, drawn on the Now map, and Run home says when that line crosses land. |
-| 10 | Service worker, stored fonts, and Home Screen tags. | |
+| 10 | Service worker, stored fonts, and Home Screen tags. | Done. The page comes from the network first, so a new build shows at once when online. Without a connection, the iPad's stored copy and fonts serve. |
 | 11 | Check on the boat: sunlight, touch size, chop steps. | |

@@ -373,6 +373,12 @@
     renderAll();
     lastW = Math.floor(host.clientWidth);
     loadWeather(false);
+
+    /* The service worker keeps the page and its fonts on the device for use without a connection.
+       Browsers allow it only on https or on this computer, so a page opened from a file runs without it. */
+    if ('serviceWorker' in navigator && window.isSecureContext && location.protocol !== 'file:') {
+      navigator.serviceWorker.register('sw.js').catch(function () { /* the page works without it */ });
+    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
