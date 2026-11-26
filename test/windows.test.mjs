@@ -33,10 +33,12 @@ test('a two-hour lull is not a window, unless the minimum is two hours', () => {
   assert.deepEqual(show(Engine.dayWindows(akl, d0, recs, { wind: 15, hours: 2 })), ['09:30–11:30']);
 });
 
-test('wind at the limit is inside it, and wind just over it is outside', () => {
+test('wind the page shows as the limit is inside it, and wind it shows as more is outside', () => {
+  // The page shows wind in whole knots, so 15.4 kn reads as 15 and 15.5 kn reads as 16.
   const base = (h) => (h >= 9 && h <= 12 ? 15 : 25);
   assert.deepEqual(show(Engine.dayWindows(akl, d0, day(base), limits)), ['08:30–12:30']);
-  assert.deepEqual(show(Engine.dayWindows(akl, d0, day((h) => (h === 11 ? 15.1 : base(h))), limits)), []);
+  assert.deepEqual(show(Engine.dayWindows(akl, d0, day((h) => (h === 11 ? 15.4 : base(h))), limits)), ['08:30–12:30']);
+  assert.deepEqual(show(Engine.dayWindows(akl, d0, day((h) => (h === 11 ? 15.5 : base(h))), limits)), []);
 });
 
 test('last light cuts a window, and a window it cuts too short is dropped', () => {

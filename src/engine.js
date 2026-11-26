@@ -340,7 +340,8 @@ var Engine = (function () {
      limits: { wind, hours }.
      Each hourly value stands for the half hour either side of its time, so a window starts and ends
      on the half hour unless first or last light cuts it. A missing hour ends a window: the page does
-     not assume calm where it has no forecast. Gusts do not close a window. */
+     not assume calm where it has no forecast. Gusts do not close a window. The wind is compared in
+     whole knots, as the page shows it, so 15.4 kn is inside a 15 kn limit and 15.5 kn is not. */
   function windows(hours, light, limits) {
     var out = [], run = null, half = HOUR / 2, minMs = limits.hours * HOUR - 1;
     function close() {
@@ -359,7 +360,7 @@ var Engine = (function () {
     }
     if (light.from == null || light.to == null) return out;
     hours.forEach(function (h) {
-      var calm = h.wind != null && !isNaN(h.wind) && h.wind <= limits.wind;
+      var calm = h.wind != null && !isNaN(h.wind) && Math.round(h.wind) <= limits.wind;
       if (run && (!calm || h.t - run.last !== HOUR)) close();
       if (!calm) return;
       if (!run) run = { start: h.t - half, end: h.t + half, last: h.t, hours: [h] };

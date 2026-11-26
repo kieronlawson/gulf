@@ -205,7 +205,7 @@
   function weatherChanged(id) {
     syncField(false);
     if (state.spot.id !== id) return;
-    renderStatus(); renderWindows(); renderChart(); renderReadout(); renderWeather(); renderAhead();
+    renderStatus(); renderWindows(); renderWeek(); renderChart(); renderReadout(); renderWeather(); renderAhead();
   }
 
   /* The lamp and line under the title: whether a forecast is loaded for the spot, and how old it is. */

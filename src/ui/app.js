@@ -13,7 +13,7 @@
     $('spot').value = state.spot.id;
     $('date').value = E.isoDate(state.d0 + 12 * HOUR);
     $('tablesFor').textContent = state.spot.name + ', ' + E.fmtDay(state.d0 + 12 * HOUR);
-    renderStatus(); renderPlace(); renderWindows(); renderPin(); renderChart(); renderReadout(); renderCards(); renderWeather(); renderAhead(); markMap(); renderGulf();
+    renderStatus(); renderPlace(); renderWindows(); renderWeek(); renderPin(); renderChart(); renderReadout(); renderCards(); renderWeather(); renderAhead(); markMap(); renderGulf();
   }
 
   function setSpot(sp) {
@@ -61,6 +61,13 @@
     SCREENS.forEach(function (n) { $('screen-' + n).hidden = n !== name; });
     var bs = $('screens').querySelectorAll('button[data-screen]');
     for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-screen') === name ? 'true' : 'false');
+    if (name === 'week') renderWeek();
+  }
+
+  /* Opens a day on the Day screen. With a time, the Day screen pins it. */
+  function openDay(d0, t) {
+    if (t != null) pinTime(t); else setDay(d0);
+    setScreen('day'); toTop();
   }
 
   function openSheet(id) {
@@ -90,7 +97,7 @@
   function setLimits(L) {
     state.limits = L;
     store.set('gulf-almanac-limits', JSON.stringify(L));
-    renderLimits(); renderWindows();
+    renderLimits(); renderWindows(); renderWeek();
   }
 
   function stepLimit(key, dir) {
@@ -113,7 +120,7 @@
       renderNow();
       if (state.d0 === today) { renderChart(); renderCards(); if (state.cursor == null) renderReadout(); }
       if (state.pin == null) renderGulf();
-      renderStatus();
+      renderStatus(); tickWeek();
     }
     loadWeather(false);
     syncField(false);
@@ -145,6 +152,28 @@
       if (b) setScreen(b.getAttribute('data-screen'));
     });
     $('sync').addEventListener('click', sync);
+
+    /* Week: a window opens its day with the start pinned. A day name, or a part of a row outside
+       any window, opens that day without a pin. */
+    $('wkRows').addEventListener('click', function (e) {
+      var el = e.target.closest ? e.target.closest('.wk-win, .wk-day, .wk-lane') : null;
+      if (!el) return;
+      var d0 = +el.getAttribute('data-d0');
+      if (el.classList.contains('wk-win')) { openDay(d0, +el.getAttribute('data-t')); return; }
+      if (el.classList.contains('wk-lane')) {
+        var r = el.getBoundingClientRect(), a = +el.getAttribute('data-a'), b = +el.getAttribute('data-b');
+        var t = a + (e.clientX - r.left) / r.width * (b - a), wins = el.querySelectorAll('.wk-win');
+        for (var i = 0; i < wins.length; i++) {
+          if (t >= +wins[i].getAttribute('data-t') && t <= +wins[i].getAttribute('data-end')) { openDay(d0, +wins[i].getAttribute('data-t')); return; }
+        }
+      }
+      openDay(d0, null);
+    });
+    $('wkBest').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.wk-open') : null;
+      if (b) openDay(+b.getAttribute('data-d0'), +b.getAttribute('data-t'));
+    });
+    $('weekLimits').addEventListener('click', function () { renderLimits(); openSheet('limits'); });
     $('tablesOpen').addEventListener('click', function () { openSheet('tables'); });
     $('tablesClose').addEventListener('click', function () { closeSheet('tables'); });
     $('limitsOpen').addEventListener('click', function () { renderLimits(); openSheet('limits'); });
