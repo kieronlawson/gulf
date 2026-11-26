@@ -20,6 +20,7 @@
     if (!sp) return;
     state.spot = sp; state.cursor = null;
     store.set('gulf-almanac-spot', sp.id);
+    if (view.preset === 'spot') setPreset('spot'); else markViewButtons();
     renderAll();
     loadWeather(false);
   }
@@ -188,15 +189,15 @@
       $(id).addEventListener('click', function (e) { if (e.target === this) closeSheet(id); });
     });
 
-    /* Map: a lamp selects a spot, any other point on the water places the probe. */
+    /* Map: a lamp selects a spot, any other point on the water places the probe. A drag or a pinch does neither. */
     $('map').addEventListener('click', function (e) {
+      if (mapGestured()) return;
       var g = e.target.closest ? e.target.closest('.pin') : null;
       if (g) { setSpot(byId[g.getAttribute('data-id')]); return; }
-      var svg = $('map').querySelector('svg'), r = svg.getBoundingClientRect();
-      var x = (e.clientX - r.left) / r.width * MAP.w, y = (e.clientY - r.top) / r.height * MAP.h;
+      var m = toMap(e.clientX, e.clientY), x = m.x, y = m.y;
       if (isWater(x, y)) { state.probe = { x: x, y: y, w: nearest(x, y), near: landWithin(x, y, NEAR_LAND_KM) }; state.probeMiss = false; }
       else { state.probeMiss = true; }
-      renderOverlay(); renderProbe();
+      renderProbeMark(); renderProbe();
     });
     $('map').addEventListener('keydown', function (e) {
       var g = e.target.closest ? e.target.closest('.pin') : null;
@@ -298,6 +299,7 @@
     buildSites();
     readCachedField();
     renderMap();
+    wireMapGestures();
     renderAll();
     lastW = Math.floor(host.clientWidth);
     loadWeather(false);

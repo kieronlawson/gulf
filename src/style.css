@@ -263,8 +263,25 @@ button:disabled:active { transform: none; }
 .chopkey .sw { display: block; margin-bottom: 5px; }
 .chopkey em { display: block; font-style: normal; font-family: var(--mono); font-size: 10.5px; color: var(--ink2); }
 
-#map svg { display: block; width: 100%; height: auto; border: 1px solid var(--hair); border-radius: 3px; background: var(--chassis); cursor: crosshair; }
-.m-land { fill: url(#landDots); stroke: var(--land-edge); stroke-width: .5; stroke-linejoin: round; }
+/* The map frame. Its shape comes from the layout; the drawing fills it. */
+.mapframe { position: relative; aspect-ratio: 274.6 / 387; overflow: hidden; border: 1px solid var(--hair); border-radius: 3px; background: var(--chassis); }
+#map, #map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#map svg { display: block; cursor: crosshair; }
+/* The layers that redraw during a gesture take no pointer input, so a touch never starts on an element
+   that a redraw then removes. */
+#ovTint, #ovArrows, #ovProbe { pointer-events: none; }
+.m-land { fill: url(#landDots); stroke: var(--land-edge); stroke-width: .9px; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.mapctl { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; margin-bottom: 8px; }
+.presets, .zoombtns { display: flex; gap: 6px; min-width: 0; }
+.presets button { font-size: 13px; padding: 0 11px; }
+.presets button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--chassis); box-shadow: none; }
+#viewSpot { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zoombtns button { width: 44px; padding: 0; font-size: 20px; }
+.mapscale { position: absolute; left: 10px; bottom: 8px; pointer-events: none; font-family: var(--mono); font-size: 10.5px; color: var(--ink2); }
+.mapscale i { display: block; height: 5px; margin-bottom: 3px; border: 1.5px solid var(--ink2); border-top: 0; }
+.mapnorth { position: absolute; left: 12px; bottom: 38px; width: 12px; height: 20px; pointer-events: none; overflow: visible; }
+.mapnorth path { fill: var(--ink2); }
+.mapnorth line { stroke: var(--ink2); stroke-width: 1.2; }
 .m-landbg { fill: var(--land); }
 .m-landdot { fill: var(--grille); }
 .m-c1 { fill: var(--c1); } .m-c2 { fill: var(--c2); } .m-c3 { fill: var(--c3); } .m-c4 { fill: var(--c4); }
@@ -273,7 +290,7 @@ button:disabled:active { transform: none; }
 .m-flow.near { stroke-dasharray: 1.3 1.5; }
 .m-flowdot { fill: var(--ink2); }
 .m-probe { fill: none; stroke: var(--amber); stroke-width: 1.5; }
-.m-tick { stroke: var(--ink2); stroke-width: .6; }
+.m-tick { stroke: var(--ink2); stroke-width: 1px; vector-effect: non-scaling-stroke; }
 .m-water { font-size: 8.4px; fill: var(--ink2); letter-spacing: .07em; }
 .m-landname { font-size: 6.4px; fill: var(--ink2); paint-order: stroke; stroke: var(--land); stroke-width: 2.4px; stroke-linejoin: round; }
 .m-n { stroke: var(--ink2); stroke-width: .8; fill: none; }

@@ -92,8 +92,23 @@
       <h2 class="stage"><span class="idx">02</span>Gulf: wind, flow and chop</h2>
       <div class="gulfgrid">
         <div class="mapcol">
-          <div id="map"></div>
-          <p class="cap">Each lamp is a tide spot. Select a lamp to load that spot. Select any other point on the water to place the probe.</p>
+          <div class="mapctl" id="mapCtl">
+            <div class="presets" role="group" aria-label="Map view">
+              <button type="button" data-view="whole" aria-pressed="true">Whole Gulf</button>
+              <button type="button" data-view="inner" aria-pressed="false">Inner Gulf</button>
+              <button type="button" data-view="spot" aria-pressed="false" id="viewSpot">Around spot</button>
+            </div>
+            <div class="zoombtns">
+              <button type="button" id="zoomOut" data-zoom="-1" aria-label="Zoom out">&minus;</button>
+              <button type="button" id="zoomIn" data-zoom="1" aria-label="Zoom in">+</button>
+            </div>
+          </div>
+          <div class="mapframe" id="mapFrame">
+            <div id="map"></div>
+            <svg class="mapnorth" viewBox="-6 -9 12 20" aria-hidden="true"><path d="M0 -9L3.2 -1.5H-3.2Z"/><line x1="0" y1="-2" x2="0" y2="10"/></svg>
+            <div class="mapscale" id="mapScale" aria-hidden="true"></div>
+          </div>
+          <p class="cap">Each lamp is a tide spot. Select a lamp to load that spot. Select any other point on the water to place the probe. Pinch, or use the buttons, to zoom. Once zoomed in, drag to move the map.</p>
         </div>
         <div class="probecol">
           <p class="maptime" id="mapTime"></p>
