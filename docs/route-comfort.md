@@ -1,0 +1,176 @@
+# Brief: comfort from A to B
+
+Mock: https://claude.ai/artifact/LZJbcXCBTyxqeHZdmehFqo#artboard-Route
+
+## Why
+
+The owner wants to know how rough a run will be before making it: from home to a mark, or from a mark home, leaving at a chosen time. Wind speed alone does not answer that. The same wind is a head sea on one course and a following sea on another, and the wind at the far end is the wind an hour after leaving.
+
+## What to build
+
+1. A path over water from A to B.
+2. A comfort level and a comfortable speed for each short leg of the path, at the time the boat reaches that leg.
+3. A route view on the Day screen, with the day display collapsed so the map can grow.
+4. The same path and scores in Run home on the Now screen.
+
+Build steps 1 to 4 first. Ferry lanes, section 5, are a second step.
+
+## 1. The path
+
+- Search the existing water raster (`MASK` in `src/ui/map.js`) with A*, eight neighbors.
+- Keep the path about 200 m off the land: treat water cells next to land as closed.
+- Use only water joined to the open Gulf. An end that sits on land or in closed water starts from the nearest open cell. Home at a marina is the usual case.
+- Then straighten the path: keep a point only where a straight line to a later point would touch closed cells.
+- The path has no depths. Label it on the screen: "A line for scoring. Not a route to steer."
+- If the search finds no path, say so. Do not fall back to a straight line.
+- Keep the last path for a pair of ends, so a new leave time does not search again.
+
+## 2. Legs and time
+
+- Cut the path into legs no longer than 0.3 nautical miles.
+- Start the clock at the leave time: the pinned time on Day, now on Now.
+- For each leg in order: read wind and chop at the leg's middle for the clock time (`condAt`), score the leg, add the leg's time at its comfortable speed to the clock.
+- A leg the forecast does not cover gets no score. Draw it grey, and say in the totals that the score is incomplete.
+
+## 3. Scoring rules
+
+These are a first guess. Keep every number below in one place in `engine.js`, because the owner's own trip ratings will correct them later.
+
+Inputs for a leg:
+
+| Name | Meaning |
+|---|---|
+| `h` | Chop height in meters, from `chop()`. It already includes the flow factor. |
+| `a` | The angle between the boat's course and the direction the wind comes from, 0 to 180 degrees. 0 is a head sea. 180 is a following sea. |
+| `v` | Boat speed on the leg, knots. |
+| `cruise` | The owner's boat speed from Limits. |
+
+Three terms, each in meters:
+
+```
+slam   = h × (1 + cos a) / 2 × (v / cruise)²
+roll   = 0.6 × h × sin² a
+follow = 0.25 × h
+score  = the largest of the three
+```
+
+- `slam` is the hull meeting waves. It is largest head-on and grows with the square of speed.
+- `roll` is waves on the beam. Speed does not change it.
+- `follow` is a floor, so a large following sea never scores as flat water.
+
+The rule uses wave height and not wave period. In wind chop the two rise together, and `chop()` has already steepened the waves where the flow runs against them.
+
+**Level.** Score the leg at `v = cruise`:
+
+| Score, m | Level |
+|---|---|
+| under 0.15 | Easy |
+| 0.15 to under 0.30 | Fair |
+| 0.30 to under 0.45 | Bumpy |
+| 0.45 to under 0.65 | Rough |
+| 0.65 and over | Very rough |
+
+**Cause.** With `h` under 0.15, the cause is "sheltered". Otherwise it is "head sea" for `a` up to 50, "beam sea" from 50 to 130, and "following sea" above 130.
+
+**Comfortable speed.** The fastest speed, up to `cruise`, that keeps `slam` at or under 0.30:
+
+```
+v = cruise × √( 0.30 / (h × (1 + cos a) / 2) )     capped at cruise, never under 8 kn
+```
+
+The level shows the leg at cruising speed. The comfortable speed shows what it takes to make the leg Fair. The trip time uses the comfortable speeds.
+
+Without a boat speed in Limits, the page asks for one, as Run home does now. It does not guess.
+
+Worked examples, for the tests, with `cruise` 22:
+
+| `h` | `a` | Score at cruise | Level | Cause | Comfortable speed |
+|---|---|---|---|---|---|
+| 0.6 | 0 | 0.60 | Rough | head sea | 15.6 kn |
+| 0.6 | 90 | 0.36 | Bumpy | beam sea | 22 kn |
+| 0.6 | 180 | 0.15 | Fair | following sea | 22 kn |
+| 0.2 | 0 | 0.20 | Fair | head sea | 22 kn |
+| 1.0 | 0 | 1.00 | Very rough | head sea | 12.0 kn |
+| 2.5 | 0 | 2.50 | Very rough | head sea | 8 kn, the floor |
+| 0.1 | 0 | 0.10 | Easy | sheltered | 22 kn |
+
+## 4. The screens
+
+Follow the mock.
+
+**Opening a route.** Each row of "Where to go" and the probe reading get a "Route" button. A is home on Day and the iPad's position on Now. B is the place chosen. A "Swap" button exchanges them. "Close route" ends it.
+
+**Day display.** Opening a route collapses the day display to one row: the selected day drawn as a Week row, with the pinned time. "Show day display" restores it. The map takes the freed width.
+
+**Map.**
+- Draw the path as a dark line with the level color on top, leg by leg.
+- Mark A and B.
+- Add a view button "Route" that fits the map to the path (`fitBox`).
+
+**Strip under the map**, from A to B by distance:
+- The level color for each leg.
+- The cause, written under each stretch wider than 70 px.
+- The comfortable speed as a line, with its value at each end.
+- A tick every 2 nautical miles.
+
+**Route panel.** A, B, Swap, Close route. Then distance, trip time at comfortable speeds with the time at cruising speed beside it, and the worst stretch. Then the stretches in order: level, cause and height, length, comfortable speed. Join neighboring legs of one level. Leave out stretches under 0.5 nautical miles.
+
+**Time bar.** While a route is open its label reads "Leave time". A new time scores the route again.
+
+**Run home, on Now.** Use the path from the position to home, leaving now. Show its distance and its trip time at comfortable speeds. The leave-by rule keeps its form and uses that trip time in place of the straight-line run. Remove the notes about the straight line.
+
+**Level colors.** Easy `#2E8B57`, Fair `#9DB23F`, Bumpy `#D8B31E`, Rough `#E59400`, Very rough `#D9381E`. Use the dark-theme values of the Week wind ramp for the dark theme. Always write the level's name beside its color.
+
+## 5. Ferry lanes, second step
+
+- Auckland Transport publishes its routes as open data (GTFS, CC BY 4.0), with a path for each route.
+- Add a script in `tools/` that keeps the ferry paths inside the map and writes `data/ferries.json`.
+- Mark each place where the path crosses a ferry path: a tick on the strip with the route's name, and a count in the route panel.
+- No timetable and no wash height in this step.
+
+## Tests and checks
+
+- Put the scoring, the comfortable speed and the stretch joining in `engine.js`. Test them against the worked examples.
+- Test the path search on a small made-up raster: a path around an island, an end on land, and two ends with no water between them.
+- Test the clock: with a wind that rises during the run, a later leg must be scored with the later wind.
+- Check Day and Now, both themes, an iPad in landscape and a 390 px wide screen. The Day screen must not scroll with a route open.
+- Check a route with part of its time past the end of the forecast.
+
+## Then update the docs
+
+- `CLAUDE.md`: the route, the scoring rules and where their numbers are kept.
+- `docs/ipad-plan.md`: Run home no longer uses a straight line.
+- `NOTICE.md`: Auckland Transport, once ferry lanes are in.
+
+## Left out on purpose
+
+| Item | Reason |
+|---|---|
+| Comfort at anchor and adrift | The next brief. |
+| Ferry timetables and wash height | Section 5 marks the lanes only. |
+| Other boats | Nothing forecasts them. |
+| Depths | The data is not licensed yet. |
+| Swell | The map's forecast grid carries wind and current only. |
+| The owner's trip ratings | They come after this works, and they will tune the numbers in section 3. |
+
+## Build order
+
+Each step is one pull request, merged before the next starts.
+
+| Step | Work | State |
+|---|---|---|
+| 1 | The arithmetic, in `engine.js`: the path search, the legs, the clock, the scoring rules, the comfortable speed and the stretches. Their tests. | Done. |
+| 2 | The route on the Day screen: the Route buttons, the path on the map with A and B, the Route view, the collapsed day display, the route panel and the time bar's Leave time. | Not started. |
+| 3 | The strip under the map. | Not started. |
+| 4 | The Now screen: a route from the iPad's position, and Run home on the path. | Not started. |
+| 5 | Ferry lanes. | Not started. |
+
+## Decisions made in the build
+
+- **Narrow passages.** A water cell is closed when any of its eight neighbors is land or water the map does not join to the Gulf. A cell is 185 m across, so a passage needs three cells of water across, about 0.3 nautical miles, to stay open. On the map's coastline the Gulf stays one body of open water, and only a few narrow inlets are cut off. An end in one of them finds no path, and the page says so.
+- **Corners.** A diagonal step needs both cells beside it open, and a straightened line that passes exactly through a corner needs the same. A path therefore never squeezes between two closed cells.
+- **Moved ends.** `Engine.findPath` reports how far each end moved to reach open water, so the route panel can say so.
+- **Legs without a forecast.** The clock crosses them at cruising speed, because the page has nothing to slow down for. The trip time is then a lower bound, and the totals say the score is incomplete.
+- **A stretch's values.** Its cause is the one that covers most of its length. Its height is the highest chop on it. Its speed is its length over its time at comfortable speeds, so the stretches' times add up to the trip time.
+- **Worst stretch.** The stretch with the highest level, and of two at one level, the one with the higher score. A stretch shorter than 0.5 nautical miles can be the worst, though the list leaves it out.
+- **A slow boat.** The comfortable speed never drops under 8 kn, or under the cruising speed when that is under 8 kn.
