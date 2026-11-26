@@ -33,14 +33,18 @@
     state.cursor = null;
     var d0 = E.dayStart(state.pin);
     if (d0 !== state.d0) { state.d0 = d0; state.followToday = false; renderAll(); return; }
-    renderPin(); renderChart(); renderReadout(); renderGulf();
+    renderPin(); renderChart(); renderReadout(); renderDayMap();
   }
 
   function unpin() {
     stopPlay();
     state.pin = null; state.cursor = null;
-    renderPin(); renderChart(); renderReadout(); renderGulf();
+    renderPin(); renderChart(); renderReadout(); renderDayMap();
   }
+
+  /* The pinned time moves the map only while the map sits on the Day screen. On the Now screen the map
+     shows now, or a step ahead, whatever is pinned. */
+  function renderDayMap() { if (state.mapScreen === 'day') renderGulf(); }
 
   function toTop() {
     var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -60,6 +64,7 @@
     SCREENS.forEach(function (n) { $('screen-' + n).hidden = n !== name; });
     var bs = $('screens').querySelectorAll('button[data-screen]');
     for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-screen') === name ? 'true' : 'false');
+    if (name !== 'day') stopPlay();   /* Play moves the Day screen's pinned time, so it stops when Day is left */
     if (name === 'now') state.nowStep = 0;
     if (name !== 'week' && name !== state.mapScreen) moveMap(name);
     else if (name === 'now') renderGulf();
@@ -89,10 +94,13 @@
     var L = state.limits, R = LIMIT_RANGE;
     $('limWind').textContent = L.wind + ' kn';
     $('limHours').textContent = hoursWords(L.hours);
+    $('limSpeed').textContent = L.speed == null ? 'Not set' : L.speed + ' kn';
+    $('limMargin').textContent = L.margin == null ? 'Not set' : L.margin + ' min';
+    /* A limit that can be unset steps below its lowest value to unset. */
     var bs = $('limits').querySelectorAll('button[data-lim]');
     for (var i = 0; i < bs.length; i++) {
-      var key = bs[i].getAttribute('data-lim'), dir = +bs[i].getAttribute('data-dir');
-      bs[i].disabled = dir < 0 ? L[key] <= R[key][0] : L[key] >= R[key][1];
+      var key = bs[i].getAttribute('data-lim'), dir = +bs[i].getAttribute('data-dir'), v = L[key];
+      bs[i].disabled = dir < 0 ? v == null || (v <= R[key][0] && !(key in LIMIT_START)) : v != null && v >= R[key][1];
     }
     $('limitsReset').disabled = L.wind === E.LIMITS.wind && L.hours === E.LIMITS.hours;
   }
@@ -100,13 +108,15 @@
   function setLimits(L) {
     state.limits = L;
     store.set('gulf-almanac-limits', JSON.stringify(L));
-    renderLimits(); renderWindows(); renderTimebar(); renderWeek();
+    renderLimits(); renderWindows(); renderTimebar(); renderWeek(); renderNowSide();
   }
 
   function stepLimit(key, dir) {
-    var R = LIMIT_RANGE[key], next = {};
-    next.wind = state.limits.wind; next.hours = state.limits.hours;
-    next[key] = clamp(Math.round((state.limits[key] + dir * R[2]) / R[2]) * R[2], R[0], R[1]);
+    var R = LIMIT_RANGE[key], v = state.limits[key], next = {};
+    for (var k in state.limits) next[k] = state.limits[k];
+    if (v == null) { if (dir < 0) return; next[key] = LIMIT_START[key]; }
+    else if (dir < 0 && v <= R[0] && key in LIMIT_START) next[key] = null;
+    else next[key] = clamp(Math.round((v + dir * R[2]) / R[2]) * R[2], R[0], R[1]);
     setLimits(next);
   }
 
@@ -214,7 +224,9 @@
     $('tablesClose').addEventListener('click', function () { closeSheet('tables'); });
     $('limitsOpen').addEventListener('click', function () { renderLimits(); openSheet('limits'); });
     $('limitsClose').addEventListener('click', function () { closeSheet('limits'); });
-    $('limitsReset').addEventListener('click', function () { setLimits({ wind: E.LIMITS.wind, hours: E.LIMITS.hours }); });
+    $('limitsReset').addEventListener('click', function () {
+      setLimits({ wind: E.LIMITS.wind, hours: E.LIMITS.hours, speed: state.limits.speed, margin: state.limits.margin });
+    });
     $('limits').addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('button[data-lim]') : null;
       if (b) stepLimit(b.getAttribute('data-lim'), +b.getAttribute('data-dir'));

@@ -166,7 +166,7 @@
   </div>
   <div class="sheet-body">
     <div class="unit">
-      <p class="lede">A window is a time between first light and last light when the wind stays at or under your limit for your minimum time or longer. The page marks windows on the Day screen, and the Week screen will rank them.</p>
+      <p class="lede">A window is a time between first light and last light when the wind stays at or under your limit for your minimum time or longer. The Week screen ranks windows, and the Day screen marks them.</p>
       <div class="limit">
         <span id="limWindName">Wind up to</span>
         <div class="stepper" role="group" aria-labelledby="limWindName">
@@ -189,6 +189,27 @@
       </div>
       <p class="small">The wind limit applies to the sustained wind in the forecast, not to gusts. Chop does not close a window. The iPad stores these limits.</p>
       <button type="button" id="limitsReset" class="reset">Use 15 kn and 3 h</button>
+    </div>
+    <div class="unit">
+      <h3 class="limhead">Run home</h3>
+      <p class="lede">The Now screen gives a time to leave for home: last light, less the run at your speed, less your margin. It shows no time until both are set.</p>
+      <div class="limit">
+        <span id="limSpeedName">Boat speed</span>
+        <div class="stepper" role="group" aria-labelledby="limSpeedName">
+          <button type="button" class="step" data-lim="speed" data-dir="-1" aria-label="Lower the boat speed">&minus;</button>
+          <output id="limSpeed" aria-live="polite"></output>
+          <button type="button" class="step" data-lim="speed" data-dir="1" aria-label="Raise the boat speed">+</button>
+        </div>
+      </div>
+      <div class="limit">
+        <span id="limMarginName">Home before last light by</span>
+        <div class="stepper" role="group" aria-labelledby="limMarginName">
+          <button type="button" class="step" data-lim="margin" data-dir="-1" aria-label="Shorten the margin">&minus;</button>
+          <output id="limMargin" aria-live="polite"></output>
+          <button type="button" class="step" data-lim="margin" data-dir="1" aria-label="Lengthen the margin">+</button>
+        </div>
+      </div>
+      <p class="small">Use your cruising speed in knots. The run is a straight line to home, so a run around land takes longer. Below its lowest value, each one returns to Not set.</p>
     </div>
   </div>
 </dialog>
@@ -258,6 +279,7 @@
         <h4>Reading the Now screen</h4>
         <p>The Now screen measures from the iPad's position, and from the selected spot while it has none. The tide and the bite come from the nearest tide spot. Wind over your limit shows in red.</p>
         <p>In the next six hours, each slot holds one hour: an arrow that points downwind, the wind in knots, and a bar for the chop. The ground is darker at night, green bands mark solunar periods, and blue lines mark high and low water.</p>
+        <p>Run home gives the latest time to leave: last light, less the run at your boat speed, less your margin. The run is a straight line to home, drawn dotted on the map. Around land it takes longer.</p>
       </div>
     </footer>
   </div>

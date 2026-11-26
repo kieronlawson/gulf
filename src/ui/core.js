@@ -23,15 +23,22 @@
 
   var SCREENS = ['week', 'day', 'now'];
 
-  /* The owner's limits for a window, stored on the device. Values out of range fall back to the defaults. */
-  var LIMIT_RANGE = { wind: [5, 30, 1], hours: [1, 8, 0.5] };   /* lowest, highest, step */
+  /* The owner's limits, stored on the device. The wind and the hours set a window, and values out of range
+     fall back to the defaults. The boat speed and the margin set the leave-by time for the run home. They
+     start unset, and a value out of range reads as unset: the page does not guess them. */
+  var LIMIT_RANGE = { wind: [5, 30, 1], hours: [1, 8, 0.5], speed: [5, 40, 1], margin: [0, 120, 5] };   /* lowest, highest, step */
+  /* The first value of a limit that was unset, when the owner presses its plus button. */
+  var LIMIT_START = { speed: 15, margin: 30 };
+  function inRange(v, key) { return typeof v === 'number' && v >= LIMIT_RANGE[key][0] && v <= LIMIT_RANGE[key][1]; }
   function readLimits() {
+    var L = { wind: E.LIMITS.wind, hours: E.LIMITS.hours, speed: null, margin: null };
     try {
       var o = JSON.parse(store.get('gulf-almanac-limits') || 'null');
-      if (o && o.wind >= LIMIT_RANGE.wind[0] && o.wind <= LIMIT_RANGE.wind[1] &&
-          o.hours >= LIMIT_RANGE.hours[0] && o.hours <= LIMIT_RANGE.hours[1]) return { wind: +o.wind, hours: +o.hours };
+      if (o && inRange(o.wind, 'wind') && inRange(o.hours, 'hours')) { L.wind = o.wind; L.hours = o.hours; }
+      if (o && inRange(o.speed, 'speed')) L.speed = o.speed;
+      if (o && inRange(o.margin, 'margin')) L.margin = o.margin;
     } catch (e) { /* use the defaults */ }
-    return { wind: E.LIMITS.wind, hours: E.LIMITS.hours };
+    return L;
   }
   /* The wide layout: an iPad in landscape, or larger. The same test as the wide-screen rule in style.css. */
   function isWide() { return !!(window.matchMedia && window.matchMedia('(min-width: 1000px) and (min-height: 700px)').matches); }
