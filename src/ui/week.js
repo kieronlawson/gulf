@@ -6,11 +6,15 @@
   var WEEK_DAYS = 7;
   var weekStart = null;   /* the first day of the rows on screen */
 
+  /* Whether an hour's forecast counts between first light and last light. As in Engine.windows, each hourly
+     value stands for the half hour either side of its time. */
+  function inLight(d, t) { return d.sun.dawn != null && t + 30 * MIN > d.sun.dawn && t - 30 * MIN < d.sun.dusk; }
+
   /* How much of a day's light the forecast covers: 'all', 'part' or 'none'. */
   function coverage(d, recs) {
     var lit = 0, missing = 0;
     for (var t = d.d0; t < d.d1; t += HOUR) {
-      if (d.sun.dawn == null || t + 30 * MIN <= d.sun.dawn || t - 30 * MIN >= d.sun.dusk) continue;
+      if (!inLight(d, t)) continue;
       lit++;
       if (!recs[t]) missing++;
     }
@@ -82,6 +86,14 @@
     var cs = getComputedStyle(document.documentElement), out = [];
     for (var k = 0; k < 6; k++) out.push(cs.getPropertyValue('--wind-' + k).trim());
     return out;
+  }
+
+  /* The wind between first light and last light: direction, lowest to highest speed, and top gust. */
+  function windWords(d, recs) {
+    var su = recs ? daySummary(d, function (t) { return inLight(d, t); }, 1) : null;
+    if (!su) return 'No forecast';
+    var lo = Math.round(su.lo), hi = Math.round(su.hi);
+    return compass(su.dir) + ' ' + (lo === hi ? hi : lo + '–' + hi) + ' kn' + (isFinite(su.gust) ? ', gusts ' + Math.round(su.gust) : '');
   }
 
   /* Drawn only while the Week screen is shown. setScreen draws it when the owner switches to it. */
@@ -176,8 +188,9 @@
       var sel = d.d0 === state.d0;
       return '<div class="wk-row">' +
         '<button type="button" class="wk-day" data-d0="' + d.d0 + '"' + (sel ? ' aria-current="date"' : '') + '>' +
-          '<span class="wk-name"><span class="pip' + (sel ? ' on' : '') + '" aria-hidden="true"></span>' + (i === 0 ? 'Today' : E.fmtDay(d.d0 + 12 * HOUR)) + '</span>' +
-          '<span class="wk-rate">' + pips(d.solunar.level) + d.solunar.label + '</span>' +
+          '<span class="wk-head"><span class="wk-name"><span class="pip' + (sel ? ' on' : '') + '" aria-hidden="true"></span>' + (i === 0 ? 'Today' : E.fmtDay(d.d0 + 12 * HOUR)) + '</span>' +
+            pips(d.solunar.level, 'Solunar rating ' + d.solunar.label.toLowerCase()) + '</span>' +
+          '<span class="wk-wind">' + windWords(d, recs) + '</span>' +
           '<span class="wk-high">High ' + (highs.join(', ') || '–') + '</span>' +
         '</button>' +
         '<div class="wk-lane" data-d0="' + d.d0 + '" data-a="' + a + '" data-b="' + b + '">' + lane + '</div>' +

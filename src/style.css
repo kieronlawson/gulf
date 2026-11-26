@@ -540,7 +540,7 @@ line.n6-light { stroke: var(--ink2); stroke-width: 1; stroke-dasharray: 3 2; }
 
 .week { display: grid; grid-template-columns: minmax(0, 1fr) 318px; gap: 12px; }
 .week-main, .week-best { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 0; }
-.week-main { --wk-label: 136px; }
+.week-main { --wk-label: 156px; }
 .week .stage { margin-bottom: 0; }
 .stage-note { margin-left: auto; font-size: 12.5px; font-weight: 400; color: var(--ink2); }
 .hint { font-size: 13.5px; color: var(--ink2); }
@@ -564,10 +564,12 @@ line.n6-light { stroke: var(--ink2); stroke-width: 1; stroke-dasharray: 3 2; }
   height: auto; min-height: 44px; padding: 0 2px; border: 0; background: none; box-shadow: none; text-align: left; font-weight: 400;
 }
 .wk-day:active { transform: none; }
-.wk-name { display: flex; align-items: center; gap: 7px; font-size: 14.5px; font-weight: 700; }
-.wk-rate { display: flex; align-items: center; font-size: 12px; color: var(--ink2); }
-.wk-rate .pips { margin-right: 6px; }
-.wk-high { font-family: var(--mono); font-size: 11.5px; color: var(--ink2); }
+/* Three lines: the day with its rating lamps at the right, the day's wind, and the high waters. */
+.wk-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; align-self: stretch; }
+.wk-name { display: flex; align-items: center; gap: 7px; font-size: 14.5px; font-weight: 700; white-space: nowrap; }
+.wk-head .pips { gap: 3px; margin-right: 0; }
+.wk-wind { font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
+.wk-high { font-family: var(--mono); font-size: 11px; color: var(--ink2); white-space: nowrap; }
 
 /* One day: the light ground of the day display, darker before first light and after last light. */
 .wk-lane { position: relative; overflow: hidden; min-height: 44px; background: var(--sky-day); border: 1px solid var(--edge); border-radius: 3px; cursor: pointer; }

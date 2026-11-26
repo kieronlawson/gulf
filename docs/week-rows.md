@@ -107,11 +107,13 @@ Each step is one pull request, merged before the next starts.
 | Step | Work | State |
 |---|---|---|
 | 1 | The row: the wind field, the major-period and window brackets, the tide's new place, the transparent window button and the legend. The color function and its tests. | Done. |
-| 2 | The label column: the rating lamps and the day's wind. | To do. |
+| 2 | The label column: the rating lamps and the day's wind. | Done. The column is 156 px wide, so the longest wind line fits. |
 | 3 | A click opens the Day screen at the time under the pointer. The hairline and time flag for a mouse. The time function and its tests. | To do. Until then, a click inside a window pins the window's start, and a click elsewhere opens the day with no pin. |
 
 ## Decisions made in the build
 
 - **Bar height.** A bar's height uses the speed in whole knots, as its color does. A bar inside a window therefore never rises over the limit line.
 - **Dark theme colors.** The proposed dark values were checked on screen and kept. On the dark lane's day ground, the top stop, `#B5331F`, has a contrast of 1.4 to 1. Its bars still read, because they are saturated and reach the top of the wind field. The light theme's yellow, at 1.9 to 1 on its ground, reads the same way.
+- **The day's wind.** The wind line covers the same hours as the window rule: each hour stands for the half hour either side of its time. It needs one such hour with a forecast. A day with part of its forecast missing summarizes the hours it has, and its row shows the grille for the rest.
+- **Rating lamps.** VoiceOver reads the lamps as "Solunar rating" and the rating word, which the screen no longer shows.
 - **Legend swatch.** The swatch has 18 steps of a tenth of the limit. The tenth step is yellow, at the limit, and the eleventh is amber, just over it.
