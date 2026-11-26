@@ -302,7 +302,9 @@
         '<circle class="hit" r="10"/><circle class="ring" r="5.2"/><circle class="dot" r="2.9"/>' +
         '<text x="' + (left ? -8 : 8) + '" y="2.6" text-anchor="' + (left ? 'end' : 'start') + '">' + esc(sp.name) + '</text></g>';
     });
-    $('map').innerHTML = s + '<g id="ovPlaces"></g></svg>';
+    /* Suggestions and saved places sit above the lamps, each in its own layer: the suggestions change with
+       the map's time, and the saved places change only when the owner changes them. */
+    $('map').innerHTML = s + '<g id="ovSugg"></g><g id="ovPlaces"></g></svg>';
     applyView();
   }
 
@@ -313,10 +315,10 @@
       var on = g.getAttribute('data-id') === state.spot.id;
       g.classList.toggle('sel', on);
       g.setAttribute('aria-pressed', on ? 'true' : 'false');
-      /* The selected lamp rises above the other lamps, but stays below the saved places, so a place saved
-         beside it can still be tapped. */
-      var places = svg.querySelector('#ovPlaces');
-      if (on && g.nextElementSibling !== places) svg.insertBefore(g, places);
+      /* The selected lamp rises above the other lamps, but stays below the suggestions and saved places,
+         so a place beside it can still be tapped. */
+      var above = svg.querySelector('#ovSugg');
+      if (on && g.nextElementSibling !== above) svg.insertBefore(g, above);
     });
   }
 
@@ -609,6 +611,7 @@
 
   function renderProbe() {
     var el = $('probe'), t = mapTime();
+    updateSuggestions();
     if (state.moving != null) { el.innerHTML = movingPanel(); return; }
     var problem = fieldProblem(t);
     if (!state.probe) { renderGo(); return; }

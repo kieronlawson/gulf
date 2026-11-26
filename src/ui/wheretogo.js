@@ -1,4 +1,4 @@
-/* Where to go: the owner's marks and suggested calm water within reach, lowest chop first, at the map's time.
+/* Where to go: the owner's marks and suggested water within reach, lowest chop first, at the map's time.
    A suggestion is the calmest water within reach of the starting point. It makes no claim about fish. */
 
   /* ---------- Where to go ---------- */
@@ -42,20 +42,26 @@
     });
   }
 
+  /* The suggestions for the starting point, the map's time and the forecast. The reading under the map
+     calls this each time it redraws, so the discs on the map always match the reach ring and the time. */
+  function updateSuggestions() {
+    var t = mapTime();
+    suggestions = fieldProblem(t) ? [] : findSuggestions(goOrigin(), t);
+    renderSuggestions();
+  }
+
   var CHOP_SHORT = ['Smooth', 'Light', 'Moderate', 'Rough', 'Very rough'];
   function chopText(c) { return CHOP_NAMES[c.chop.level] + (c.chop.h >= 0.05 ? ', ' + c.chop.h.toFixed(1) + ' m' : ''); }
 
   /* The list under the map, shown while no point is selected. */
   function renderGo() {
     var el = $('probe'), t = mapTime(), o = goOrigin(), problem = fieldProblem(t);
-    suggestions = problem ? [] : findSuggestions(o, t);
-    renderPlaces();
     var rows = state.marks.map(function (m) {
       var x = mapX(m.lon), y = mapY(m.lat), water = isWater(x, y);
       return { key: String(m.n), badge: m.n, kind: 'mark', name: m.name || 'Mark ' + m.n, x: x, y: y, c: water && !problem ? condAt(x, y, nearest(x, y), t) : null, water: water };
     });
     suggestions.forEach(function (s) {
-      rows.push({ key: s.key, badge: s.label, kind: 'sugg', name: 'Calm water' + (s.near ? ' near ' + s.near : ''), x: s.x, y: s.y, c: s.c, water: true });
+      rows.push({ key: s.key, badge: s.label, kind: 'sugg', name: 'Calmest water' + (s.near ? ' near ' + s.near : ''), x: s.x, y: s.y, c: s.c, water: true });
     });
     rows.sort(function (a, b) { return (a.c ? a.c.chop.h : 99) - (b.c ? b.c.chop.h : 99); });
 
@@ -63,7 +69,7 @@
     var html = '<div class="gohead"><b>Where to go ' + (state.pin != null ? 'at ' : '') + when + '</b><span>From ' + esc(o.name) + ', lowest chop first</span></div>';
     if (!rows.length) {
       html += problem || '';
-      html += '<p class="probehint">Save marks from the map, and calm water within ' + REACH_NM + ' nautical miles shows here. Tap the map to read any point.</p>';
+      html += '<p class="probehint">Save marks from the map, and the calmest water within ' + REACH_NM + ' nautical miles shows here. Tap the map to read any point.</p>';
       el.innerHTML = html;
       return;
     }
