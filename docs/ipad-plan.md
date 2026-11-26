@@ -70,4 +70,4 @@ Each step ends with a working page that the owner can try on the iPad. Logic tha
 | 8 | Now screen, with the iPad's position. | Done. The map moves between Day and Now, and each keeps its own view. Without a position, Now measures from the selected spot. Run home shows the distance, sunset and last light. |
 | 9 | Run home and leave-by. | Done. Boat speed and margin sit under Limits and start unset. The run is a straight line to home, drawn on the Now map, and Run home says when that line crosses land. |
 | 10 | Service worker, stored fonts, and Home Screen tags. | Done. The page comes from the network first, so a new build shows at once when online. Without a connection, the iPad's stored copy and fonts serve. |
-| 11 | Check on the boat: sunlight, touch size, chop steps. | |
+| 11 | Check on the boat: sunlight, touch size, chop steps. | Ready for the owner. `docs/boat-check.md` lists the checks and has a table for the chop notes. |

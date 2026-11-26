@@ -5,7 +5,7 @@
    stored copy serves when the network fails, or when it has not answered after 4 seconds. Fonts come from
    the stored copy first. Forecasts do not pass through here: the page keeps them in localStorage.
 
-   build.mjs fills in VERSION, a hash of the page, so every new build installs a new worker. */
+   build.mjs fills in VERSION, a hash of the page and of this file, so every new build installs a new worker. */
 
 var VERSION = '__VERSION__';
 var FONT_CSS = '__FONT_CSS__';
@@ -54,10 +54,15 @@ self.addEventListener('activate', function (e) {
   }).then(function () { return self.clients.claim(); }));
 });
 
+/* Only the page itself is stored and served from the store. Any other file opened on its own, such as an
+   icon or the manifest, passes through, so it can never take the page's place in the store. */
+var SCOPE = new URL(self.registration.scope).pathname;
+function isPage(url) { return url.origin === self.location.origin && (url.pathname === SCOPE || url.pathname === SCOPE + 'index.html'); }
+
 self.addEventListener('fetch', function (e) {
   var req = e.request, url = new URL(req.url);
   if (req.method !== 'GET') return;
-  if (req.mode === 'navigate' && url.origin === self.location.origin) e.respondWith(page(req));
+  if (req.mode === 'navigate' && isPage(url)) e.respondWith(page(req));
   else if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') e.respondWith(font(req));
 });
 
