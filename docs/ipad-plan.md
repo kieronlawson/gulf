@@ -64,7 +64,7 @@ Each step ends with a working page that the owner can try on the iPad. Logic tha
 | 2 | Windows in `engine.js`, with Node tests. Limits button in the top bar, and its editor. | Done. Until step 3 builds Week, the Day screen lists the day's windows. |
 | 3 | Week screen. | Done. A tap on a window or on a best-window card opens Day with the window's start pinned. |
 | 4 | Map zoom: presets, pinch, plus and minus. | Done. Until step 6 adds home, the third preset centers on the selected spot. Zoom stops at 6, where the coastline still reads. |
-| 5 | Day screen: map beside the day display, time bar with −30 min, +30 min and Play. | |
+| 5 | Day screen: map beside the day display, time bar with −30 min, +30 min and Play. | Done. The wide layout needs 700 px of height. An iPad mini fits from the Home Screen; in Safari its page scrolls. |
 | 6 | Saved marks and home: place, name, move, delete. | |
 | 7 | Where to go: marks and suggested water, lowest chop first, for Day and Now. | |
 | 8 | Now screen, with the iPad's position. | |

@@ -472,7 +472,8 @@
     for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-view') === view.preset ? 'true' : 'false');
     $('zoomOut').disabled = view.z <= 1.001;
     $('zoomIn').disabled = view.z >= ZOOM_MAX - 0.001;
-    $('viewSpot').textContent = 'Around ' + state.spot.name;
+    $('viewSpot').textContent = 'Near ' + state.spot.name;
+    $('viewSpot').setAttribute('aria-label', 'Near ' + state.spot.name + ', 10 nautical miles around it');
   }
 
   /* The frame's size sets the view's shape. A preset view keeps its fit when the frame changes. */
@@ -495,6 +496,7 @@
     var host = $('mapFrame');
     host.addEventListener('pointerdown', function (e) {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (e.target.closest && e.target.closest('button')) return;   /* the buttons on the map are not gestures */
       ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
       var n = Object.keys(ptrs).length;
       if (n === 1) { gestured = false; gesture = { kind: 'pan', x: e.clientX, y: e.clientY, cx: view.cx, cy: view.cy }; }
@@ -546,8 +548,8 @@
     }, { passive: false });
     /* Safari's own pinch would zoom the whole page. */
     host.addEventListener('gesturestart', function (e) { e.preventDefault(); });
-    $('mapCtl').addEventListener('click', function (e) {
-      var b = e.target.closest ? e.target.closest('button') : null;
+    host.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-view], button[data-zoom]') : null;
       if (!b) return;
       if (b.hasAttribute('data-view')) setPreset(b.getAttribute('data-view'));
       else if (b.hasAttribute('data-zoom')) zoomStep(+b.getAttribute('data-zoom'));
@@ -564,14 +566,16 @@
     return d + '°' + (m < 9.95 ? '0' : '') + m.toFixed(1) + '′' + (v < 0 ? neg : pos);
   }
 
+  var CHOP_KEY = '<span class="chopkey" aria-label="Chop scale"><i class="sw sw0"></i>Smooth<i class="sw sw1"></i>Light' +
+    '<i class="sw sw2"></i>Moderate<i class="sw sw3"></i>Rough<i class="sw sw4"></i>Very rough</span>';
+
+  /* The probe reading under the map: the values at the probe at the map's time, and chop through the day. */
   function renderProbe() {
     var el = $('probe'), t = mapTime();
     if (!field.wind) {
       if (field.status === 'failed') {
-        el.innerHTML = '<div class="notice"><div class="grille" aria-hidden="true"></div><div class="notice-body">' +
-          '<b><span class="pip alert" aria-hidden="true"></span>Wind, flow and chop did not load.</b>' +
-          '<p>The map gets them from Open-Meteo over the internet, and that request failed. The page tries again every 10 minutes, and when you return to it. Sync tries at once.</p>' +
-          '<button type="button" data-act="reload">Load the forecast now</button></div></div>';
+        el.innerHTML = '<p class="probehint"><span class="pip alert" aria-hidden="true"></span>Wind, flow and chop did not load. The page tries again every 10 minutes, and when you return to it. ' +
+          '<button type="button" data-act="reload">Load now</button></p>';
       } else {
         el.innerHTML = '<p class="probehint">Loading wind and flow for the Gulf from Open-Meteo.</p>';
       }
@@ -579,30 +583,29 @@
     }
     if (fieldIndex(field.wind, t) == null) {
       el.innerHTML = '<p class="probehint">The forecast does not cover this time. It runs from ' + E.fmtDay(field.wind.t0) + ' to ' +
-        E.fmtDay(field.wind.t0 + (field.wind.n - 1) * HOUR) + '. Pin a time in that range.</p>';
+        E.fmtDay(field.wind.t0 + (field.wind.n - 1) * HOUR) + '.</p>';
       return;
     }
     if (!state.probe) {
-      el.innerHTML = '<p class="probehint">' + (state.probeMiss ? 'That point is not on Gulf water. ' : '') + 'Select a point on the water to read wind, flow and chop there.</p>';
+      el.innerHTML = '<p class="probehint">' + (state.probeMiss ? 'That point is not on Gulf water. ' : '') + 'Tap the water to read wind, flow and chop there.</p>' + CHOP_KEY;
       return;
     }
     var p = state.probe, c = condAt(p.x, p.y, p.w, t);
     if (!c) { el.innerHTML = '<p class="probehint">No forecast values at this point.</p>'; return; }
-    function row(k, v, note) { return '<tr><th scope="row">' + k + (note ? ' <span class="note">' + note + '</span>' : '') + '</th><td>' + v + '</td></tr>'; }
-    var flowTxt = !c.flow ? 'No data' : c.flow.kn < 0.05 ? 'Slack' : c.flow.kn.toFixed(1) + ' kn toward ' + compass(c.flow.toward);
-    var rel = (!c.flow || Math.abs(c.chop.along) < 0.05) ? '–' : Math.abs(c.chop.along).toFixed(1) + ' kn ' + (c.chop.along < 0 ? 'against the waves' : 'with the waves');
-    var html = '<table class="kv"><tbody>' +
-      row('Position', degMin(mapLat(p.y), 'N', 'S') + ' ' + degMin(mapLon(p.x), 'E', 'W')) +
-      row('Wind', compass(c.wind.from) + ' ' + Math.round(c.wind.kn) + ' kn' + (ok(c.wind.gust) ? ', gusts ' + Math.round(c.wind.gust) : '')) +
-      row('Flow', flowTxt, c.flow && p.near ? 'within 4 km of land, unreliable' : '') +
-      row('Flow relative to waves', rel) +
-      row('Fetch', c.fetch >= 100 ? 'over 100 km' : Math.round(c.fetch) + ' km') +
-      row('Wind waves', c.chop.h < 0.05 ? 'None' : c.chop.h.toFixed(1) + ' m, ' + c.chop.t.toFixed(1) + ' s') +
-      '</tbody></table>' +
-      '<div class="chopline"><i class="sw sw' + c.chop.level + '"></i><b>' + CHOP_NAMES[c.chop.level] + '</b></div>';
-    if (c.chop.factor >= 1.15) html += '<p class="small">Flow against the wind raises these waves by about ' + Math.round((c.chop.factor - 1) * 100) + '%.</p>';
-    else if (c.chop.factor <= 0.87) html += '<p class="small">Flow with the wind lowers these waves by about ' + Math.round((1 - c.chop.factor) * 100) + '%.</p>';
-    else html += '<p class="small">Flow changes these waves by less than 15%.</p>';
+    function cell(k, v) { return '<div><dt>' + k + '</dt><dd>' + v + '</dd></div>'; }
+    var flowTxt = !c.flow ? 'No data' : c.flow.kn < 0.05 ? 'Slack' : c.flow.kn.toFixed(1) + ' kn ' + compass(c.flow.toward);
+    var note = c.flow && p.near ? 'Flow within 4 km of land is unreliable. ' : '';
+    if (c.chop.factor >= 1.15) note += 'Flow against the wind raises these waves by about ' + Math.round((c.chop.factor - 1) * 100) + '%.';
+    else if (c.chop.factor <= 0.87) note += 'Flow with the wind lowers these waves by about ' + Math.round((1 - c.chop.factor) * 100) + '%.';
+    var html = '<div class="probehead"><b>Probe</b><span>' + degMin(mapLat(p.y), 'N', 'S') + ' ' + degMin(mapLon(p.x), 'E', 'W') + '</span>' +
+      '<button type="button" class="probex" data-act="clearprobe" aria-label="Remove the probe">&times;</button></div>' +
+      '<dl class="probegrid">' +
+      cell('Wind', compass(c.wind.from) + ' ' + Math.round(c.wind.kn) + ' kn' + (ok(c.wind.gust) ? ', gusts ' + Math.round(c.wind.gust) : '')) +
+      cell('Flow', flowTxt) +
+      cell('Fetch', c.fetch >= 100 ? 'over 100 km' : Math.round(c.fetch) + ' km') +
+      cell('Waves', c.chop.h < 0.05 ? 'None' : c.chop.h.toFixed(1) + ' m, ' + c.chop.t.toFixed(1) + ' s') +
+      cell('Chop', '<i class="sw sw' + c.chop.level + '"></i>' + CHOP_NAMES[c.chop.level]) +
+      '</dl>' + (note ? '<p class="small">' + note + '</p>' : '');
 
     /* Chop at this point for each hour of the day. Selecting a bar pins that hour. */
     var d0 = E.dayStart(t), d1 = E.addDays(d0, 1), hourNow = Math.floor(t / HOUR) * HOUR, bars = '', n = 0;
@@ -614,14 +617,13 @@
       if (E.parts(th).H % 6 === 0) bars += '<text class="s-ax" x="' + (bx + 1) + '" y="47">' + E.pad2(E.parts(th).H) + '</text>';
       n++;
     }
-    html += '<p class="striphead">Chop at this point through ' + E.fmtDay(t) + '. Select a bar to pin that hour.</p>' +
-      '<svg class="strip" viewBox="0 0 ' + (n * 10) + ' 49" role="img" aria-label="Chop at this point for each hour of the day">' + bars + '</svg>';
+    html += '<svg class="strip" viewBox="0 0 ' + (n * 10) + ' 49" role="img" aria-label="Chop at the probe for each hour of ' + E.fmtDay(t) + '. Select a bar to pin that hour.">' + bars + '</svg>';
     el.innerHTML = html;
   }
 
   function renderGulf() {
     var t = mapTime(), el = $('mapTime');
-    if (el) el.innerHTML = (state.pin != null ? 'Showing the pinned time: ' : 'Showing now: ') + '<b>' + E.fmtDay(t) + ' ' + E.fmtTime(t) + '</b>';
+    if (el) el.textContent = state.pin != null ? E.fmtDay(t) + ' ' + E.fmtTime(t) : 'Now, ' + E.fmtTime(t);
     renderOverlay(); renderProbe();
   }
 

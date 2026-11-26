@@ -77,6 +77,8 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 
 **Flow.** The current model has cells of about 8 km. It does not resolve the channels. `loadFlowField` in `src/ui/map.js` is the only code that knows the source, so a better source can replace it there.
 
+**Screen layout.** The wide layout applies from 1000 px wide and 700 px tall: `isWide` in `src/ui/core.js` and the media query at the end of `src/style.css` use the same test. In it, the frame fills the window and the page does not scroll. Below 700 px of height, as on an iPad mini in Safari, the screens stack and the page scrolls. Day puts the map on the left, the day on the right and the time bar along the bottom, and the day display takes the height that is left.
+
 **Map view.** The map's view is a center and a zoom, `view` in `src/ui/map.js`. At zoom 1 the whole map fits its frame, and the viewBox takes the frame's shape. Zoom stops at 6, because the coastline and the current model hold no finer detail. Pins, labels, arrows and the probe keep one size on screen at any zoom. Arrows sit 22 map units apart, or 11 once 22 units would be 70 px or more on screen. The presets are Whole Gulf, Inner Gulf, and 10 nautical miles around the selected spot.
 
 **Chop.** The page measures fetch on a raster of the coastline, takes wave height and period from the JONSWAP growth curves, then applies a wave and current factor. The rating steps are 0.15, 0.3, 0.5 and 0.8 m. The owner has not yet confirmed these against the boat.
