@@ -18,6 +18,7 @@ const data = {
   constituents: json('data/constituents.json'),
   spots: json('data/spots.json'),
   coast: json('data/coast.json'),
+  ferries: json('data/ferries.json'),
 };
 
 /* The page script is split into files under src/ui/. They share one function scope, so the build
