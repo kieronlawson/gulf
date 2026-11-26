@@ -51,7 +51,7 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 |---|---|
 | Green `#2E8B57` | Active or selected. Windows inside the owner's limits. Solunar periods and the solunar line. |
 | Amber `#E59400` | Needles on gauges, and the map probe. |
-| Vermilion `#D9381E` | Alerts, wind from 20 knots, and "now" in the day display. |
+| Vermilion `#D9381E` | Alerts. On the Week screen, wind over the owner's limit is an alert. Wind from 20 knots in the day display and the tables. "Now" in the day display and on the Week screen. |
 | Yellow `#DCA400`, disc `#F5C400` | The sun, in the day display. |
 | Slate `#525866` | The moon, in the day display. |
 | Blue `#2A6FA8` | The tide, in the day display. |

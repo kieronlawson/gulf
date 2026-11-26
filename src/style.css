@@ -631,7 +631,7 @@ table { border-collapse: collapse; width: 100%; }
   .topbar { flex-wrap: nowrap; }
   .stack { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; border-radius: 6px; }
   /* Week fills the frame: the rows share the height, and the best windows scroll in their column. */
-  #screen-week { display: flex; flex-direction: column; height: 100%; }
+  #screen-week:not([hidden]) { display: flex; flex-direction: column; height: 100%; }
   #screen-week .week { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
   .wk-rows { flex: 1; min-height: 0; grid-template-rows: repeat(7, minmax(44px, 1fr)); }
   .wk-best { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }

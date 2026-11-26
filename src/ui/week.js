@@ -4,6 +4,30 @@
   /* ---------- Week ---------- */
 
   var WEEK_DAYS = 7;
+  var weekStart = null;   /* the first day of the rows on screen */
+
+  /* How much of a day's light the forecast covers: 'all', 'part' or 'none'. */
+  function coverage(d, recs) {
+    var lit = 0, missing = 0;
+    for (var t = d.d0; t < d.d1; t += HOUR) {
+      if (d.sun.dawn == null || t + 30 * MIN <= d.sun.dawn || t - 30 * MIN >= d.sun.dusk) continue;
+      lit++;
+      if (!recs[t]) missing++;
+    }
+    return !missing ? 'all' : missing === lit ? 'none' : 'part';
+  }
+  function joinWords(list) {
+    return list.length < 2 ? list.join('') : list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1];
+  }
+  /* A sentence or two on the days the forecast misses. Empty when it covers the whole week. */
+  function gapWords(gaps) {
+    var none = gaps.filter(function (g) { return g.cover === 'none'; }).map(function (g) { return g.label; });
+    var part = gaps.filter(function (g) { return g.cover === 'part'; }).map(function (g) { return g.label; });
+    var s = [];
+    if (none.length) s.push('The forecast does not cover ' + joinWords(none) + '.');
+    if (part.length) s.push('The forecast covers only part of ' + joinWords(part) + '.');
+    return s.join(' ');
+  }
 
   /* The instant of a local hour on the day that starts at d0. A clock change earlier that day moves it by an hour. */
   function atLocalHour(d0, h) {
@@ -55,7 +79,8 @@
     if (state.screen !== 'week') return;
     var M = weekModel(), wx = state.wx[state.spot.id], recs = wx && wx.recs ? wx.recs : null, L = state.limits;
     var now = Date.now(), hat = (DATA.auckland.hat - DATA.auckland.msl) * state.spot.ratio + state.spot.msl;
-    var hTop = Math.max(1, Math.ceil(hat * 2) / 2), anyMissing = false, all = [];
+    var hTop = Math.max(1, Math.ceil(hat * 2) / 2), anyMissing = false, all = [], gaps = [];
+    weekStart = M.today;
 
     $('wkLimWind').textContent = 'Wind up to ' + L.wind + ' kn';
     $('wkLimHours').textContent = hoursWords(L.hours) + ' or longer';
@@ -85,10 +110,12 @@
         /* Wind over the limit, and hours with no forecast, matter only between first light and last light. */
         var lit = function (s) { return { start: Math.max(s.start, sun.dawn), end: Math.min(s.end, sun.dusk) }; };
         hourSpans(d, recs, function (r) { return r && Math.round(r.wind) > L.wind; }).map(lit).forEach(function (s) { lane += box('wk-over', s.start, s.end); });
-        var gaps = hourSpans(d, recs, function (r) { return !r; }).map(lit).filter(function (s) { return s.end > s.start; });
-        if (gaps.length) anyMissing = true;
-        gaps.forEach(function (s) { lane += box('wk-nofc grille', s.start, s.end); });
+        var holes = hourSpans(d, recs, function (r) { return !r; }).map(lit).filter(function (s) { return s.end > s.start; });
+        if (holes.length) anyMissing = true;
+        holes.forEach(function (s) { lane += box('wk-nofc grille', s.start, s.end); });
         wins = E.dayWindows(state.spot, d.d0, recs, L);
+        var cover = coverage(d, recs);
+        if (cover !== 'all') gaps.push({ label: i === 0 ? 'today' : E.fmtDay(d.d0 + 12 * HOUR), cover: cover });
       }
       /* Major periods, each with its rating in fish. */
       d.solunar.periods.forEach(function (p) {
@@ -125,6 +152,7 @@
         '<div class="wk-lane" data-d0="' + d.d0 + '" data-a="' + a + '" data-b="' + b + '">' + lane + '</div>' +
       '</div>';
     });
+    var keep = focusKey();
     $('wkRows').innerHTML = rows.join('');
 
     $('wkLegend').innerHTML =
@@ -135,20 +163,49 @@
       (anyMissing ? '<span><i class="lg-nofc grille"></i>No forecast</span>' : '') +
       '<span><i class="lg-now"></i>Now</span>';
 
-    renderBest(all, recs);
+    renderBest(all, recs, gaps);
+    refocus(keep);
+  }
+
+  /* A redraw replaces the buttons. These two put focus back on the button that had it, so a keyboard or
+     VoiceOver user keeps their place. */
+  function focusKey() {
+    var f = document.activeElement;
+    if (!f || !f.closest || !f.closest('#wkRows, #wkBest')) return null;
+    return '.' + f.className.split(' ')[0] + '[data-d0="' + f.getAttribute('data-d0') + '"]' +
+      (f.getAttribute('data-t') ? '[data-t="' + f.getAttribute('data-t') + '"]' : '');
+  }
+  function refocus(key) {
+    var g = key ? document.querySelector('#screen-week ' + key) : null;
+    if (g) g.focus();
+  }
+
+  /* Once a minute: move the now line. The rows are drawn again only when a new day starts. */
+  function tickWeek() {
+    if (state.screen !== 'week') return;
+    if (E.dayStart(Date.now()) !== weekStart) { renderWeek(); return; }
+    var now = Date.now(), lanes = $('wkRows').querySelectorAll('.wk-lane');
+    for (var i = 0; i < lanes.length; i++) {
+      var a = +lanes[i].getAttribute('data-a'), b = +lanes[i].getAttribute('data-b'), line = lanes[i].querySelector('.wk-now');
+      if (now < a || now > b) { if (line) line.parentNode.removeChild(line); continue; }
+      if (!line) { line = document.createElement('i'); line.className = 'wk-now'; lanes[i].appendChild(line); }
+      line.style.left = ((now - a) / (b - a) * 100).toFixed(2) + '%';
+    }
   }
 
   /* ---------- Best windows ---------- */
 
-  function renderBest(all, recs) {
-    var el = $('wkBest'), L = state.limits;
+  function renderBest(all, recs, gaps) {
+    var el = $('wkBest'), L = state.limits, gap = gapWords(gaps);
     if (!recs) {
       el.innerHTML = '<p class="hint">Windows need the forecast. It is not loaded.</p>';
       return;
     }
     if (!all.length) {
-      el.innerHTML = '<p class="hint">No window in the next 7 days. The wind does not stay at or under ' + L.wind + ' kn for ' +
-        hoursWords(L.hours) + ' between first light and last light.</p>';
+      var whole = gaps.length === WEEK_DAYS && gaps.every(function (g) { return g.cover === 'none'; });
+      el.innerHTML = '<p class="hint">' + (whole ? 'The stored forecast does not cover the next 7 days. Sync loads a new one.' :
+        'No window ' + (gaps.length ? 'on the days the forecast covers' : 'in the next 7 days') + '. The wind does not stay at or under ' +
+        L.wind + ' kn for ' + hoursWords(L.hours) + ' between first light and last light.' + (gap ? ' ' + gap : '')) + '</p>';
       return;
     }
     var ranked = E.rankWindows(all.map(function (x) { var w = x.w; return { start: w.start, end: w.end, maxWind: w.maxWind, maxGust: w.maxGust, d: x.d }; }));
@@ -169,5 +226,5 @@
         rows.map(function (r) { return '<div class="wk-kv"><span>' + r[0] + '</span><span>' + r[1] + '</span></div>'; }).join('') +
         '<button type="button" class="wk-open" data-d0="' + d.d0 + '" data-t="' + w.start + '">Open day</button>' +
       '</article>';
-    }).join('');
+    }).join('') + (gap ? '<p class="hint">' + gap + ' Windows on those days do not show here.</p>' : '');
   }

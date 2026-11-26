@@ -120,7 +120,7 @@
       renderNow();
       if (state.d0 === today) { renderChart(); renderCards(); if (state.cursor == null) renderReadout(); }
       if (state.pin == null) renderGulf();
-      renderStatus(); renderWeek();
+      renderStatus(); tickWeek();
     }
     loadWeather(false);
     syncField(false);
