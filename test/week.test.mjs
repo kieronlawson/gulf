@@ -1,4 +1,4 @@
-// Week rows: the color of each hour's wind bar.
+// Week rows: the color of each hour's wind bar, and the time under the pointer.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Engine } from './engine.mjs';
@@ -31,4 +31,31 @@ test('the stops fall at their shares of the limit', () => {
 test('between two stops the color moves in a straight line in RGB', () => {
   // 0.735 of the limit is halfway from green to yellow-green.
   assert.equal(Engine.rampColor(0.735, LIGHT), 'rgb(102, 159, 75)');
+});
+
+// A row from 04:00 to 22:00 on 25 November 2026.
+const d0 = Engine.midnight(2026, 11, 25), H = Engine.HOUR;
+const a = d0 + 4 * H, b = d0 + 22 * H;
+
+test("a click at a row's left edge gives the row's first hour", () => {
+  assert.equal(Engine.laneTime(0, a, b, d0), a);
+  assert.equal(Engine.fmtTime(Engine.laneTime(0, a, b, d0)), '04:00');
+});
+
+test('a click in the row gives the time under it, rounded to 5 minutes', () => {
+  assert.equal(Engine.fmtTime(Engine.laneTime(0.5, a, b, d0)), '13:00');
+  // 13:02:30 rounds up to 13:05, and 13:02 rounds down to 13:00.
+  assert.equal(Engine.fmtTime(Engine.laneTime((9 * H + 2.5 * Engine.MIN) / (b - a), a, b, d0)), '13:05');
+  assert.equal(Engine.fmtTime(Engine.laneTime((9 * H + 2 * Engine.MIN) / (b - a), a, b, d0)), '13:00');
+});
+
+test("a click at a row's right edge gives a time inside the same calendar day", () => {
+  // A row that runs to the next midnight: its right edge is the next day's first instant.
+  const end = Engine.addDays(d0, 1), t = Engine.laneTime(1, a, end, d0);
+  assert.ok(t < end);
+  assert.equal(Engine.dayStart(t), d0);
+  assert.equal(Engine.fmtTime(t), '23:55');
+  // A point on the row's border, a little past either edge, stays on the row.
+  assert.equal(Engine.laneTime(1.01, a, b, d0), b);
+  assert.equal(Engine.laneTime(-0.01, a, b, d0), a);
 });
