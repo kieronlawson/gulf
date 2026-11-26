@@ -204,6 +204,25 @@
     return s.cause === 'sheltered' ? 'sheltered' : s.cause + ', ' + s.h.toFixed(1) + ' m';
   }
 
+  /* Why a route has no path to draw. The panel and the strip both say it. */
+  function noPathWords(tr) {
+    var p = tr.path;
+    if (!p) return '<p class="probehint">The map has no coastline to search, so the page cannot find a path.</p>';
+    if (!p.found) return '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>The page found no path over open water from A to B. ' +
+      'It keeps a path about 200 m off land, so a narrow entrance can close it.</span></p>';
+    return '<p class="probehint">A and B are at the same point of open water.</p>';
+  }
+  /* Why part or all of a scored route is gray: how much the forecast misses, and why, with Load now after a
+     failed load. Empty when every leg has a score. */
+  function missingWords(tr) {
+    if (!tr.score || !(tr.score.missingNm > 0)) return '';
+    var all = tr.score.missingNm >= tr.nm - 1e-6, problem = fieldProblem(tr.t0);
+    return '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>Score incomplete. ' +
+      (all ? 'The forecast does not cover this route at the leave time.' :
+        'The forecast does not cover ' + tr.score.missingNm.toFixed(1) + ' nm of the route, drawn gray.') +
+      ' The trip time counts ' + (all ? 'the route' : 'those legs') + ' at cruising speed.</span></p>' + (problem || '');
+  }
+
   /* The route panel: A, B and Swap; the distance, the trip time and the worst stretch; then the stretches. */
   function renderRoutePanel() { $('routePanel').innerHTML = routePanelHtml(); }
   function routePanelHtml() {
@@ -216,13 +235,8 @@
     html += '<div class="rt-ends">' + end('A', r.a.name) +
       '<button type="button" data-act="route-swap" aria-label="Swap A and B">Swap</button>' + end('B', r.b.name) + '</div>';
     var p = tr.path;
-    if (!p) {
-      html += '<p class="probehint">The map has no coastline to search, so the page cannot find a path.</p>';
-    } else if (!p.found) {
-      html += '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>The page found no path over open water from A to B. ' +
-        'It keeps a path about 200 m off land, so a narrow entrance can close it.</span></p>';
-    } else if (!tr.legs.length) {
-      html += '<p class="probehint">A and B are at the same point of open water.</p>';
+    if (!p || !p.found || !tr.legs.length) {
+      html += noPathWords(tr);
     } else {
       var rows = [row('Distance', tr.nm.toFixed(1) + ' nm')];
       if (!tr.score) {
@@ -234,14 +248,7 @@
         rows.push(row('Worst stretch', w ? LEVEL_NAMES[w.level] + ', ' + causeWords(w) : 'No forecast'));
       }
       html += '<dl class="rt-totals">' + rows.join('') + '</dl>';
-      if (tr.score && tr.score.missingNm > 0) {
-        var all = tr.score.missingNm >= tr.nm - 1e-6, problem = fieldProblem(tr.t0);
-        html += '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>Score incomplete. ' +
-          (all ? 'The forecast does not cover this route at the leave time.' :
-            'The forecast does not cover ' + tr.score.missingNm.toFixed(1) + ' nm of the route, drawn gray.') +
-          ' The trip time counts ' + (all ? 'the route' : 'those legs') + ' at cruising speed.</span></p>';
-        if (problem) html += problem;
-      }
+      html += missingWords(tr);
       if (tr.stretches) {
         var listed = tr.stretches.filter(function (s) { return s.nm >= E.COMFORT.stretchNm; });
         html += '<div class="rt-list">' + listed.map(function (s) {
@@ -286,10 +293,13 @@
     if (!trip) { el.innerHTML = ''; return; }
     var W = Math.floor(el.clientWidth);
     stripW = W;
-    el.innerHTML = state.mapScreen === 'now' ? '<div class="routepanel">' + routePanelHtml() + '</div>' + stripHtml(W, false) : stripHtml(W, true);
+    /* On the Day screen the strip says why it draws no route or no score. Once the day display shows again, the
+       panel is hidden, so the strip also says why legs are gray. On the Now screen the panel above it says both. */
+    var r = state.routes.day, panelHidden = !!(r && r.showDay);
+    el.innerHTML = state.mapScreen === 'now' ? '<div class="routepanel">' + routePanelHtml() + '</div>' + stripHtml(W, false, false) : stripHtml(W, true, panelHidden);
   }
-  /* The strip's markup at width W. With hints, it says why it draws no route; on the Now screen the panel under it says so. */
-  function stripHtml(W, hints) {
+  /* The strip's markup at width W. With hints, it says why it draws no route or no score; with gaps, why legs are gray. */
+  function stripHtml(W, hints, gaps) {
     var tr = trip;
     var head = '<div class="sthead"><b>From A to B, leaving ' + (state.mapScreen === 'now' ? 'now' : E.fmtTime(tr.t0) + (E.dayStart(tr.t0) !== E.dayStart(Date.now()) ? ', ' + E.fmtDay(tr.t0) : '')) + '</b>';
     var levels = '';
@@ -301,7 +311,7 @@
     }
     head += '<span class="stlegend">' + levels + '</span></div>';
     var p = tr.path;
-    if (!p || !p.found || !tr.legs.length) return head + (hints ? '<p class="probehint">The route panel says why there is no path to draw.</p>' : '');
+    if (!p || !p.found || !tr.legs.length) return head + (hints ? noPathWords(tr) : '');
     if (!tr.score) return head + (hints ? '<p class="probehint">Set your boat speed under Limits to score this route. <button type="button" data-act="limits">Limits</button></p>' : '');
     if (!W) return head;
 
@@ -350,7 +360,8 @@
       return (st.level == null ? 'no forecast' : LEVEL_NAMES[st.level] + ', ' + causeWords(st)) + ' for ' + st.nm.toFixed(1) + ' nautical miles';
     }).join('; ');
     var label = 'Comfort from A to B by distance: ' + said + '.' + (first.v != null && last.v != null ? ' Comfortable speed ' + Math.round(first.v) + ' knots at A and ' + Math.round(last.v) + ' knots at B.' : '');
-    return head + '<svg class="rstrip" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(label) + '">' + s.join('') + '</svg>';
+    return head + '<svg class="rstrip" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(label) + '">' + s.join('') + '</svg>' +
+      (gaps ? missingWords(tr) : '');
   }
   /* The strip is drawn to its box's width, so it draws again when the box changes width. */
   function fitStrip() {
