@@ -23,6 +23,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 | `test/` | Node tests. `test/engine.mjs` loads the engine as the page does. |
 | `tools/` | The scripts that produced the data, and the screenshot tool. |
 | `docs/ipad-plan.md` | The agreed next step. |
+| `.github/workflows/pages.yml` | Tests, builds and publishes `dist/` to GitHub Pages on every push to `main`. |
 
 The page scripts are plain globals, loaded in this order: `Astronomy`, `Neaps`, `DATA`, `Engine`, then the UI. The build inlines `astronomy-engine` and a bundle of `@neaps/tide-predictor`.
 
@@ -76,8 +77,8 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 
 - The page needs Open-Meteo. Where it is out of reach, mock it. `tools/screenshot.py` shows how.
 - The owner confirmed the live forecast, wind and flow working in a browser on 26 November 2026.
-- The published Claude artifact of this page cannot load weather. The hosted page replaces it.
+- The published Claude artifact of this page cannot load weather. The page on GitHub Pages replaces it.
 
 ## Next
 
-`docs/ipad-plan.md` holds the agreed plan for the iPad: three screens (Week, Day, Now), saved marks, zoom, stored data and a Sync button.
+`docs/ipad-plan.md` holds the agreed plan for the iPad: three screens (Week, Day, Now), saved marks, zoom, stored data and a Sync button. Its build order table records which step is done.

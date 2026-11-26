@@ -20,11 +20,17 @@ Wireframes: https://claude.ai/artifact/LZJbcXCBTyxqeHZdmehFqo
 5. **Wind, flow and chop** appear on the map in Day and in Now. Week shows only the windows.
 6. **A window** is wind up to 15 knots, for 3 hours or longer, between first light and last light.
 7. **Where to go** is one list that mixes the owner's saved marks with suggested water, lowest chop first. A mark is a named point the owner places on the map. A suggestion means calm water within reach. It makes no claim about fish.
-8. **Zoom** uses the current SVG map: preset views (Whole Gulf, Inner Gulf, Around me), pinch, and plus and minus buttons.
+8. **Zoom** uses the current SVG map: preset views (Whole Gulf, Inner Gulf, Around home in Day, Around me in Now), pinch, and plus and minus buttons.
 9. **Stored data.** The page shows the last loaded forecast from the device, with its age.
 10. **Loading.** The page loads on open, on return to the foreground, on a timer while open, and from a Sync button. Safari on iPad cannot load data while the page is closed.
 11. **Tables** for tides, moon, weather and the days ahead move behind a Tables button.
-12. **Hosting.** The owner will host the page at an https address. Position and a service worker both need one.
+12. **Hosting.** GitHub Pages serves the page. `.github/workflows/pages.yml` runs the tests, builds the page and publishes `dist/` on every push to `main`. Position and a service worker both need the https address that Pages gives. The published site is public, although the repository is private. Saved marks and home stay on the device and never reach the site.
+13. **Screen sizes.** The page serves every iPad sold since late 2021, in landscape. The smallest are the iPad (9th generation) at 1080 × 810 points and the iPad mini at 1133 × 744. The largest is the 13-inch iPad Pro at 1376 × 1032. The layout fits the smallest sizes with no scrolling, after Safari's bars take their share of the height.
+14. **Narrow screens.** On a phone, an iPad in portrait, or a narrow Split View window, the parts of each screen stack and the page scrolls.
+15. **Home** is where the boat goes into and comes out of the water: a ramp, a marina or a dry stack. The owner sets it on the map, and it starts unset. Day measures distance from home, the run home ends there, and a map preset centers on it. The wireframes call it the ramp.
+16. **Boat speed and margin.** The owner sets a cruising speed and a margin before last light under Limits. The leave-by time shows as missing until both are set.
+17. **Wind over the limit** shows in vermilion on Week, as an alert. Step 3 updates the color table in CLAUDE.md to match.
+18. **Touch targets** are at least 44 px, from step 1 on.
 
 ## Assumed, not confirmed
 
@@ -34,8 +40,6 @@ Wireframes: https://claude.ai/artifact/LZJbcXCBTyxqeHZdmehFqo
 
 ## Open
 
-- Where the page is hosted.
-- A service worker, so the page opens with no reception. It needs a second file beside `index.html`.
 - A full-detail coastline for zoom. The current one is simplified to about 110 m. See `tools/coast.py`.
 - Better flow data for the channels. Options found so far:
   - Tidal stream tables printed on nautical charts. Not yet checked for the Gulf.
@@ -43,4 +47,27 @@ Wireframes: https://claude.ai/artifact/LZJbcXCBTyxqeHZdmehFqo
   - NIWA: its tide model computes currents, but no public download was found.
 - Great Barrier and Port Jackson spots. LINZ refers them to Marsden Point, not Auckland.
 - The "run home" estimate. The map cannot route around land.
-- Touch targets of at least 44 px, and type large enough to read in sunlight.
+- Type and contrast that read in sunlight. Step 11 checks them on the boat.
+
+## Storage on the iPad
+
+Safari deletes a site's stored data after seven days of Safari use in which the owner did not use the site. A page opened from the Home Screen keeps its own count of days, so its data stays. Saved marks and home live in that storage, so the owner should open the page from the Home Screen.
+
+## Build order
+
+Each step ends with a working page that the owner can try on the iPad. Logic that several screens share comes before the screens that use it. The service worker comes last, because during development it would show its stored copy of the page instead of the newest build.
+
+| Step | Work | State |
+|---|---|---|
+| 0 | Publish the current page to GitHub Pages. | Workflow written. Waiting for the owner to turn on Pages. |
+| 1 | Screen frame: Week, Day and Now buttons, spot, Limits, Tables, Sync and forecast age in the top bar. Tables behind a button. Load on return to the foreground. Split `src/ui.js` into shared code and one file per screen. Screenshot tool gets iPad sizes, a screen choice and a mocked position. | |
+| 2 | Windows in `engine.js`, with Node tests. Limits editor. | |
+| 3 | Week screen. | |
+| 4 | Map zoom: presets, pinch, plus and minus. | |
+| 5 | Day screen: map beside the day display, time bar with −30 min, +30 min and Play. | |
+| 6 | Saved marks and home: place, name, move, delete. | |
+| 7 | Where to go: marks and suggested water, lowest chop first, for Day and Now. | |
+| 8 | Now screen, with the iPad's position. | |
+| 9 | Run home and leave-by. | |
+| 10 | Service worker, stored fonts, and Home Screen tags. | |
+| 11 | Check on the boat: sunlight, touch size, chop steps. | |
