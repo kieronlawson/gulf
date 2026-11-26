@@ -166,7 +166,10 @@
           <div class="next6" id="next6"></div>
           <div class="nowbottom">
             <section class="nowgo" aria-labelledby="goTitle">
-              <h2 class="stage"><span class="idx">04</span><span id="goTitle">Where to go from here</span></h2>
+              <div class="stagebar">
+                <h2 class="stage"><span class="idx">04</span><span id="goTitle">Where to go from here</span></h2>
+                <button type="button" id="nowRouteClose" hidden>Close route</button>
+              </div>
               <div class="mapslot" id="nowGoSlot"></div>
             </section>
             <section class="runhome" aria-labelledby="runTitle">
@@ -215,7 +218,7 @@
     </div>
     <div class="unit">
       <h3 class="limhead">Run home</h3>
-      <p class="lede">The Now screen gives a time to leave for home: last light, less the run at your speed, less your margin. It shows no time until both are set.</p>
+      <p class="lede">The Now screen gives a time to leave for home: last light, less the trip home at comfortable speeds, less your margin. It shows no time until both are set.</p>
       <div class="limit">
         <span id="limSpeedName">Boat speed</span>
         <div class="stepper" role="group" aria-labelledby="limSpeedName">
@@ -232,7 +235,7 @@
           <button type="button" class="step" data-lim="margin" data-dir="1" aria-label="Lengthen the margin">+</button>
         </div>
       </div>
-      <p class="small">Use your cruising speed in knots. The route on the Day screen also uses it to score comfort and time. The run is a straight line to home, so a run around land takes longer. Below its lowest value, each one returns to Not set.</p>
+      <p class="small">Use your cruising speed in knots. The page scores each route against it, and slows the boat where waves from ahead would slam the hull. Below its lowest value, each one returns to Not set.</p>
     </div>
   </div>
 </dialog>
@@ -297,13 +300,13 @@
         <p>The day display's ground is darker at night. Green bands mark solunar periods, and the green fish above each band rate that period from one to four. The red needle marks now. With a forecast loaded, a wind lane shows wind and gusts in knots.</p>
         <p>On the map, each lamp is a tide spot. Solid arrows show wind and point downwind. Line arrows show flow and point downstream. A longer arrow means more wind or more flow. Dashed line arrows lie within 4 km of land, where the 8 km current model is unreliable.</p>
         <p>Chop is an estimate from wind, fetch and flow: smooth under 0.15 m, light from 0.15 m, moderate from 0.3 m, rough from 0.5 m, very rough from 0.8 m.</p>
-        <p>Route draws a path over open water from home to a place, and rates each part of it from Easy to Very rough at the time the boat gets there, leaving at the time on the bar. The comfortable speed is the fastest speed, up to your boat speed and not under 8 kn, at which waves from ahead slam the hull no harder than on a Fair part of the route. The path keeps about 200 m off land and has no depths. It is a line for scoring, not a route to steer.</p>
+        <p>Route draws a path over open water from home to a place, or on the Now screen from your position, and rates each part of it from Easy to Very rough at the time the boat gets there, leaving at the time on the bar. The comfortable speed is the fastest speed, up to your boat speed and not under 8 kn, at which waves from ahead slam the hull no harder than on a Fair part of the route. The path keeps about 200 m off land and has no depths. It is a line for scoring, not a route to steer.</p>
       </div>
       <div>
         <h4>Reading the Now screen</h4>
         <p>The Now screen measures from the iPad's position, and from the selected spot while it has none. The tide and the bite come from the nearest tide spot. Wind over your limit shows in red.</p>
         <p>In the next six hours, each slot holds one hour: an arrow that points downwind, the wind in knots, and a bar for the chop. The ground is darker at night, green bands mark solunar periods, and blue lines mark high and low water.</p>
-        <p>Run home gives the latest time to leave: last light, less the run at your boat speed, less your margin. The run is a straight line to home, drawn dotted on the map. Around land it takes longer.</p>
+        <p>Run home gives the latest time to leave: last light, less the trip home, less your margin. The trip follows a path over open water from your position to home, drawn dotted on the map, at comfortable speeds for the sea leaving now. Route, on either screen, draws a path to a place and rates it from Easy to Very rough.</p>
       </div>
     </footer>
   </div>

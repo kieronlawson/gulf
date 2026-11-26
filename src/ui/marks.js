@@ -90,9 +90,10 @@
         '<circle class="dot" r="4.4"/><text x="7.5" y="2.6">You</text></g>';
       if (geo.pos.acc > 50) ring = '<circle class="m-acc" cx="' + x + '" cy="' + y + '" r="' + (geo.pos.acc / 1852 * NM).toFixed(2) + '"/>';
     }
-    /* On the Now screen, the run home: a straight line from the starting point to home. */
+    /* On the Now screen, the run home: the path over open water from the starting point to home, dotted. */
     if (state.mapScreen === 'now' && state.home) {
-      ring += '<line class="m-run" x1="' + x + '" y1="' + y + '" x2="' + mapX(state.home.lon).toFixed(2) + '" y2="' + mapY(state.home.lat).toFixed(2) + '"/>';
+      var run = routePath(o, { x: mapX(state.home.lon), y: mapY(state.home.lat) });
+      if (run && run.found) ring += '<polyline class="m-run" points="' + run.points.map(function (q) { return q.x.toFixed(2) + ',' + q.y.toFixed(2); }).join(' ') + '"/>';
     }
     /* The reach belongs to the suggestions, so it goes while a route is open. */
     if (!routeShown()) ring += '<circle class="m-reach" cx="' + x + '" cy="' + y + '" r="' + (REACH_NM * NM).toFixed(2) + '"/>';
@@ -132,10 +133,10 @@
       '<div class="probeacts">' + acts + '</div></div>';
   }
 
-  /* The Route button opens a route from the starting point of Where to go to this point. The Day screen has it.
-     Home has none while home is the starting point. */
+  /* The Route button opens a route from the starting point of Where to go to this point. On the Day screen,
+     home has none, because home is the starting point there. */
   function routeButton(key) {
-    if (state.mapScreen !== 'day' || (key === 'home' && state.home)) return '';
+    if (key === 'home' && state.mapScreen === 'day') return '';
     return '<button type="button" data-act="route">Route</button>';
   }
 

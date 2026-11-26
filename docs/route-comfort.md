@@ -162,7 +162,7 @@ Each step is one pull request, merged before the next starts.
 | 1 | The arithmetic, in `engine.js`: the path search, the legs, the clock, the scoring rules, the comfortable speed and the stretches. Their tests. | Done. |
 | 2 | The route on the Day screen: the Route buttons, the path on the map with A and B, the Route view, the collapsed day display, the route panel and the time bar's Leave time. | Done. |
 | 3 | The strip under the map. | Done. |
-| 4 | The Now screen: a route from the iPad's position, and Run home on the path. | Not started. |
+| 4 | The Now screen: a route from the iPad's position, and Run home on the path. | Done. |
 | 5 | Ferry lanes. | Not started. |
 
 ## Decisions made in the build
@@ -192,3 +192,8 @@ Each step is one pull request, merged before the next starts.
   - The speed line runs from 8 kn, or the cruising speed when that is lower, at its foot to the cruising speed at its top. It passes through each leg's middle, and it has a gap where a leg has no score.
   - The axis labels every 2 nautical miles when there is room, and every 4, 10, 20 or 50 when there is not.
   - The heading gives the leave day when it is not today.
+- **A route on each screen.** The Day and Now screens each keep their own route. A route opened on one does not show on the other.
+- **A on the Now screen.** A follows the iPad's position, so the route redraws as the boat moves: on a move of a tenth of a mile or more, and once a minute. Without a position, A is the selected spot, as for the rest of the Now screen. The route leaves now, whatever time the Now map shows.
+- **The Now screen's layout.** The route panel and the strip take the place of Where to go, whose title reads "Route from here" and gains a Close route button. The panel comes first, because that box is short.
+- **Run home.** `Engine.leaveBy` now takes the trip time in place of a distance and a speed. Run home gives the path's distance, the trip time at comfortable speeds, and the worst stretch leaving now, which replaces the chop on the straight line. The map draws the path home dotted. Without a path, Run home says so and gives no leave-by time.
+- **Path cache.** Paths are kept by the raster cells of their ends, so a move of the iPad within one cell, 185 m, does not search again.

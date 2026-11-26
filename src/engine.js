@@ -733,14 +733,13 @@ var Engine = (function () {
 
   /* ---------- Run home ---------- */
 
-  /* The latest time to leave for home: last light, less the run at the owner's speed, less the owner's margin.
-     nm is the straight-line distance, so the real run is at least this long. The time is rounded down to the
-     whole minute, so the page never shows a time later than the arithmetic gives. Returns null when any
-     value is missing: the page does not guess a speed or a margin. */
-  function leaveBy(lastLight, nm, speedKn, marginMin) {
+  /* The latest time to leave for home: last light, less the run, less the owner's margin. run is the trip time
+     home in milliseconds: the page gives the route's time at comfortable speeds. The time is rounded down to
+     the whole minute, so the page never shows a time later than the arithmetic gives. Returns null when any
+     value is missing: the page does not guess a run or a margin. */
+  function leaveBy(lastLight, run, marginMin) {
     function num(v) { return typeof v === 'number' && isFinite(v); }
-    if (!num(lastLight) || !num(nm) || nm < 0 || !num(speedKn) || speedKn <= 0 || !num(marginMin) || marginMin < 0) return null;
-    var run = nm / speedKn * HOUR;
+    if (!num(lastLight) || !num(run) || run < 0 || !num(marginMin) || marginMin < 0) return null;
     return { run: run, at: Math.floor((lastLight - run - marginMin * MIN) / MIN) * MIN };
   }
 
