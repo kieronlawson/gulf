@@ -57,7 +57,10 @@
     if (!state.route) routeBack = { cx: view.cx, cy: view.cy, z: view.z, preset: view.preset };
     state.route = { a: { name: o.name === 'home' ? 'Home' : o.name, x: o.x, y: o.y }, b: b, showDay: false };
     state.probe = null; confirmKey = null;
-    renderRoute();
+    /* The route leaves at a time on the day shown: the pinned time, or now on today. On another day with
+       nothing pinned, the start of the bar is pinned. */
+    if (state.pin == null && state.d0 !== E.dayStart(Date.now())) pinTime(tbRange().a);   /* pinTime draws the route */
+    else renderRoute();
     setPreset('route');
     renderPlaces(); renderProbeMark(); renderProbe(); renderTimebar();
   }

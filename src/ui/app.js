@@ -20,11 +20,13 @@
     loadWeather(false);
   }
 
-  /* A pinned time keeps its time of day when the day changes. */
+  /* A pinned time keeps its time of day when the day changes. A route on the Day screen leaves at a time on
+     the day shown, so on a day other than today, with nothing pinned, the start of the bar is pinned. */
   function setDay(d0) {
     if (state.pin != null) state.pin = clamp(d0 + (state.pin - state.d0), d0, E.addDays(d0, 1) - 5 * MIN);
     state.d0 = d0; state.cursor = null;
     state.followToday = d0 === E.dayStart(Date.now());
+    if (state.pin == null && state.route && !state.followToday) state.pin = tbRange().a;
     renderAll();
   }
 
@@ -36,9 +38,11 @@
     renderPin(); renderChart(); renderReadout(); renderDayMap();
   }
 
+  /* With a route open, Now means leaving now, so the day returns to today. */
   function unpin() {
     stopPlay();
     state.pin = null; state.cursor = null;
+    if (state.route && state.d0 !== E.dayStart(Date.now())) { setDay(E.dayStart(Date.now())); return; }
     renderPin(); renderChart(); renderReadout(); renderDayMap();
   }
 
@@ -302,6 +306,7 @@
       var b = e.target.closest ? e.target.closest('[data-act]') : null, act = b && b.getAttribute('data-act');
       if (act === 'route-swap') swapRoute();
       else if (act === 'route-close') closeRoute();
+      else if (act === 'reload') sync();
       else if (act === 'limits') { renderLimits(); openSheet('limits'); }
     });
     $('dayToggle').addEventListener('click', toggleDayDisplay);
