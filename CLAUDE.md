@@ -8,7 +8,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 |---|---|
 | `npm install` | Installs the build dependencies. Use the Node version in `.nvmrc`; the publish workflow uses it too. |
 | `npm run build` | Writes `dist/index.html`, one self-contained file, and beside it the service worker `sw.js`, the web app manifest and two icons. |
-| `npm test` | Checks tide predictions against the LINZ 2028 table for Auckland, one day of sun, moon and solunar values against recorded results, the rules that find windows, the wind colors and click times of the Week rows, and the leave-by time. |
+| `npm test` | Checks tide predictions against the LINZ 2028 table for Auckland, one day of sun, moon and solunar values against recorded results, the rules that find windows, the wind colors and click times of the Week rows, the leave-by time, and the route's path search, clock and comfort scoring. |
 | `python3 tools/screenshot.py` | Renders the built page with a mocked forecast, at an iPad size or a phone size, on any of the three screens. Needs Python Playwright. Read the header of the file for options. |
 | `python3 tools/icon.py` | Renders `src/icons/icon.svg` to the two PNG icons in `src/icons/`. Run it after a change to the drawing, and commit the PNGs. |
 
@@ -18,7 +18,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 |---|---|
 | `src/template.html` | Page markup. `build.mjs` replaces each `/*__NAME__*/` marker. |
 | `src/style.css` | All styles. Color tokens are on `:root`, for light and dark. |
-| `src/engine.js` | Time, tides, sun, moon, solunar, windows, the wind color ramp and the leave-by time. No DOM. Exposes the global `Engine`. |
+| `src/engine.js` | Time, tides, sun, moon, solunar, windows, the wind color ramp, the leave-by time, and the route's path search and comfort scoring. No DOM. Exposes the global `Engine`. |
 | `src/sw.js` | The service worker. `build.mjs` fills in its version and the font stylesheet's address. |
 | `src/icons/` | The Home Screen icon: the drawing, and the PNGs that `tools/icon.py` renders from it. |
 | `src/ui/` | Everything on screen. `build.mjs` joins these files, in the order its `UI_FILES` list gives, inside one function, so they share one scope. `core.js` holds the helpers, the state and the spot forecast. `day.js`, `tables.js`, `map.js` and `week.js` each draw one part. `marks.js` holds the saved marks and home, and `wheretogo.js` the list of places to go. `now.js` holds the Now screen and the iPad's position. `app.js` holds the state changes and the wiring, and runs last. |
@@ -28,6 +28,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 | `docs/ipad-plan.md` | The agreed plan for the iPad, and its build order. |
 | `docs/boat-check.md` | The owner's check on the boat: sunlight, touch, position, chop steps and the run home. |
 | `docs/week-rows.md` | The design of the Week rows: hourly wind, and a click to a time. Its build order table records which step is done. |
+| `docs/route-comfort.md` | The design of the route from A to B: the path, the comfort scoring and the screens. Its build order table records which step is done, and its decisions section records the choices made in the build. |
 | `.github/workflows/pages.yml` | Tests, builds and publishes `dist/` to GitHub Pages on every push to `main`. Tests and builds each pull request without publishing. |
 | `.claude/approvals.yml` | The Claude Approvals policy. A change merges once Claude's Code Review passes, and Claude then approves it. The policy is enforced. |
 
@@ -96,6 +97,8 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 **Now.** The Now screen asks the iPad for its position while the screen shows and the page is in the foreground. Without a position, or with one outside the map, the screen says so and measures from the selected spot. The tide and the solunar periods come from the nearest tide spot, which the Tide card names. The wind and chop come from the grid at the position. A position on land in the simplified coastline, as at a marina, uses the nearest water cell within 1.5 nautical miles, and the cards say how far away that cell is. The four cards show the present. The map shows now or up to three hours ahead, and the screen opens at now. The next six hours show one hourly slot each for wind and chop, with night, the solunar periods, the turns of the tide and last light behind them. Run home is described below.
 
 **Run home.** `Engine.leaveBy` gives the leave-by time: last light, less the run at the owner's boat speed, less the owner's margin, rounded down to the minute. The run is the straight line from the Now screen's starting point to home, because the map cannot route around land; when that line crosses land, Run home says the real run is longer. The owner sets the speed and the margin under Limits. Both start unset, and until both are set, and home too, the page shows no leave-by time. Once the leave-by time has passed, it shows as an alert. Chop on the way is the roughest chop on the line at the leave-by time, or now once that has passed. `test/runhome.test.mjs` covers the arithmetic.
+
+**Route comfort.** `docs/route-comfort.md` holds the design, which is built in steps. The engine part is done. `Engine.findPath` searches the map's water raster with A*, over eight neighbors. A water cell next to land is closed, which keeps the path about 200 m off the shore. An end on land or on a closed cell starts from the nearest open cell. The path is then straightened. When no open water joins the two ends, there is no path, and no straight line stands in for one. `Engine.routeLegs` cuts the path into legs of at most 0.3 nautical miles. `Engine.scoreRoute` scores each leg at the time the boat reaches it: it reads the chop height and the wind's direction at the leg's middle, scores the leg, then adds the leg's time at its comfortable speed to the clock. A leg's score is the largest of three terms: slam, from waves met head-on, which grows with the square of speed; roll, from waves on the beam; and follow, a floor for a following sea. The level shows the leg at cruising speed, and the comfortable speed is the fastest speed that keeps slam at or under 0.30 m. A leg the forecast does not cover gets no score. `Engine.joinStretches` joins neighboring legs of one level. Every number these rules use is in `Engine.COMFORT`, because the owner's trip ratings will correct them. `test/route.test.mjs` covers the worked examples in the design, the search on made-up rasters, and the clock.
 
 **Chop.** The page measures fetch on a raster of the coastline, takes wave height and period from the JONSWAP growth curves, then applies a wave and current factor. The rating steps are 0.15, 0.3, 0.5 and 0.8 m. The owner has not yet confirmed these against the boat.
 

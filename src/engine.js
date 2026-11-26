@@ -1,5 +1,5 @@
 /* Hauraki Gulf Almanac engine.
-   Time handling, tides, sun, moon and solunar periods.
+   Time handling, tides, sun, moon and solunar periods, windows, and comfort on a route.
    Needs the globals Astronomy (astronomy-engine), Neaps (tide predictor) and DATA. */
 var Engine = (function () {
   'use strict';
@@ -428,6 +428,287 @@ var Engine = (function () {
     return Math.min(Math.max(Math.round(t / step) * step, d0), addDays(d0, 1) - step);
   }
 
+  /* ---------- Comfort on a route ---------- */
+
+  /* Every number the route's scoring uses. They are a first guess, and the owner's own trip ratings will
+     correct them, so they all sit here. Heights are in meters, speeds in knots, angles in degrees and
+     distances in nautical miles. */
+  var COMFORT = {
+    legNm: 0.3,                          /* the longest leg */
+    roll: 0.6,                           /* roll = 0.6 × h × sin² a */
+    follow: 0.25,                        /* follow = 0.25 × h */
+    slamOk: 0.30,                        /* the comfortable speed keeps slam at or under this */
+    minKn: 8,                            /* the comfortable speed never drops under this */
+    levels: [0.15, 0.30, 0.45, 0.65],    /* the scores at which Fair, Bumpy, Rough and Very rough start */
+    names: ['Easy', 'Fair', 'Bumpy', 'Rough', 'Very rough'],
+    sheltered: 0.15,                     /* under this chop height, the cause is "sheltered" */
+    head: 50,                            /* a head sea up to this angle */
+    beam: 130,                           /* a beam sea up to this angle, and a following sea above it */
+    stretchNm: 0.5                       /* the route panel leaves out stretches shorter than this */
+  };
+
+  /* The angle between the boat's course and the direction the wind comes from, 0 to 180 degrees.
+     0 is a head sea and 180 a following sea. */
+  function seaAngle(course, windFrom) {
+    return Math.abs(((windFrom - course) % 360 + 540) % 360 - 180);
+  }
+
+  /* Three terms, each in meters, and the score is the largest. slam is the hull meeting waves: largest
+     head-on, and it grows with the square of speed. roll is waves on the beam, whatever the speed. follow is
+     a floor, so a large following sea never scores as flat water. */
+  function comfortScore(h, a, v, cruise) {
+    var c = Math.cos(a * RAD), s = Math.sin(a * RAD);
+    var slam = h * (1 + c) / 2 * (v / cruise) * (v / cruise), roll = COMFORT.roll * h * s * s, follow = COMFORT.follow * h;
+    return Math.max(slam, roll, follow);
+  }
+  function comfortLevel(score) {
+    var n = 0;
+    COMFORT.levels.forEach(function (x) { if (score >= x) n++; });
+    return n;
+  }
+  function comfortCause(h, a) {
+    return h < COMFORT.sheltered ? 'sheltered' : a <= COMFORT.head ? 'head sea' : a <= COMFORT.beam ? 'beam sea' : 'following sea';
+  }
+  /* The fastest speed, up to cruising speed, that keeps slam at or under COMFORT.slamOk. It never drops under
+     COMFORT.minKn, or under cruising speed when that is slower still. */
+  function comfortSpeed(h, a, cruise) {
+    var head = h * (1 + Math.cos(a * RAD)) / 2, floor = Math.min(COMFORT.minKn, cruise);
+    if (!(head > 0)) return cruise;
+    return Math.max(floor, Math.min(cruise, cruise * Math.sqrt(COMFORT.slamOk / head)));
+  }
+  /* One leg with chop height h, in meters, at angle a. The level shows the leg at cruising speed. The
+     comfortable speed shows what it takes to make the leg Fair. */
+  function scoreLeg(h, a, cruise) {
+    var score = comfortScore(h, a, cruise, cruise);
+    return { score: score, level: comfortLevel(score), cause: comfortCause(h, a), v: comfortSpeed(h, a, cruise) };
+  }
+
+  /* ---------- A path over water ----------
+     grid is a raster of the coastline: { w, h, water }, where water[x + y * w] is 1 for water that counts.
+     Points are in cells: cell (x, y) covers the points that round to x and y. */
+
+  /* A water cell next to land, or next to water that does not count, is closed. That keeps a path about one
+     cell off the shore. Past the raster's edge lies open sea. */
+  function openCells(grid) {
+    if (grid.open) return grid.open;
+    var w = grid.w, h = grid.h, water = grid.water, open = new Uint8Array(w * h);
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        if (!water[x + y * w]) continue;
+        var shut = false;
+        for (var dy = -1; dy <= 1 && !shut; dy++) {
+          for (var dx = -1; dx <= 1; dx++) {
+            var X = x + dx, Y = y + dy;
+            if (X >= 0 && Y >= 0 && X < w && Y < h && !water[X + Y * w]) { shut = true; break; }
+          }
+        }
+        open[x + y * w] = shut ? 0 : 1;
+      }
+    }
+    grid.open = open;
+    return open;
+  }
+
+  /* The open cell nearest a point, and how far the point is from it, in cells. */
+  function nearestOpen(grid, p) {
+    var open = openCells(grid), w = grid.w, h = grid.h, cx = Math.round(p.x), cy = Math.round(p.y), best = -1, bd = Infinity;
+    function look(x, y) {
+      if (x < 0 || y < 0 || x >= w || y >= h || !open[x + y * w]) return;
+      var d = (x - p.x) * (x - p.x) + (y - p.y) * (y - p.y);
+      if (d < bd) { bd = d; best = x + y * w; }
+    }
+    for (var r = 0, top = w + h; r <= top; r++) {
+      /* Every cell on ring r lies at least r − 1 from the point. */
+      if (best >= 0 && r - 1 > Math.sqrt(bd)) break;
+      for (var k = -r; k <= r; k++) {
+        look(cx + k, cy - r);
+        if (r) look(cx + k, cy + r);
+        if (Math.abs(k) < r) { look(cx - r, cy + k); look(cx + r, cy + k); }
+      }
+    }
+    return best < 0 ? null : { i: best, x: best % w, y: Math.floor(best / w), moved: Math.sqrt(bd) };
+  }
+
+  /* A* over the open cells, with eight neighbors. A diagonal step needs both cells beside it open, so a path
+     never squeezes between two closed cells. Returns the cells from s to g, or null. */
+  function searchCells(grid, s, g) {
+    var open = grid.open, w = grid.w, n = w * grid.h, SQ2 = Math.SQRT2;
+    var cost = new Float64Array(n), from = new Int32Array(n), done = new Uint8Array(n);
+    cost.fill(Infinity); from.fill(-1);
+    var gx = g % w, gy = Math.floor(g / w), keys = [], vals = [];
+    function guess(i) {
+      var dx = Math.abs(i % w - gx), dy = Math.abs(Math.floor(i / w) - gy);
+      return dx + dy + (SQ2 - 2) * Math.min(dx, dy);
+    }
+    function push(k, v) {
+      var j = keys.length;
+      keys.push(k); vals.push(v);
+      while (j > 0) {
+        var up = (j - 1) >> 1;
+        if (keys[up] <= k) break;
+        keys[j] = keys[up]; vals[j] = vals[up]; j = up;
+      }
+      keys[j] = k; vals[j] = v;
+    }
+    function pop() {
+      var top = vals[0], k = keys.pop(), v = vals.pop(), j = 0, m = keys.length;
+      if (!m) return top;
+      for (;;) {
+        var c = 2 * j + 1;
+        if (c >= m) break;
+        if (c + 1 < m && keys[c + 1] < keys[c]) c++;
+        if (keys[c] >= k) break;
+        keys[j] = keys[c]; vals[j] = vals[c]; j = c;
+      }
+      keys[j] = k; vals[j] = v;
+      return top;
+    }
+    cost[s] = 0; push(guess(s), s);
+    while (keys.length) {
+      var i = pop();
+      if (done[i]) continue;
+      done[i] = 1;
+      if (i === g) break;
+      var x = i % w, y = Math.floor(i / w);
+      for (var dy = -1; dy <= 1; dy++) {
+        for (var dx = -1; dx <= 1; dx++) {
+          if (!dx && !dy) continue;
+          var X = x + dx, Y = y + dy;
+          if (X < 0 || Y < 0 || X >= w || Y >= grid.h) continue;
+          var q = X + Y * w;
+          if (!open[q] || done[q]) continue;
+          if (dx && dy && (!open[X + y * w] || !open[x + Y * w])) continue;
+          var c2 = cost[i] + (dx && dy ? SQ2 : 1);
+          if (c2 < cost[q]) { cost[q] = c2; from[q] = i; push(c2 + guess(q), q); }
+        }
+      }
+    }
+    if (!done[g]) return null;
+    var cells = [];
+    for (var at = g; at >= 0; at = from[at]) cells.push({ x: at % w, y: Math.floor(at / w) });
+    return cells.reverse();
+  }
+
+  /* Whether a straight line between the centers of two cells crosses only open cells. The walk visits every
+     cell the line passes through. Where the line passes exactly through a corner, both cells beside the
+     corner must be open, as for a diagonal step. */
+  function clearLine(grid, a, b) {
+    var open = grid.open, w = grid.w, cx = a.x, cy = a.y, dx = b.x - a.x, dy = b.y - a.y;
+    var sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1, n = Math.abs(dx) + Math.abs(dy);
+    /* The share of the line at which it next crosses a column or a row. Cell edges lie half a cell from centers. */
+    var stepX = dx ? 1 / Math.abs(dx) : Infinity, stepY = dy ? 1 / Math.abs(dy) : Infinity;
+    var tx = stepX / 2, ty = stepY / 2;
+    if (!open[cx + cy * w]) return false;
+    while (n > 0) {
+      if (Math.abs(tx - ty) < 1e-9) {
+        if (!open[cx + sx + cy * w] || !open[cx + (cy + sy) * w]) return false;
+        cx += sx; cy += sy; tx += stepX; ty += stepY; n -= 2;
+      } else if (tx < ty) { cx += sx; tx += stepX; n--; }
+      else { cy += sy; ty += stepY; n--; }
+      if (!open[cx + cy * w]) return false;
+    }
+    return true;
+  }
+  /* Keeps a point only where a straight line to a later point would touch closed cells. */
+  function straighten(grid, cells) {
+    var out = [cells[0]], i = 0;
+    while (i < cells.length - 1) {
+      var j = i + 1;
+      while (j + 1 < cells.length && clearLine(grid, cells[i], cells[j + 1])) j++;
+      out.push(cells[j]);
+      i = j;
+    }
+    return out;
+  }
+
+  /* A path over open water from a to b, both in cells. An end on land, or on a closed cell, starts from the
+     nearest open cell; from.moved and to.moved say how far that is. found is false when no open water joins
+     the two ends. There is then no path, and no straight line stands in for one. */
+  function findPath(grid, a, b) {
+    var s = nearestOpen(grid, a), g = nearestOpen(grid, b);
+    if (!s || !g) return { found: false, from: s, to: g, points: [] };
+    var cells = searchCells(grid, s.i, g.i);
+    if (!cells) return { found: false, from: s, to: g, points: [] };
+    return { found: true, from: s, to: g, points: straighten(grid, cells) };
+  }
+
+  /* ---------- Legs, the clock and stretches ---------- */
+
+  /* Cuts a path into legs no longer than COMFORT.legNm. points have x toward east and y toward south, as on
+     the map, with perNm units to the nautical mile. Each leg has its middle, its course in degrees true,
+     its length and its distance from the start, in nautical miles. */
+  function routeLegs(points, perNm) {
+    var legs = [], at = 0;
+    for (var k = 1; k < points.length; k++) {
+      var p = points[k - 1], q = points[k], dx = q.x - p.x, dy = q.y - p.y, len = Math.hypot(dx, dy) / perNm;
+      if (!(len > 0)) continue;
+      var n = Math.ceil(len / COMFORT.legNm - 1e-9), course = (Math.atan2(dx, -dy) / RAD + 360) % 360;
+      for (var j = 0; j < n; j++) {
+        legs.push({ x0: p.x + dx * j / n, y0: p.y + dy * j / n, x1: p.x + dx * (j + 1) / n, y1: p.y + dy * (j + 1) / n,
+          x: p.x + dx * (j + 0.5) / n, y: p.y + dy * (j + 0.5) / n, course: course, nm: len / n, at: at });
+        at += len / n;
+      }
+    }
+    return legs;
+  }
+
+  /* Scores the legs in order, each at the time the boat reaches it. The clock starts at t0. cond(x, y, t)
+     gives the chop height h and the direction the wind comes from at a leg's middle, or null where the
+     forecast does not cover it. Each leg adds its time at its comfortable speed to the clock. A leg without
+     a forecast gets no score, and the clock crosses it at cruising speed. */
+  function scoreRoute(legs, t0, cruise, cond) {
+    var t = t0, nm = 0, missing = 0, out = legs.map(function (L) {
+      var r = {}, k;
+      for (k in L) r[k] = L[k];
+      var c = cond(L.x, L.y, t);
+      r.t = t;
+      if (c) {
+        var a = seaAngle(L.course, c.from), s = scoreLeg(c.h, a, cruise);
+        r.h = c.h; r.a = a; r.score = s.score; r.level = s.level; r.cause = s.cause; r.v = s.v;
+      } else {
+        r.level = null; r.v = null;
+        missing += L.nm;
+      }
+      r.ms = L.nm / (r.v || cruise) * HOUR;
+      t += r.ms; nm += L.nm;
+      return r;
+    });
+    return { legs: out, start: t0, end: t, ms: t - t0, cruiseMs: nm / cruise * HOUR, nm: nm, missingNm: missing };
+  }
+
+  /* Joins neighboring legs of one level into stretches. A stretch's cause is the one that covers most of its
+     length, its height the highest chop on it, and its speed its length over its time. Legs without a score
+     join into stretches whose level is null. */
+  function joinStretches(legs) {
+    var out = [];
+    legs.forEach(function (L) {
+      var s = out[out.length - 1];
+      if (!s || s.level !== L.level) {
+        s = { level: L.level, at: L.at, nm: 0, ms: 0, h: null, score: null, byCause: {} };
+        out.push(s);
+      }
+      s.nm += L.nm; s.ms += L.ms;
+      if (L.level == null) return;
+      if (s.h == null || L.h > s.h) s.h = L.h;
+      if (s.score == null || L.score > s.score) s.score = L.score;
+      s.byCause[L.cause] = (s.byCause[L.cause] || 0) + L.nm;
+    });
+    return out.map(function (s) {
+      var cause = null, most = 0;
+      for (var k in s.byCause) if (s.byCause[k] > most) { most = s.byCause[k]; cause = k; }
+      return { level: s.level, at: s.at, nm: s.nm, ms: s.ms, h: s.h, score: s.score, cause: cause,
+        v: s.level == null ? null : s.nm / (s.ms / HOUR) };
+    });
+  }
+  /* The stretch with the highest level, and of two at one level, the one with the higher score. */
+  function worstStretch(stretches) {
+    var w = null;
+    stretches.forEach(function (s) {
+      if (s.level != null && (!w || s.level > w.level || (s.level === w.level && s.score > w.score))) w = s;
+    });
+    return w;
+  }
+
   /* ---------- Run home ---------- */
 
   /* The latest time to leave for home: last light, less the run at the owner's speed, less the owner's margin.
@@ -445,6 +726,8 @@ var Engine = (function () {
     MIN: MIN, HOUR: HOUR, DAY: DAY,
     LIMITS: LIMITS, windows: windows, rankWindows: rankWindows, dayWindows: dayWindows, leaveBy: leaveBy,
     rampColor: rampColor, windColor: windColor, laneTime: laneTime,
+    COMFORT: COMFORT, seaAngle: seaAngle, scoreLeg: scoreLeg, findPath: findPath, routeLegs: routeLegs,
+    scoreRoute: scoreRoute, joinStretches: joinStretches, worstStretch: worstStretch,
     parts: parts, midnight: midnight, dayStart: dayStart, addDays: addDays,
     fmtTime: fmtTime, fmtDay: fmtDay, fmtDayLong: fmtDayLong, fmtDuration: fmtDuration, isoDate: isoDate, pad2: pad2,
     spotExtremes: spotExtremes, spotCurve: spotCurve, interp: interp,
