@@ -49,7 +49,7 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 
 | Color | Meaning |
 |---|---|
-| Green `#2E8B57` | Active or selected. Solunar periods and the solunar line. |
+| Green `#2E8B57` | Active or selected. Windows inside the owner's limits. Solunar periods and the solunar line. |
 | Amber `#E59400` | Needles on gauges, and the map probe. |
 | Vermilion `#D9381E` | Alerts, wind from 20 knots, and "now" in the day display. |
 | Yellow `#DCA400`, disc `#F5C400` | The sun, in the day display. |
@@ -70,7 +70,7 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 
 **Weather.** The browser fetches Open-Meteo. Each spot gets a forecast and marine data. The map gets a grid of 83 water points: wind from the forecast service, current from the marine service. The page keeps the last loaded data in `localStorage` under keys that start with `gulf-almanac-`. A load runs when the page opens, once a minute if the data is over an hour old, when the page returns to the foreground, and when the owner presses Sync. After a failed load, automatic loads wait 10 minutes. Sync, a return to the page and a restored connection try at once.
 
-**Windows.** `Engine.windows` finds them. A window is a stretch between first light and last light (civil dawn and dusk) when the sustained wind stays at or under the owner's limit for the owner's minimum time or longer. Each hourly forecast value stands for the half hour either side of its time. A missing hour ends a window. Gusts and chop do not close a window. The owner sets the two limits under Limits, and the iPad stores them; the defaults are 15 kn and 3 h. `Engine.rankWindows` puts the longest first. `test/windows.test.mjs` covers these rules.
+**Windows.** `Engine.windows` finds them. A window is a stretch between first light and last light (civil dawn and dusk) when the sustained wind stays at or under the owner's limit for the owner's minimum time or longer. Each hourly forecast value stands for the half hour either side of its time. The wind is compared in whole knots, as the page shows it. A missing hour ends a window. Gusts and chop do not close a window. The owner sets the two limits under Limits, and the iPad stores them; the defaults are 15 kn and 3 h. `Engine.rankWindows` puts the longest first. `test/windows.test.mjs` covers these rules.
 
 **Flow.** The current model has cells of about 8 km. It does not resolve the channels. `loadFlowField` in `src/ui/map.js` is the only code that knows the source, so a better source can replace it there.
 
