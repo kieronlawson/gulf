@@ -90,8 +90,9 @@
       moonShape(fraction, limb, h - inset) + '</svg>';
   }
 
-  function pips(level) {
-    var s = '<span class="pips" aria-hidden="true">';
+  /* Four rating lamps. With a label, VoiceOver reads it in place of the lamps. */
+  function pips(level, label) {
+    var s = '<span class="pips"' + (label ? ' role="img" aria-label="' + label + '"' : ' aria-hidden="true"') + '>';
     for (var i = 0; i < 4; i++) s += '<i' + (i <= level ? ' class="on"' : '') + '></i>';
     return s + '</span>';
   }
@@ -257,10 +258,12 @@
     return { first: Math.min.apply(null, keys), last: Math.max.apply(null, keys) };
   }
 
-  /* Daylight summary for one day: the hours between sunrise and sunset. */
-  function daySummary(d) {
-    var hrs = dayRecs(d.d0, d.d1), lit = hrs.filter(function (q) { return q.t >= d.sun.rise - HOUR && q.t <= d.sun.set; });
-    if (lit.length < 6) return null;
+  /* Summary of one day's weather. By default it covers the hours between sunrise and sunset, and needs six of
+     them with a forecast. inside(t) chooses other hours, and min another least number of them. */
+  function daySummary(d, inside, min) {
+    inside = inside || function (t) { return t >= d.sun.rise - HOUR && t <= d.sun.set; };
+    var hrs = dayRecs(d.d0, d.d1), lit = hrs.filter(function (q) { return inside(q.t); });
+    if (lit.length < (min || 6)) return null;
     var sx = 0, sy = 0, lo = Infinity, hi = -Infinity, gust = -Infinity, wave = null, rain = 0;
     lit.forEach(function (q) {
       var a = q.r.dir * Math.PI / 180;
