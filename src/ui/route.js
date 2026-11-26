@@ -257,7 +257,7 @@
          names each lane once, in the order the path first crosses it. */
       var lanesCrossed = [];
       tr.ferries.forEach(function (f) { if (lanesCrossed.indexOf(f.name) < 0) lanesCrossed.push(f.name); });
-      rows.push(row('Ferry lanes crossed', !tr.ferries.length ? 'None' : tr.ferries.length + (lanesCrossed.length < tr.ferries.length ? ' crossings of ' + lanesCrossed.length + ' lanes' : '')));
+      rows.push(row('Ferry lanes crossed', !tr.ferries.length ? 'None' : tr.ferries.length + (lanesCrossed.length < tr.ferries.length ? ' crossings of ' + lanesCrossed.length + (lanesCrossed.length === 1 ? ' lane' : ' lanes') : '')));
       html += '<dl class="rt-totals">' + rows.join('') + '</dl>';
       if (lanesCrossed.length) notes.push('Ferry lanes crossed, from A: ' + lanesCrossed.map(esc).join(', ') + '. The lanes are Auckland Transport’s ferry routes. The page has no timetable.');
       html += missingWords(tr);
