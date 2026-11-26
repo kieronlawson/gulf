@@ -11,6 +11,7 @@ Write notes in the tables below, or on paper, and pass them on. The changes that
 3. Under Limits, set your wind limit and minimum time, your boat speed, and how long before last light you want to be home.
 4. Open the Now screen once while you have a connection. When the iPad asks, allow it to use your location.
 5. Turn on Airplane Mode, open the page from the Home Screen, and check that it opens and shows the forecast with its age. Then turn Airplane Mode off.
+6. If you use VoiceOver: on the Week screen, move to a window in a row and double-tap. Note whether the Day screen opens at the window's start or at a time in its middle. The page means to pin the start.
 
 An iPad without a cellular connection has no GPS. On the water it gets no position, and the Now screen says so and measures from the selected spot instead.
 
