@@ -361,6 +361,11 @@
       loadWeather(false); syncField(false);
     });
 
+    /* The Week rows take their wind colors from the theme, so a change of theme draws them again. */
+    var dark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+    if (dark && dark.addEventListener) dark.addEventListener('change', renderWeek);
+    else if (dark && dark.addListener) dark.addListener(renderWeek);
+
     setScreen(state.screen);
     buildMask();
     buildSites();

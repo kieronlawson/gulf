@@ -8,7 +8,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 |---|---|
 | `npm install` | Installs the build dependencies. Use the Node version in `.nvmrc`; the publish workflow uses it too. |
 | `npm run build` | Writes `dist/index.html`, one self-contained file, and beside it the service worker `sw.js`, the web app manifest and two icons. |
-| `npm test` | Checks tide predictions against the LINZ 2028 table for Auckland, one day of sun, moon and solunar values against recorded results, the rules that find windows, and the leave-by time. |
+| `npm test` | Checks tide predictions against the LINZ 2028 table for Auckland, one day of sun, moon and solunar values against recorded results, the rules that find windows, the wind colors of the Week rows, and the leave-by time. |
 | `python3 tools/screenshot.py` | Renders the built page with a mocked forecast, at an iPad size or a phone size, on any of the three screens. Needs Python Playwright. Read the header of the file for options. |
 | `python3 tools/icon.py` | Renders `src/icons/icon.svg` to the two PNG icons in `src/icons/`. Run it after a change to the drawing, and commit the PNGs. |
 
@@ -18,7 +18,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 |---|---|
 | `src/template.html` | Page markup. `build.mjs` replaces each `/*__NAME__*/` marker. |
 | `src/style.css` | All styles. Color tokens are on `:root`, for light and dark. |
-| `src/engine.js` | Time, tides, sun, moon, solunar, windows and the leave-by time. No DOM. Exposes the global `Engine`. |
+| `src/engine.js` | Time, tides, sun, moon, solunar, windows, the wind color ramp and the leave-by time. No DOM. Exposes the global `Engine`. |
 | `src/sw.js` | The service worker. `build.mjs` fills in its version and the font stylesheet's address. |
 | `src/icons/` | The Home Screen icon: the drawing, and the PNGs that `tools/icon.py` renders from it. |
 | `src/ui/` | Everything on screen. `build.mjs` joins these files, in the order its `UI_FILES` list gives, inside one function, so they share one scope. `core.js` holds the helpers, the state and the spot forecast. `day.js`, `tables.js`, `map.js` and `week.js` each draw one part. `marks.js` holds the saved marks and home, and `wheretogo.js` the list of places to go. `now.js` holds the Now screen and the iPad's position. `app.js` holds the state changes and the wiring, and runs last. |
@@ -27,6 +27,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 | `tools/` | The scripts that produced the data, the screenshot tool and the icon tool. |
 | `docs/ipad-plan.md` | The agreed plan for the iPad, and its build order. |
 | `docs/boat-check.md` | The owner's check on the boat: sunlight, touch, position, chop steps and the run home. |
+| `docs/week-rows.md` | The design of the Week rows: hourly wind, and a click to a time. Its build order table records which step is done. |
 | `.github/workflows/pages.yml` | Tests, builds and publishes `dist/` to GitHub Pages on every push to `main`. Tests and builds each pull request without publishing. |
 | `.claude/approvals.yml` | The Claude Approvals policy. A change merges once Claude's Code Review passes, and Claude then approves it. The policy is enforced. |
 
@@ -56,10 +57,11 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 |---|---|
 | Green `#2E8B57` | Active or selected. Windows inside the owner's limits. Solunar periods and the solunar line. |
 | Amber `#E59400` | Needles on gauges, and the map probe. |
-| Vermilion `#D9381E` | Alerts. On the Week and Now screens, wind over the owner's limit is an alert. Wind from 20 knots in the day display and the tables. "Now" in the day display, on the Week screen and in the Now screen's next six hours. |
+| Vermilion `#D9381E` | Alerts. On the Now screen, wind over the owner's limit is an alert. Wind from 20 knots in the day display and the tables. "Now" in the day display, on the Week screen and in the Now screen's next six hours. |
 | Yellow `#DCA400`, disc `#F5C400` | The sun, in the day display. |
 | Slate `#525866` | The moon, in the day display. |
 | Blue `#2A6FA8` | The tide, in the day display and in the Now screen's next six hours. |
+| Wind ramp, `--wind-0` to `--wind-5` | Wind on the Week rows, by speed as a share of the owner's limit: green up to 0.60, yellow-green at 0.87, yellow at the limit, amber just over it, red at 1.33 and dark red from 1.80. Yellow ends at the owner's limit, and amber starts just over it. `Engine.windColor` blends the stops in a straight line in RGB. |
 
 - The day display has a light ground by day, `#FBFAF7`, and a darker one at night, `#D8D6CE`. It is never black.
 - A dark theme serves devices in dark mode. Change both themes together.
@@ -77,7 +79,7 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 
 **Windows.** `Engine.windows` finds them. A window is a stretch between first light and last light (civil dawn and dusk) when the sustained wind stays at or under the owner's limit for the owner's minimum time or longer. Each hourly forecast value stands for the half hour either side of its time. The wind is compared in whole knots, as the page shows it. A missing hour ends a window. Gusts and chop do not close a window. The owner sets the two limits under Limits, and the iPad stores them in `localStorage` under `gulf-almanac-limits`, with the boat speed and margin for the run home; the defaults are 15 kn and 3 h. `Engine.rankWindows` puts the longest first. `test/windows.test.mjs` covers these rules.
 
-**Week.** The Week screen shows today and the next six days. Every row shares one range of local hours: from the hour before the earliest first light to the hour after the latest last light. Wind over the limit and hours with no forecast are drawn only between first light and last light. A best-window card lists the major period that overlaps the window most, and the high and low waters inside it.
+**Week.** The Week screen shows today and the next six days. Every row shares one range of local hours: from the hour before the earliest first light to the hour after the latest last light. From its top, each row draws the major periods with their rating lamps, the wind, the windows' brackets and the tide. The wind is one bar for each forecast hour, with a tick at the gust. The wind field runs from calm at its foot to twice the owner's limit at its top, in every row, so the dotted limit line sits at mid height. A bar's height and color use the speed in whole knots, as the window rule compares it, so a bar inside a window never rises over the limit line and is never amber or red. Bars before first light and after last light are paler. Hours with no forecast are drawn only between first light and last light. `docs/week-rows.md` holds the design. A best-window card lists the major period that overlaps the window most, and the high and low waters inside it.
 
 **Flow.** The current model has cells of about 8 km. It does not resolve the channels. `loadFlowField` in `src/ui/map.js` is the only code that knows the source, so a better source can replace it there.
 

@@ -387,6 +387,36 @@ var Engine = (function () {
     return windows(hours, { from: d.sun.dawn, to: d.sun.dusk }, limits || LIMITS);
   }
 
+  /* ---------- Wind color ---------- */
+
+  /* The Week rows color each hour's wind by its speed as a share of the owner's limit. colors holds six
+     '#RRGGBB' stops, from the page's theme: green up to 0.60 of the limit, yellow-green at 0.87, yellow at
+     the limit, amber just over it, red at 1.33, and dark red from 1.80. Between two stops the color moves
+     in a straight line in RGB. Yellow ends at the limit and amber starts just over it, with no blend
+     between them. */
+  /* Each segment: up to this share, blend from one stop to the next. Past the last segment, the last stop. */
+  var RAMP = [
+    { to: 0.6, from: 0, a: 0, b: 0 },
+    { to: 0.87, from: 0.6, a: 0, b: 1 },
+    { to: 1, from: 0.87, a: 1, b: 2 },
+    { to: 1.33, from: 1, a: 3, b: 4 },
+    { to: 1.8, from: 1.33, a: 4, b: 5 }
+  ];
+  function rampColor(share, colors) {
+    var rgb = colors.map(function (h) { return [1, 3, 5].map(function (i) { return parseInt(h.slice(i, i + 2), 16); }); });
+    var seg = RAMP.filter(function (s) { return share <= s.to; })[0], c = rgb[5];
+    if (seg) {
+      var f = seg.a === seg.b ? 0 : (share - seg.from) / (seg.to - seg.from);
+      c = rgb[seg.a].map(function (v, i) { return v + (rgb[seg.b][i] - v) * f; });
+    }
+    return 'rgb(' + c.map(Math.round).join(', ') + ')';
+  }
+  /* The speed is rounded to whole knots first, as the window rule compares it, so an hour inside a window
+     is never amber or red. */
+  function windColor(speed, limit, colors) {
+    return rampColor(Math.round(speed) / limit, colors);
+  }
+
   /* ---------- Run home ---------- */
 
   /* The latest time to leave for home: last light, less the run at the owner's speed, less the owner's margin.
@@ -403,6 +433,7 @@ var Engine = (function () {
   return {
     MIN: MIN, HOUR: HOUR, DAY: DAY,
     LIMITS: LIMITS, windows: windows, rankWindows: rankWindows, dayWindows: dayWindows, leaveBy: leaveBy,
+    rampColor: rampColor, windColor: windColor,
     parts: parts, midnight: midnight, dayStart: dayStart, addDays: addDays,
     fmtTime: fmtTime, fmtDay: fmtDay, fmtDayLong: fmtDayLong, fmtDuration: fmtDuration, isoDate: isoDate, pad2: pad2,
     spotExtremes: spotExtremes, spotCurve: spotCurve, interp: interp,
