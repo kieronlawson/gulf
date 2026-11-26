@@ -24,7 +24,7 @@
       cx.scale(R, R); cx.fillStyle = '#fff'; cx.fill(new Path2D(MAP.path), 'evenodd');
       var px = cx.getImageData(0, 0, mw, mh).data, land = new Uint8Array(mw * mh), water = new Uint8Array(mw * mh), i;
       for (i = 0; i < mw * mh; i++) land[i] = px[i * 4] > 127 ? 1 : 0;
-      var stack = [Math.round(mapX(175.1) * R) + Math.round(mapY(-36.5) * R) * mw];
+      var seed = Math.round(mapX(175.1) * R) + Math.round(mapY(-36.5) * R) * mw, stack = [seed];
       while (stack.length) {
         var p = stack.pop();
         if (water[p] || land[p]) continue;
@@ -35,7 +35,8 @@
         if (y > 0) stack.push(p - mw);
         if (y < mh - 1) stack.push(p + mw);
       }
-      MASK = { R: R, w: mw, h: mh, land: land, water: water };
+      /* The seed lies in the open Gulf. The route's search uses it to keep to water joined to the Gulf. */
+      MASK = { R: R, w: mw, h: mh, land: land, water: water, seed: seed };
     } catch (e) { MASK = null; }
   }
 

@@ -30,7 +30,7 @@ Build steps 1 to 4 first. Ferry lanes, section 5, are a second step.
 - Cut the path into legs no longer than 0.3 nautical miles.
 - Start the clock at the leave time: the pinned time on Day, now on Now.
 - For each leg in order: read wind and chop at the leg's middle for the clock time (`condAt`), score the leg, add the leg's time at its comfortable speed to the clock.
-- A leg the forecast does not cover gets no score. Draw it grey, and say in the totals that the score is incomplete.
+- A leg the forecast does not cover gets no score. Draw it gray, and say in the totals that the score is incomplete.
 
 ## 3. Scoring rules
 
@@ -167,7 +167,7 @@ Each step is one pull request, merged before the next starts.
 
 ## Decisions made in the build
 
-- **Narrow passages.** A water cell is closed when any of its eight neighbors is land or water the map does not join to the Gulf. A cell is 185 m across, so a passage needs three cells of water across, about 0.3 nautical miles, to stay open. On the map's coastline the Gulf stays one body of open water, and only a few narrow inlets are cut off. An end in one of them finds no path, and the page says so.
+- **Narrow passages.** A water cell is closed when any of its eight neighbors is land or water the map does not join to the Gulf. A cell is 185 m across, so a passage needs three cells of water across, about 0.3 nautical miles, to stay open. On the map's coastline the Gulf stays one body of open water, and only a few narrow inlets are cut off. Only open water joined to the Gulf counts, so an end in such an inlet, or on land beside one, starts from the Gulf's nearest open cell, and the route panel says how far it moved. This came from the review of step 1: before it, such an end found no path. The page's search therefore always finds a path; the engine still reports no path for a raster without a seed, and the panel still has words for that case.
 - **Corners.** A diagonal step needs both cells beside it open, and a straightened line that passes exactly through a corner needs the same. A path therefore never squeezes between two closed cells.
 - **Moved ends.** `Engine.findPath` reports how far each end moved to reach open water, so the route panel can say so.
 - **Legs without a forecast.** The clock crosses them at cruising speed, because the page has nothing to slow down for. The trip time is then a lower bound, and the totals say the score is incomplete.

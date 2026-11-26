@@ -484,8 +484,9 @@ var Engine = (function () {
   }
 
   /* ---------- A path over water ----------
-     grid is a raster of the coastline: { w, h, water }, where water[x + y * w] is 1 for water that counts.
-     Points are in cells: cell (x, y) covers the points that round to x and y. */
+     grid is a raster of the coastline: { w, h, water, seed }, where water[x + y * w] is 1 for water that counts.
+     seed, when given, is the index of a cell in the open Gulf. Points are in cells: cell (x, y) covers the points
+     that round to x and y. */
 
   /* A water cell next to land, or next to water that does not count, is closed. That keeps a path about one
      cell off the shore. Past the raster's edge lies open sea. */
@@ -505,8 +506,29 @@ var Engine = (function () {
         open[x + y * w] = shut ? 0 : 1;
       }
     }
-    grid.open = open;
-    return open;
+    grid.open = grid.seed != null && open[grid.seed] ? joinedTo(open, w, h, grid.seed) : open;
+    return grid.open;
+  }
+
+  /* Closing the cells next to land can cut off an inlet behind a narrow entrance. Only open cells joined to the
+     seed then count, so an end in such an inlet, or on land beside one, starts from the Gulf's nearest open cell.
+     The cells join by the moves the search makes. */
+  function joinedTo(open, w, h, seed) {
+    var joined = new Uint8Array(w * h), stack = [seed];
+    joined[seed] = 1;
+    while (stack.length) {
+      var i = stack.pop(), x = i % w, y = (i - x) / w;
+      for (var dy = -1; dy <= 1; dy++) {
+        for (var dx = -1; dx <= 1; dx++) {
+          var X = x + dx, Y = y + dy, q = X + Y * w;
+          if ((!dx && !dy) || X < 0 || Y < 0 || X >= w || Y >= h || !open[q] || joined[q]) continue;
+          if (dx && dy && (!open[X + y * w] || !open[x + Y * w])) continue;
+          joined[q] = 1;
+          stack.push(q);
+        }
+      }
+    }
+    return joined;
   }
 
   /* The open cell nearest a point, and how far the point is from it, in cells. */
@@ -623,7 +645,7 @@ var Engine = (function () {
 
   /* A path over open water from a to b, both in cells. An end on land, or on a closed cell, starts from the
      nearest open cell; from.moved and to.moved say how far that is. found is false when no open water joins
-     the two ends. There is then no path, and no straight line stands in for one. */
+     the two ends, which a grid with a seed avoids. There is then no path, and no straight line stands in for one. */
   function findPath(grid, a, b) {
     var s = nearestOpen(grid, a), g = nearestOpen(grid, b);
     if (!s || !g) return { found: false, from: s, to: g, points: [] };

@@ -145,7 +145,7 @@
       '<circle r="6.4"/><text y="2.7" text-anchor="middle">' + label + '</text></g>';
   }
 
-  /* The path: a dark line with the level's color on top, stretch by stretch, grey where the forecast gives no
+  /* The path: a dark line with the level's color on top, stretch by stretch, gray where the forecast gives no
      score. A and B mark the ends of the path, where the scoring starts and stops. */
   function drawRouteMap() {
     var layer = $('ovRoute'), ends = $('ovEnds');
@@ -208,7 +208,7 @@
         var all = tr.score.missingNm >= tr.nm - 1e-6, problem = fieldProblem(tr.t0);
         html += '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>Score incomplete. ' +
           (all ? 'The forecast does not cover this route at the leave time.' :
-            'The forecast does not cover ' + tr.score.missingNm.toFixed(1) + ' nm of the route, drawn grey.') +
+            'The forecast does not cover ' + tr.score.missingNm.toFixed(1) + ' nm of the route, drawn gray.') +
           ' The trip time counts ' + (all ? 'the route' : 'those legs') + ' at cruising speed.</span></p>';
         if (problem) html += problem;
       }

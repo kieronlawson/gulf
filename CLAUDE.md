@@ -62,7 +62,7 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 | Yellow `#DCA400`, disc `#F5C400` | The sun, in the day display. |
 | Slate `#525866` | The moon, in the day display. |
 | Blue `#2A6FA8` | The tide, in the day display and in the Now screen's next six hours. |
-| Comfort levels, `--wind-0` to `--wind-4` | The route's levels, on the map and in the route panel: Easy green, Fair yellow-green, Bumpy yellow, Rough amber, Very rough red. They reuse the first five stops of the wind ramp, so the dark theme has them too. Grey marks a leg with no forecast. The level's name is always written beside its color. |
+| Comfort levels, `--wind-0` to `--wind-4` | The route's levels, on the map and in the route panel: Easy green, Fair yellow-green, Bumpy yellow, Rough amber, Very rough red. They reuse the first five stops of the wind ramp, so the dark theme has them too. Gray marks a leg with no forecast. The level's name is always written beside its color. |
 | Wind ramp, `--wind-0` to `--wind-5` | Wind on the Week rows, by speed as a share of the owner's limit: green up to 0.60, yellow-green at 0.87, yellow at the limit, amber just over it, red at 1.33 and dark red from 1.80. Yellow ends at the owner's limit, and amber starts just over it. `Engine.windColor` blends the stops in a straight line in RGB. |
 
 - The day display has a light ground by day, `#FBFAF7`, and a darker one at night, `#D8D6CE`. It is never black.
