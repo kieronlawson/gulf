@@ -200,15 +200,24 @@
     $('sync').addEventListener('click', sync);
 
     /* Week: a click or tap on a lane, inside a window or not, opens its day with the time under the pointer
-       pinned. A window button pressed with a key has no pointer position: the click event then has a detail
-       of 0, and the window's start is pinned. A day name opens its day with no new pin. */
+       pinned. A mouse or a finger presses the lane just before its click. A click with no such press has no
+       real pointer position: it comes from a key, VoiceOver or Switch Control. On a window button, such a
+       click pins the window's start. A day name opens its day with no new pin. */
+    var pressed = null;   /* the lane a pointer last pressed, and when */
+    $('wkRows').addEventListener('pointerdown', function (e) {
+      var lane = e.target.closest ? e.target.closest('.wk-lane') : null;
+      pressed = lane ? { lane: lane, at: e.timeStamp } : null;
+    });
+    $('wkRows').addEventListener('pointercancel', function () { pressed = null; });
     $('wkRows').addEventListener('click', function (e) {
-      var el = e.target.closest ? e.target.closest('.wk-win, .wk-day, .wk-lane') : null;
+      var el = e.target.closest ? e.target.closest('.wk-win, .wk-day, .wk-lane') : null, press = pressed;
+      pressed = null;
       if (!el) return;
-      var d0 = +el.getAttribute('data-d0');
+      var d0 = +el.getAttribute('data-d0'), lane = el.closest('.wk-lane');
       if (el.classList.contains('wk-day')) { openDay(d0, null); return; }
-      if (el.classList.contains('wk-win') && e.detail === 0) { openDay(d0, +el.getAttribute('data-t')); return; }
-      openDay(d0, laneTimeAt(el.closest('.wk-lane'), e.clientX));
+      var pointed = e.detail > 0 && press && press.lane === lane && e.timeStamp - press.at < 5000;
+      if (el.classList.contains('wk-win') && !pointed) { openDay(d0, +el.getAttribute('data-t')); return; }
+      openDay(d0, laneTimeAt(lane, e.clientX));
     });
     /* A mouse gets a hairline and a time flag over the lanes. A touch screen gets neither. */
     $('wkRows').addEventListener('pointermove', function (e) {
