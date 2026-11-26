@@ -299,7 +299,7 @@
     spots.forEach(function (sp) {
       var px = mapX(sp.lon), py = mapY(sp.lat), left = px > c.w * 0.6;
       s += '<g class="pin" data-id="' + sp.id + '" data-at="' + px.toFixed(1) + ' ' + py.toFixed(1) + '" tabindex="0" role="button" aria-label="' + esc(sp.name) + '">' +
-        '<circle class="hit" r="13"/><circle class="ring" r="5.2"/><circle class="dot" r="2.9"/>' +
+        '<circle class="hit" r="10"/><circle class="ring" r="5.2"/><circle class="dot" r="2.9"/>' +
         '<text x="' + (left ? -8 : 8) + '" y="2.6" text-anchor="' + (left ? 'end' : 'start') + '">' + esc(sp.name) + '</text></g>';
     });
     $('map').innerHTML = s + '</svg>';
@@ -403,7 +403,8 @@
   }
   /* The scale for things drawn at one size on screen: pins, labels, arrows, the probe and saved places.
      They are drawn in map units for 1.7 px per unit, the scale of a 470 px wide map, and this keeps them
-     at that size whatever the frame's size and the zoom. A pin's 13-unit tap circle is then 44 px across. */
+     at that size whatever the frame's size and the zoom. A lamp's tap circle is then 34 px across and a saved
+     place's 41 px: lamps cluster in the inner Gulf, and larger circles there would cover water the owner means to tap. */
   var GLYPH_PX = 1.7;
   function glyph() { var vb = viewBox(); return frame.h ? GLYPH_PX * vb.h / frame.h : 1 / view.z; }
 
