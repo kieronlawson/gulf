@@ -14,6 +14,8 @@ npm test
 
 `dist/index.html` is the whole product. Any static host can serve it.
 
+A push to `main` publishes the page to GitHub Pages. `.github/workflows/pages.yml` runs the tests first, and a failing test stops the publish.
+
 ## What needs a connection
 
 - Tides, sun, moon and solunar periods are computed in the page. They work offline.
