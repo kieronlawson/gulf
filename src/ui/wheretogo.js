@@ -42,12 +42,13 @@
     });
   }
 
-  /* The suggestions for the starting point, the map's time and the forecast. The reading under the map
-     calls this each time it redraws, so the discs on the map always match the reach ring and the time. */
+  /* The suggestions for the starting point, the map's time and the forecast, with the reach ring around
+     the same starting point. The reading under the map calls this each time it redraws, so the discs and
+     the ring always move together, and match the map's time. */
   function updateSuggestions() {
     var t = mapTime();
     suggestions = fieldProblem(t) ? [] : findSuggestions(goOrigin(), t);
-    renderSuggestions();
+    renderSuggestions(); renderReach();
   }
 
   var CHOP_SHORT = ['Smooth', 'Light', 'Moderate', 'Rough', 'Very rough'];

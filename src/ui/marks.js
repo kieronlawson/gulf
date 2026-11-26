@@ -71,7 +71,14 @@
     state.marks.forEach(function (m) { var k = String(m.n); out += placeGlyph(k, mapX(m.lon), mapY(m.lat), m.n, 'mark', placeTitle(k), sel === k); });
     if (state.home) out += placeGlyph('home', mapX(state.home.lon), mapY(state.home.lat), 'H', 'home', placeTitle('home'), sel === 'home');
     svg.querySelector('#ovPlaces').innerHTML = out;
-    /* The reach of Where to go: a dashed ring around its starting point. */
+    renderReach();
+  }
+
+  /* The reach of Where to go: a dashed ring around its starting point. Its layer takes no taps, so it can
+     redraw whenever the starting point may have moved. */
+  function renderReach() {
+    var svg = $('mapSvg');
+    if (!svg) return;
     var o = goOrigin();
     svg.querySelector('#ovReach').innerHTML = '<circle class="m-reach" cx="' + o.x.toFixed(2) + '" cy="' + o.y.toFixed(2) + '" r="' + (REACH_NM * NM).toFixed(2) + '"/>';
   }
