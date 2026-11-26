@@ -229,6 +229,21 @@ test('legs past the end of the forecast get no score, and the clock crosses them
   assert.equal(Math.round(r.ms), Math.round(r.cruiseMs));
 });
 
+test('a path crosses each ferry lane once, and the two directions of one lane count once', () => {
+  // A path due north for 2 miles, 10 units to the mile. Lane X crosses it at 0.5 miles with a path for each
+  // direction 0.1 miles apart; lane Y crosses at 1.5 miles; lane Z runs beside it and never crosses.
+  const path = [{ x: 0, y: 20 }, { x: 0, y: 10 }, { x: 0, y: 0 }];
+  const lanes = [
+    { name: 'X', paths: [[{ x: -5, y: 15 }, { x: 5, y: 15 }], [{ x: -5, y: 14 }, { x: 5, y: 14 }]] },
+    { name: 'Y', paths: [[{ x: -5, y: 4 }, { x: 5, y: 6 }]] },
+    { name: 'Z', paths: [[{ x: 2, y: 20 }, { x: 2, y: 0 }]] },
+  ];
+  const c = plain(Engine.laneCrossings(path, lanes, 10));
+  assert.deepEqual(c.map((h) => h.name), ['X', 'Y']);
+  assert.equal(c[0].at.toFixed(2), '0.50');
+  assert.equal(c[1].at.toFixed(2), '1.50');
+});
+
 test('neighboring legs of one level join into one stretch', () => {
   // Easy for 1.2 miles, Rough for 0.6, Easy for 0.3, then no forecast.
   const legs = [

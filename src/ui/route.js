@@ -24,6 +24,11 @@
     return res;
   }
 
+  /* Auckland Transport's ferry lanes, in map units. tools/ferries.py writes data/ferries.json. */
+  var LANES = ((DATA.ferries && DATA.ferries.lanes) || []).map(function (l) {
+    return { name: l.name, paths: l.paths.map(function (p) { return p.map(function (q) { return { x: mapX(q[0]), y: mapY(q[1]) }; }); }) };
+  });
+
   /* The chop height and the direction the wind comes from at a point and time, for the engine's clock. */
   function routeCond(x, y, t) {
     var c = condAt(x, y, nearest(x, y), t);
@@ -37,6 +42,7 @@
     if (!p || !p.found) return out;
     out.legs = E.routeLegs(p.points, NM);
     out.nm = out.legs.reduce(function (s, L) { return s + L.nm; }, 0);
+    out.ferries = E.laneCrossings(p.points, LANES, NM);
     var cruise = state.limits.speed;
     if (cruise == null || !out.legs.length) return out;
     out.cruise = cruise;
@@ -247,7 +253,13 @@
         rows.push(row('Trip time', E.fmtDuration(sc.ms) + ' <span class="muted">(' + E.fmtDuration(sc.cruiseMs) + ' at ' + tr.cruise + ' kn)</span>'));
         rows.push(row('Worst stretch', w ? LEVEL_NAMES[w.level] + ', ' + causeWords(w) : 'No forecast'));
       }
+      /* The count is of crossings: a lane that runs beside the path can be crossed more than once. The note
+         names each lane once, in the order the path first crosses it. */
+      var lanesCrossed = [];
+      tr.ferries.forEach(function (f) { if (lanesCrossed.indexOf(f.name) < 0) lanesCrossed.push(f.name); });
+      rows.push(row('Ferry lanes crossed', !tr.ferries.length ? 'None' : tr.ferries.length + (lanesCrossed.length < tr.ferries.length ? ' crossings of ' + lanesCrossed.length + ' lanes' : '')));
       html += '<dl class="rt-totals">' + rows.join('') + '</dl>';
+      if (lanesCrossed.length) notes.push('Ferry lanes crossed, from A: ' + lanesCrossed.map(esc).join(', ') + '. The lanes are Auckland Transport’s ferry routes. The page has no timetable.');
       html += missingWords(tr);
       if (tr.stretches) {
         var listed = tr.stretches.filter(function (s) { return s.nm >= E.COMFORT.stretchNm; });
@@ -308,6 +320,7 @@
       tr.score.legs.forEach(function (L) { seen[L.level == null ? 'x' : L.level] = true; });
       LEVEL_NAMES.forEach(function (n, i) { levels += '<span><i class="lvb lvb' + i + '" aria-hidden="true"></i>' + n + '</span>'; });
       if (seen.x) levels += '<span><i class="lvb lvbx" aria-hidden="true"></i>No forecast</span>';
+      if (tr.ferries && tr.ferries.length) levels += '<span><svg class="lgferry" viewBox="0 0 8 6" aria-hidden="true"><path d="M0 0h8l-4 6z"/></svg>Ferry lane</span>';
     }
     head += '<span class="stlegend">' + levels + '</span></div>';
     var p = tr.path;
@@ -317,7 +330,9 @@
 
     var legs = tr.score.legs, total = tr.nm, x0 = 56, x1 = W - 4, s = [], n = function (v) { return v.toFixed(1); };
     function X(nm) { return x0 + nm / total * (x1 - x0); }
-    var BAR = 4, BAR_H = 20, CAUSE = BAR + BAR_H + 13, SP_TOP = 58, SP_BOT = 78, AXIS = 88, H = 106;
+    /* With ferry lanes to mark, a band of 14 px above the bar holds their ticks and names. */
+    var off = tr.ferries.length ? 14 : 0;
+    var BAR = 4 + off, BAR_H = 20, CAUSE = BAR + BAR_H + 13, SP_TOP = 58 + off, SP_BOT = 78 + off, AXIS = 88 + off, H = 106 + off;
     var vMin = Math.min(E.COMFORT.minKn, tr.cruise), vMax = tr.cruise;
     function Y(v) { return vMax > vMin ? SP_BOT - (v - vMin) / (vMax - vMin) * (SP_BOT - SP_TOP) : SP_TOP; }
 
@@ -326,6 +341,20 @@
     tr.stretches.forEach(function (st) {
       var a = X(st.at), b = X(st.at + st.nm);
       s.push('<rect class="lvf' + (st.level == null ? 'x' : st.level) + '" x="' + n(a) + '" y="' + BAR + '" width="' + n(b - a + 0.4) + '" height="' + BAR_H + '"/>');
+    });
+    /* The ferry lanes crossed: a mark over the bar and a line through each crossing. Marks less than 40 px apart
+       share one label: the lane's name for a single crossing, or the number of crossings. A label sits right of
+       its last mark and is left out when it would reach the next group's first mark. The panel names every lane. */
+    var groups = [];
+    tr.ferries.forEach(function (f) {
+      var fx = X(f.at), g = groups[groups.length - 1];
+      s.push('<path class="st-ferry" d="M' + n(fx - 4) + ' ' + (BAR - 9) + 'h8l-4 6z"/><line class="st-ferryline" x1="' + n(fx) + '" y1="' + BAR + '" x2="' + n(fx) + '" y2="' + (BAR + BAR_H) + '"/>');
+      if (g && fx - g.last < 40) { g.count++; g.last = fx; } else groups.push({ first: fx, last: fx, count: 1, name: f.name });
+    });
+    groups.forEach(function (g, i) {
+      var text = g.count === 1 ? g.name : g.count + ' crossings', left = g.last + 7;
+      var limit = i + 1 < groups.length ? groups[i + 1].first - 8 : x1;
+      if (left + text.length * 5.6 <= limit) s.push('<text class="st-ferrytext" x="' + n(left) + '" y="' + (BAR - 3) + '">' + esc(text) + '</text>');
     });
     /* The cause under each stretch wider than 70 px. A label too long for its stretch drops its height. */
     tr.stretches.forEach(function (st) {
@@ -359,7 +388,8 @@
     var said = tr.stretches.map(function (st) {
       return (st.level == null ? 'no forecast' : LEVEL_NAMES[st.level] + ', ' + causeWords(st)) + ' for ' + st.nm.toFixed(1) + ' nautical miles';
     }).join('; ');
-    var label = 'Comfort from A to B by distance: ' + said + '.' + (first.v != null && last.v != null ? ' Comfortable speed ' + Math.round(first.v) + ' knots at A and ' + Math.round(last.v) + ' knots at B.' : '');
+    var label = 'Comfort from A to B by distance: ' + said + '.' + (first.v != null && last.v != null ? ' Comfortable speed ' + Math.round(first.v) + ' knots at A and ' + Math.round(last.v) + ' knots at B.' : '') +
+      (tr.ferries.length ? ' Crosses ' + tr.ferries.map(function (f) { return 'the ' + f.name + ' ferry lane at ' + f.at.toFixed(1) + ' nautical miles'; }).join(', ') + '.' : '');
     return head + '<svg class="rstrip" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(label) + '">' + s.join('') + '</svg>' +
       (gaps ? missingWords(tr) : '');
   }

@@ -515,6 +515,10 @@ button:disabled:active { transform: none; }
 .st-v { font-family: var(--mono); font-size: 10.5px; fill: var(--ink); }
 .st-axis { stroke: var(--ink2); stroke-width: 1; }
 .st-ax { font-family: var(--mono); font-size: 10.5px; fill: var(--ink2); }
+.st-ferry, .lgferry path { fill: var(--ink); }
+.st-ferryline { stroke: var(--ink); stroke-width: 1.5; }
+.st-ferrytext { font-size: 10px; fill: var(--ink); }
+.lgferry { width: 8px; height: 6px; }
 #probe .probehint button { margin-left: 2px; }
 #probe .routepanel + .sthead { margin-top: 12px; }
 

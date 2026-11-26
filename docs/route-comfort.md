@@ -163,7 +163,7 @@ Each step is one pull request, merged before the next starts.
 | 2 | The route on the Day screen: the Route buttons, the path on the map with A and B, the Route view, the collapsed day display, the route panel and the time bar's Leave time. | Done. |
 | 3 | The strip under the map. | Done. |
 | 4 | The Now screen: a route from the iPad's position, and Run home on the path. | Done. |
-| 5 | Ferry lanes. | Not started. |
+| 5 | Ferry lanes. | Done. `tools/ferries.py` writes `data/ferries.json`, 15 lanes in 13 KB. |
 
 ## Decisions made in the build
 
@@ -202,3 +202,6 @@ Each step is one pull request, merged before the next starts.
 - **The leave-by time and the sea then.** The brief scores the trip home leaving now. The sea at the leave-by time can differ, so Run home scores the trip again leaving at the leave-by time, up to three times, and keeps the earliest leave-by time. When the trip then differs from the trip now by a minute or more, a note gives it. The Trip now row and the worst stretch still describe leaving now. This came from the review of step 4.
 - **No map raster.** When the browser cannot build the water raster, Run home says the map has no coastline to search, and gives no leave-by time. It does not fall back to a straight line.
 - **The Now screen's title after Swap.** The title follows the live end: "Route from here", or "Route to here" after Swap.
+- **Ferry lane names.** The feed names its ferry routes by code, such as MTIA. `tools/ferries.py` names each lane after the two ends of its route's most common trip, as "Downtown – Waiheke", and routes with the same name share one lane. A round trip takes its headsign, "Harbour Cruise". The paths are simplified to about 40 m.
+- **Counting crossings.** `Engine.laneCrossings` counts a lane once when it crosses the path twice within 0.3 nautical miles, because a lane often has a path for each direction, side by side. A lane that runs beside the path can still be crossed more than once, so the panel gives the number of crossings and the number of lanes, and its note names each lane once, in the order first crossed. From Westhaven to the east of Waiheke, the path crosses 14 lanes 26 times.
+- **Labels on the strip.** Each crossing gets a mark over the bar. Marks less than 40 px apart share one label: the lane's name for one crossing, or the number of crossings. A label that would reach the next group's first mark is left out, so in the crowded inner harbor the marks show without labels. The panel names every lane.

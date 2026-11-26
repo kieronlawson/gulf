@@ -731,6 +731,41 @@ var Engine = (function () {
     return w;
   }
 
+  /* ---------- Ferry lanes ---------- */
+
+  /* Where a path crosses ferry lanes. points are the path's points, and each lane is { name, paths }, with
+     each of its paths a list of points, all in one unit with perNm units to the nautical mile. Returns each
+     crossing in order along the path: its distance from the start in nautical miles, and the lane's name.
+     A lane often has a path for each direction, side by side, so crossings of one lane within
+     LANE_JOIN_NM of each other count once, at the first. */
+  var LANE_JOIN_NM = 0.3;
+  function laneCrossings(points, lanes, perNm) {
+    var out = [], at = 0;
+    function cross(p, q, a, b) {
+      var rx = q.x - p.x, ry = q.y - p.y, sx = b.x - a.x, sy = b.y - a.y, d = rx * sy - ry * sx;
+      if (!d) return null;
+      var t = ((a.x - p.x) * sy - (a.y - p.y) * sx) / d, u = ((a.x - p.x) * ry - (a.y - p.y) * rx) / d;
+      return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? t : null;
+    }
+    for (var k = 1; k < points.length; k++) {
+      var p = points[k - 1], q = points[k], len = Math.hypot(q.x - p.x, q.y - p.y) / perNm, hits = [];
+      lanes.forEach(function (lane) {
+        lane.paths.forEach(function (path) {
+          for (var j = 1; j < path.length; j++) {
+            var t = cross(p, q, path[j - 1], path[j]);
+            if (t != null) hits.push({ at: at + t * len, name: lane.name });
+          }
+        });
+      });
+      hits.sort(function (x, y) { return x.at - y.at; }).forEach(function (h) {
+        var same = out.filter(function (o) { return o.name === h.name && h.at - o.at < LANE_JOIN_NM; });
+        if (!same.length) out.push(h);
+      });
+      at += len;
+    }
+    return out;
+  }
+
   /* ---------- Run home ---------- */
 
   /* The latest time to leave for home: last light, less the run, less the owner's margin. run is the trip time
@@ -748,7 +783,7 @@ var Engine = (function () {
     LIMITS: LIMITS, windows: windows, rankWindows: rankWindows, dayWindows: dayWindows, leaveBy: leaveBy,
     rampColor: rampColor, windColor: windColor, laneTime: laneTime,
     COMFORT: COMFORT, seaAngle: seaAngle, scoreLeg: scoreLeg, findPath: findPath, routeLegs: routeLegs,
-    scoreRoute: scoreRoute, joinStretches: joinStretches, worstStretch: worstStretch,
+    scoreRoute: scoreRoute, joinStretches: joinStretches, worstStretch: worstStretch, laneCrossings: laneCrossings,
     parts: parts, midnight: midnight, dayStart: dayStart, addDays: addDays,
     fmtTime: fmtTime, fmtDay: fmtDay, fmtDayLong: fmtDayLong, fmtDuration: fmtDuration, isoDate: isoDate, pad2: pad2,
     spotExtremes: spotExtremes, spotCurve: spotCurve, interp: interp,
