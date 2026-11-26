@@ -219,6 +219,35 @@
     el.innerHTML = cells.map(function (x) { return '<div><div class="k">' + x[0] + '</div><div class="v">' + x[1] + '</div></div>'; }).join('');
   }
 
+  /* ---------- Windows of the day on screen ---------- */
+
+  function renderWindows() {
+    var el = $('winLine'), wx = state.wx[state.spot.id], L = state.limits;
+    var rule = 'Your limits: wind up to ' + L.wind + ' kn for ' + hoursWords(L.hours) + ' or longer, between first light and last light.';
+    function line(lamp, body) {
+      el.innerHTML = '<span class="pip' + (lamp ? ' ' + lamp : '') + '" aria-hidden="true"></span>' + body;
+    }
+    if (!wx || !wx.recs) { line('', '<span>Windows need the forecast. It is not loaded.</span>'); return; }
+    var d = E.day(state.spot, state.d0), sun = d.sun, lit = 0, missing = 0;
+    for (var t = d.d0; t < d.d1; t += HOUR) {
+      if (sun.dawn == null || t + 30 * MIN <= sun.dawn || t - 30 * MIN >= sun.dusk) continue;
+      lit++;
+      if (!wx.recs[t]) missing++;
+    }
+    if (!lit || missing === lit) { line('', '<span>The forecast does not cover this day, so the page cannot find windows.</span>'); return; }
+    var part = missing ? ' <span class="muted">The forecast covers only part of this day.</span>' : '';
+    var list = E.dayWindows(state.spot, state.d0, wx.recs, L);
+    if (!list.length) {
+      line('', '<span>No window. The wind does not stay at or under ' + L.wind + ' kn for ' + hoursWords(L.hours) +
+        ' between first light and last light.</span>' + part);
+      return;
+    }
+    line('on', '<span>' + (list.length > 1 ? 'Windows' : 'Window') + '</span>' + list.map(function (w) {
+      return '<span class="win"><b>' + E.fmtTime(w.start) + '–' + E.fmtTime(w.end) + '</b>' + E.fmtDuration(w.end - w.start) +
+        ', highest wind ' + Math.round(w.maxWind) + ' kn</span>';
+    }).join('') + '<span class="muted">' + rule + '</span>' + part);
+  }
+
   /* ---------- Place and now line ---------- */
 
   function renderPlace() {

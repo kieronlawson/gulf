@@ -34,8 +34,8 @@ Wireframes: https://claude.ai/artifact/LZJbcXCBTyxqeHZdmehFqo
 
 ## Assumed, not confirmed
 
-- The 15 knot limit is sustained wind, not gusts.
-- Chop is shown but does not close a window.
+- The 15 knot limit is sustained wind, not gusts. The page applies it that way.
+- Chop is shown but does not close a window. The page applies it that way.
 - "Within reach" for a suggestion has no agreed distance. The Now wireframe draws a 10 nautical mile ring.
 
 ## Open
@@ -61,7 +61,7 @@ Each step ends with a working page that the owner can try on the iPad. Logic tha
 |---|---|---|
 | 0 | Publish the current page to GitHub Pages. | Done. The page is at https://kieronlawson.github.io/gulf/. |
 | 1 | Screen frame: Week, Day and Now buttons, spot, Tables, Sync and forecast age in the top bar. Tables behind a button. Load on return to the foreground, and try again 10 minutes after a failed load. Split `src/ui.js` into shared code and one file per part. Screenshot tool gets iPad sizes, a screen choice and a mocked position. | Done. Until step 5, the Day screen scrolls inside the frame. Week and Now say which step brings them. |
-| 2 | Windows in `engine.js`, with Node tests. Limits button in the top bar, and its editor. | |
+| 2 | Windows in `engine.js`, with Node tests. Limits button in the top bar, and its editor. | Done. Until step 3 builds Week, the Day screen lists the day's windows. |
 | 3 | Week screen. | |
 | 4 | Map zoom: presets, pinch, plus and minus. | |
 | 5 | Day screen: map beside the day display, time bar with −30 min, +30 min and Play. | |

@@ -8,7 +8,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 |---|---|
 | `npm install` | Installs the build dependencies. Use the Node version in `.nvmrc`; the publish workflow uses it too. |
 | `npm run build` | Writes `dist/index.html`, one self-contained file. |
-| `npm test` | Checks tide predictions against the LINZ 2028 table for Auckland, and one day of sun, moon and solunar values against recorded results. |
+| `npm test` | Checks tide predictions against the LINZ 2028 table for Auckland, one day of sun, moon and solunar values against recorded results, and the rules that find windows. |
 | `python3 tools/screenshot.py` | Renders the built page with a mocked forecast, at an iPad size or a phone size, on any of the three screens. Needs Python Playwright. Read the header of the file for options. |
 
 ## Layout
@@ -69,6 +69,8 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 **Solunar.** A major period is two hours centered on the moon's upper or lower transit. A minor period is one hour centered on moonrise or moonset. The day rating, the activity index and the fish levels are rules of thumb defined in `engine.js`. They are not measurements.
 
 **Weather.** The browser fetches Open-Meteo. Each spot gets a forecast and marine data. The map gets a grid of 83 water points: wind from the forecast service, current from the marine service. The page keeps the last loaded data in `localStorage` under keys that start with `gulf-almanac-`. A load runs when the page opens, once a minute if the data is over an hour old, when the page returns to the foreground, and when the owner presses Sync. After a failed load, automatic loads wait 10 minutes. Sync, a return to the page and a restored connection try at once.
+
+**Windows.** `Engine.windows` finds them. A window is a stretch between first light and last light (civil dawn and dusk) when the sustained wind stays at or under the owner's limit for the owner's minimum time or longer. Each hourly forecast value stands for the half hour either side of its time. A missing hour ends a window. Gusts and chop do not close a window. The owner sets the two limits under Limits, and the iPad stores them; the defaults are 15 kn and 3 h. `Engine.rankWindows` puts the longest first. `test/windows.test.mjs` covers these rules.
 
 **Flow.** The current model has cells of about 8 km. It does not resolve the channels. `loadFlowField` in `src/ui/map.js` is the only code that knows the source, so a better source can replace it there.
 

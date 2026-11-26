@@ -23,9 +23,22 @@
 
   var SCREENS = ['week', 'day', 'now'];
 
+  /* The owner's limits for a window, stored on the device. Values out of range fall back to the defaults. */
+  var LIMIT_RANGE = { wind: [5, 30, 1], hours: [1, 8, 0.5] };   /* lowest, highest, step */
+  function readLimits() {
+    try {
+      var o = JSON.parse(store.get('gulf-almanac-limits') || 'null');
+      if (o && o.wind >= LIMIT_RANGE.wind[0] && o.wind <= LIMIT_RANGE.wind[1] &&
+          o.hours >= LIMIT_RANGE.hours[0] && o.hours <= LIMIT_RANGE.hours[1]) return { wind: +o.wind, hours: +o.hours };
+    } catch (e) { /* use the defaults */ }
+    return { wind: E.LIMITS.wind, hours: E.LIMITS.hours };
+  }
+  function hoursWords(h) { return (h % 1 ? h.toFixed(1) : String(h)) + ' h'; }
+
   var state = {
     screen: SCREENS.indexOf(store.get('gulf-almanac-screen')) >= 0 ? store.get('gulf-almanac-screen') : 'day',
     spot: byId[store.get('gulf-almanac-spot')] || spots[0],
+    limits: readLimits(),
     d0: E.dayStart(Date.now()),
     followToday: true,
     cursor: null,
@@ -192,7 +205,7 @@
   function weatherChanged(id) {
     syncField(false);
     if (state.spot.id !== id) return;
-    renderStatus(); renderChart(); renderReadout(); renderWeather(); renderAhead();
+    renderStatus(); renderWindows(); renderChart(); renderReadout(); renderWeather(); renderAhead();
   }
 
   /* The lamp and line under the title: whether a forecast is loaded for the spot, and how old it is. */

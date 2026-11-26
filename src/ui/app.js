@@ -13,7 +13,7 @@
     $('spot').value = state.spot.id;
     $('date').value = E.isoDate(state.d0 + 12 * HOUR);
     $('tablesFor').textContent = state.spot.name + ', ' + E.fmtDay(state.d0 + 12 * HOUR);
-    renderStatus(); renderPlace(); renderPin(); renderChart(); renderReadout(); renderCards(); renderWeather(); renderAhead(); markMap(); renderGulf();
+    renderStatus(); renderPlace(); renderWindows(); renderPin(); renderChart(); renderReadout(); renderCards(); renderWeather(); renderAhead(); markMap(); renderGulf();
   }
 
   function setSpot(sp) {
@@ -63,14 +63,41 @@
     for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-screen') === name ? 'true' : 'false');
   }
 
-  function openTables() {
-    var d = $('tables');
+  function openSheet(id) {
+    var d = $(id);
     if (d.open) return;
     if (d.showModal) d.showModal(); else d.setAttribute('open', '');
   }
-  function closeTables() {
-    var d = $('tables');
+  function closeSheet(id) {
+    var d = $(id);
     if (d.close) d.close(); else d.removeAttribute('open');
+  }
+
+  /* ---------- Limits ---------- */
+
+  function renderLimits() {
+    var L = state.limits, R = LIMIT_RANGE;
+    $('limWind').textContent = L.wind + ' kn';
+    $('limHours').textContent = hoursWords(L.hours);
+    var bs = $('limits').querySelectorAll('button[data-lim]');
+    for (var i = 0; i < bs.length; i++) {
+      var key = bs[i].getAttribute('data-lim'), dir = +bs[i].getAttribute('data-dir');
+      bs[i].disabled = dir < 0 ? L[key] <= R[key][0] : L[key] >= R[key][1];
+    }
+    $('limitsReset').disabled = L.wind === E.LIMITS.wind && L.hours === E.LIMITS.hours;
+  }
+
+  function setLimits(L) {
+    state.limits = L;
+    store.set('gulf-almanac-limits', JSON.stringify(L));
+    renderLimits(); renderWindows();
+  }
+
+  function stepLimit(key, dir) {
+    var R = LIMIT_RANGE[key], next = {};
+    next.wind = state.limits.wind; next.hours = state.limits.hours;
+    next[key] = clamp(Math.round((state.limits[key] + dir * R[2]) / R[2]) * R[2], R[0], R[1]);
+    setLimits(next);
   }
 
   /* Sync loads the spot forecast and the map data now, whatever their age. */
@@ -118,10 +145,19 @@
       if (b) setScreen(b.getAttribute('data-screen'));
     });
     $('sync').addEventListener('click', sync);
-    $('tablesOpen').addEventListener('click', openTables);
-    $('tablesClose').addEventListener('click', closeTables);
-    /* A tap outside the sheet lands on the dialog element itself, so it closes the sheet. */
-    $('tables').addEventListener('click', function (e) { if (e.target === this) closeTables(); });
+    $('tablesOpen').addEventListener('click', function () { openSheet('tables'); });
+    $('tablesClose').addEventListener('click', function () { closeSheet('tables'); });
+    $('limitsOpen').addEventListener('click', function () { renderLimits(); openSheet('limits'); });
+    $('limitsClose').addEventListener('click', function () { closeSheet('limits'); });
+    $('limitsReset').addEventListener('click', function () { setLimits({ wind: E.LIMITS.wind, hours: E.LIMITS.hours }); });
+    $('limits').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-lim]') : null;
+      if (b) stepLimit(b.getAttribute('data-lim'), +b.getAttribute('data-dir'));
+    });
+    /* A tap outside a sheet lands on the dialog element itself, so it closes the sheet. */
+    ['tables', 'limits'].forEach(function (id) {
+      $(id).addEventListener('click', function (e) { if (e.target === this) closeSheet(id); });
+    });
 
     /* Map: a lamp selects a spot, any other point on the water places the probe. */
     $('map').addEventListener('click', function (e) {
@@ -157,7 +193,7 @@
       var tr = e.target.closest ? e.target.closest('tr[data-d0]') : null;
       if (!tr) return;
       setDay(+tr.getAttribute('data-d0'));
-      closeTables(); setScreen('day'); toTop();
+      closeSheet('tables'); setScreen('day'); toTop();
     });
     $('weather').addEventListener('click', function (e) {
       if (e.target.getAttribute && e.target.getAttribute('data-act') === 'reload') sync();
