@@ -36,6 +36,7 @@ The page scripts are plain globals, loaded in this order: `Astronomy`, `Neaps`, 
 5. Write interface text plainly: name the actor, make one claim per sentence, use no idiom.
 6. The map uses no third-party component. It is SVG drawn from `data/coast.json`.
 7. Check both themes and a 390 px wide screen after any layout change.
+8. Open a pull request when a task is complete.
 
 ## Design
 
