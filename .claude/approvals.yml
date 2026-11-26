@@ -1,0 +1,21 @@
+# .claude/approvals.yml
+# Claude Approvals policy. Reference: https://code.claude.com/docs/en/approvals-policy
+#
+# One person has write access to this repository, so no rule asks for a second person.
+# The author of a pull request fills one seat without approving. What this policy enforces
+# is Claude's Code Review: a change merges only after the review passes.
+#
+# The policy starts in observe mode: the check reports what it would decide and blocks nothing.
+# To enforce it, delete the mode line, then require the Claude Approvals check on main in GitHub.
+version: 1
+mode: observe
+rules:
+  - purpose: "A change merges once Claude's Code Review passes. The author fills the one seat, and Claude approves."
+    paths: ["**"]
+    verdict: { claude: blocks }
+    override:
+      - { if: "claude/code_review = pass", verdict: { claude: approves, seats: 1 } }
+  - purpose: "Claude does not approve a change to the review rules. The change still needs a passing Code Review."
+    paths: ["**/.claude/**"]
+    nested: inherit
+    verdict: { claude: comments, seats: 1 }
