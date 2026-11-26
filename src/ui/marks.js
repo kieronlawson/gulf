@@ -43,6 +43,7 @@
     state.probe = { x: x, y: y, w: nearest(x, y), water: water, near: water && landWithin(x, y, NEAR_LAND_KM), key: key == null ? null : String(key) };
   }
   function selectPlace(key) {
+    if (key.charAt(0) === 's') { openGo(key); return; }   /* a suggestion from Where to go */
     var p = placeOf(key);
     if (!p) return;
     confirmKey = null;
@@ -56,16 +57,20 @@
     var svg = $('mapSvg');
     if (!svg) return;
     var s = glyph().toFixed(4), sel = state.probe && state.probe.key, out = '';
-    function one(key, p, label, cls) {
-      var x = mapX(p.lon).toFixed(2), y = mapY(p.lat).toFixed(2);
+    function one(key, mx, my, label, cls, title) {
+      var x = mx.toFixed(2), y = my.toFixed(2);
       return '<g class="place ' + cls + (sel === key ? ' sel' : '') + '" data-key="' + key + '" data-at="' + x + ' ' + y + '" transform="translate(' + x + ' ' + y + ') scale(' + s + ')"' +
-        ' tabindex="0" role="button" aria-label="' + esc(placeTitle(key)) + '"><circle class="hit" r="12"/><circle class="ring" r="8.6"/>' +
+        ' tabindex="0" role="button" aria-label="' + esc(title) + '"><circle class="hit" r="12"/><circle class="ring" r="8.6"/>' +
         (cls === 'home' ? '<rect class="disc" x="-5.6" y="-5.6" width="11.2" height="11.2" rx="1.6"/>' : '<circle class="disc" r="5.9"/>') +
         '<text y="2.5" text-anchor="middle">' + label + '</text></g>';
     }
-    state.marks.forEach(function (m) { out += one(String(m.n), m, m.n, 'mark'); });
-    if (state.home) out += one('home', state.home, 'H', 'home');
+    suggestions.forEach(function (q) { out += one(q.key, q.x, q.y, q.label, 'sugg', 'Suggested calm water ' + q.label); });
+    state.marks.forEach(function (m) { out += one(String(m.n), mapX(m.lon), mapY(m.lat), m.n, 'mark', placeTitle(String(m.n))); });
+    if (state.home) out += one('home', mapX(state.home.lon), mapY(state.home.lat), 'H', 'home', placeTitle('home'));
     svg.querySelector('#ovPlaces').innerHTML = out;
+    /* The reach of Where to go: a dashed ring around its starting point. */
+    var o = goOrigin();
+    svg.querySelector('#ovReach').innerHTML = '<circle class="m-reach" cx="' + o.x.toFixed(2) + '" cy="' + o.y.toFixed(2) + '" r="' + (REACH_NM * NM).toFixed(2) + '"/>';
   }
 
   /* ---------- The probe reading's head: the place and what can be done with it ---------- */

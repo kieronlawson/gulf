@@ -20,7 +20,7 @@ const data = {
 
 /* The page script is split into files under src/ui/. They share one function scope, so the build
    joins them in this order inside a single function. Later files may use anything an earlier file declares. */
-const UI_FILES = ['core', 'day', 'tables', 'map', 'marks', 'week', 'app'];
+const UI_FILES = ['core', 'day', 'tables', 'map', 'marks', 'wheretogo', 'week', 'app'];
 const ui = '/* Hauraki Gulf Almanac: page behavior. Needs Engine and DATA. */\n(function () {\n  \'use strict\';\n\n' +
   UI_FILES.map((f) => read(`src/ui/${f}.js`)).join('') + '})();\n';
 
