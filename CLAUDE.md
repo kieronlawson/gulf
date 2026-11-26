@@ -25,7 +25,8 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 | `data/` | Auckland harmonic constants and tidal levels, the spots, the coastline. |
 | `test/` | Node tests. `test/engine.mjs` loads the engine as the page does. |
 | `tools/` | The scripts that produced the data, the screenshot tool and the icon tool. |
-| `docs/ipad-plan.md` | The agreed next step. |
+| `docs/ipad-plan.md` | The agreed plan for the iPad, and its build order. |
+| `docs/boat-check.md` | The owner's check on the boat: sunlight, touch, position, chop steps and the run home. |
 | `.github/workflows/pages.yml` | Tests, builds and publishes `dist/` to GitHub Pages on every push to `main`. Tests and builds each pull request without publishing. |
 | `.claude/approvals.yml` | The Claude Approvals policy. A change merges once Claude's Code Review passes, and Claude then approves it. The policy is enforced. |
 
@@ -82,7 +83,7 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 
 **Screen layout.** The wide layout applies from 1000 px wide and 700 px tall: `isWide` in `src/ui/core.js` and the media query at the end of `src/style.css` use the same test. In it, the frame fills the window and the page does not scroll. Below 700 px of height, as on an iPad mini in Safari, the screens stack and the page scrolls. Day puts the map on the left, the day on the right and the time bar along the bottom, and the day display takes the height that is left. Now puts the map on the left and the rest on the right, where the list of places scrolls in its part. On narrow screens, Now stacks its parts with the map last.
 
-**Offline.** The service worker stores the page and the Latin font files on the device, so the page opens without a connection. It serves the page from the network first and falls back to the stored copy when the network fails, returns an error, or takes over 4 seconds. A new build therefore shows as soon as the device is online, and each build installs a new worker, which removes the old copy of the page. Fonts come from the stored copy first. The worker does not handle forecasts; the page keeps those in `localStorage`. Browsers run a service worker only on https or on `localhost`, so a page opened from a file, as by `tools/screenshot.py`, runs without one. To test the worker, serve `dist/` on `localhost`.
+**Offline.** The service worker stores the page and the Latin font files on the device, so the page opens without a connection. It serves the page from the network first and falls back to the stored copy when the network fails, returns an error, or takes over 4 seconds. A new build therefore shows as soon as the device is online, and each build installs a new worker, which removes the old copy of the page. Only the page itself goes through the worker: any other file opened on its own, such as an icon, passes straight to the network. Fonts come from the stored copy first. The worker does not handle forecasts; the page keeps those in `localStorage`. Browsers run a service worker only on https or on `localhost`, so a page opened from a file, as by `tools/screenshot.py`, runs without one. To test the worker, serve `dist/` on `localhost`.
 
 **Saved places.** The owner saves the probe's point as a numbered mark or as home, from the probe reading under the map. The iPad stores them in `localStorage` under `gulf-almanac-marks` and `gulf-almanac-home`, as latitude and longitude. A deleted mark's number goes to the next new mark. A place may sit on land in the simplified coastline, as a marina often does; there the page gives a position and no wind, flow or chop estimate. Once home is set, the map's third preset centers on it.
 
@@ -104,4 +105,4 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 
 ## Next
 
-`docs/ipad-plan.md` holds the agreed plan for the iPad: three screens (Week, Day, Now), saved marks, zoom, stored data and a Sync button. Its build order table records which step is done.
+`docs/ipad-plan.md` holds the agreed plan for the iPad: three screens (Week, Day, Now), saved marks, zoom, stored data and a Sync button. Its build order table records which step is done. The last step is the owner's check on the boat, `docs/boat-check.md`, and the next changes come from its notes.

@@ -47,12 +47,13 @@ mkdirSync(out(''), { recursive: true });
 writeFileSync(out('index.html'), html);
 console.log('dist/index.html', Buffer.byteLength(html), 'bytes');
 
-/* The service worker carries a hash of the page, so each new page installs a new worker, and the address
-   of the font stylesheet, taken from the page so that the two cannot differ. */
+/* The service worker carries a hash of the page and of its own code, so each new page or worker installs
+   a new worker, and the address of the font stylesheet, taken from the page so that the two cannot differ. */
 const fontCss = /<link href="(https:\/\/fonts\.googleapis\.com\/css2[^"]+)" rel="stylesheet"/.exec(html);
 if (!fontCss) throw new Error('The template must link the font stylesheet.');
-const version = createHash('sha256').update(html).digest('hex').slice(0, 12);
-writeFileSync(out('sw.js'), read('src/sw.js').replace("'__VERSION__'", JSON.stringify(version)).replace("'__FONT_CSS__'", JSON.stringify(fontCss[1])));
+const swSource = read('src/sw.js');
+const version = createHash('sha256').update(html).update(swSource).digest('hex').slice(0, 12);
+writeFileSync(out('sw.js'), swSource.replace("'__VERSION__'", JSON.stringify(version)).replace("'__FONT_CSS__'", JSON.stringify(fontCss[1])));
 
 /* The manifest and icons let the page open from the Home Screen as its own app. */
 writeFileSync(out('manifest.webmanifest'), JSON.stringify({
