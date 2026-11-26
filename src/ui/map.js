@@ -495,6 +495,8 @@
     var host = $('mapFrame');
     host.addEventListener('pointerdown', function (e) {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
+      /* The first finger of a new touch starts afresh, so a pointer whose lift never arrived cannot block taps. */
+      if (e.isPrimary) ptrs = {};
       ptrs[e.pointerId] = { x: e.clientX, y: e.clientY };
       var n = Object.keys(ptrs).length;
       if (n === 1) { gestured = false; gesture = { kind: 'pan', x: e.clientX, y: e.clientY, cx: view.cx, cy: view.cy }; }
@@ -544,8 +546,18 @@
       e.preventDefault();
       zoomAt(view.z * Math.exp(-e.deltaY * 0.01), e.clientX, e.clientY);
     }, { passive: false });
-    /* Safari's own pinch would zoom the whole page. */
-    host.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+    /* Safari sends a trackpad pinch as gesture events, with a scale. A touch pinch on an iPad sends them too,
+       alongside the pointer events above, so they zoom the map only while fewer than two pointers are down.
+       Both cases stop Safari zooming the whole page. */
+    var gestureZ = 1;
+    host.addEventListener('gesturestart', function (e) { e.preventDefault(); gestureZ = view.z; });
+    host.addEventListener('gesturechange', function (e) {
+      e.preventDefault();
+      if (Object.keys(ptrs).length >= 2 || !e.scale) return;
+      var r = $('mapSvg').getBoundingClientRect();
+      zoomAt(gestureZ * e.scale, e.clientX != null ? e.clientX : r.left + r.width / 2, e.clientY != null ? e.clientY : r.top + r.height / 2);
+    });
+    host.addEventListener('gestureend', function (e) { e.preventDefault(); });
     $('mapCtl').addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('button') : null;
       if (!b) return;

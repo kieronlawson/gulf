@@ -267,6 +267,9 @@ button:disabled:active { transform: none; }
 .mapframe { position: relative; aspect-ratio: 274.6 / 387; overflow: hidden; border: 1px solid var(--hair); border-radius: 3px; background: var(--chassis); }
 #map, #map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 #map svg { display: block; cursor: crosshair; }
+/* The layers that redraw during a gesture take no pointer input, so a touch never starts on an element
+   that a redraw then removes. */
+#ovTint, #ovArrows, #ovProbe { pointer-events: none; }
 .m-land { fill: url(#landDots); stroke: var(--land-edge); stroke-width: .9px; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .mapctl { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; margin-bottom: 8px; }
 .presets, .zoombtns { display: flex; gap: 6px; min-width: 0; }
