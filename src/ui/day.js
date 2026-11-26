@@ -10,8 +10,16 @@
     var d = E.day(state.spot, state.d0), c = E.dayCurves(state.spot, state.d0);
     var hrs = dayRecs(d.d0, d.d1), sun = d.sun, small = W < 560;
     var x0 = small ? 34 : 80, x1 = W - (small ? 10 : 22), pw = x1 - x0, span = d.d1 - d.d0;
-    var bandTop = 18, yTop = 54, actH = 40, yAct = yTop + actH, skyH = small ? 92 : 118, yHor = yAct + skyH;
-    var seaH = small ? 140 : 162, ySea = yHor + seaH, windH = hrs.length ? 58 : 0, yWind = ySea + windH, H = yWind + 32;
+    var bandTop = 18, yTop = 54, actH = 40, skyH = small ? 92 : 118, seaH = small ? 140 : 162, windH = hrs.length ? 58 : 0;
+    /* In the wide layout the display takes the height the column leaves it. The sky and sea lanes share it. */
+    var avail = isWide() ? Math.floor(host.parentNode.clientHeight) : 0;
+    if (avail && avail < 360) actH = 32;   /* a short display gives the activity lane less height */
+    var fixed = yTop + actH + windH + 32;
+    if (avail > fixed + 100) {
+      skyH = clamp(Math.round((avail - fixed) * 0.42), 42, 170);
+      seaH = clamp(avail - fixed - skyH, 58, 240);
+    }
+    var yAct = yTop + actH, yHor = yAct + skyH, ySea = yHor + seaH, yWind = ySea + windH, H = yWind + 32;
     var hat = (DATA.auckland.hat - DATA.auckland.msl) * state.spot.ratio + state.spot.msl;
     var hTop = Math.max(1, Math.ceil(hat * 2) / 2);
     function X(t) { return x0 + (t - d.d0) / span * pw; }
@@ -54,6 +62,8 @@
     }
     [30, 60].forEach(function (a) {
       s.push(hline(n(yAlt(a)), 'c-grid'));
+      /* In a short sky lane the 60° label would land on the Sun and Moon titles, so it is left out. */
+      if (!small && yAlt(a) < yAct + 38) return;
       s.push('<text class="c-ax" x="' + (x0 - 7) + '" y="' + n(yAlt(a) + 3.6) + '" text-anchor="end">' + a + '°</text>');
     });
 
@@ -109,8 +119,11 @@
     var pt = '';
     c.tide.forEach(function (q, k) { pt += (k ? 'L' : 'M') + n(X(q.t)) + ' ' + n(yTide(q.h)); });
     s.push('<path class="c-tidefill" d="' + pt + 'L' + n(X(c.tide[c.tide.length - 1].t)) + ' ' + ySea + 'L' + n(X(c.tide[0].t)) + ' ' + ySea + 'Z"/>');
+    /* When the meters sit under 10 px apart, only the top one is labeled. */
+    var meterPx = (seaH - 38) / hTop, top = Math.floor(hTop - 0.5);
     for (i = 1; i <= hTop - 0.5; i++) {
       s.push(hline(n(yTide(i)), 'c-grid'));
+      if (meterPx < 10 && i !== top) continue;
       s.push('<text class="c-ax" x="' + (x0 - 7) + '" y="' + n(yTide(i) + 3.6) + '" text-anchor="end">' + i + (small ? '' : ' m') + '</text>');
     }
     s.push('<path class="c-tide" d="' + pt + '"/>');
@@ -215,7 +228,8 @@
       var r = wx.recs[Math.round(t / HOUR) * HOUR];
       if (r) cells.push(['Wind, kn', compass(r.dir) + ' ' + Math.round(r.wind) + (ok(r.gust) ? ', gusts ' + Math.round(r.gust) : '')]);
     }
-    el.style.setProperty('--cols', '0.9fr 1.2fr 0.8fr 0.8fr 1.45fr' + (cells.length > 5 ? ' 1.45fr' : ''));
+    /* Columns size to their values, so none is cut short while the row has room. */
+    el.style.setProperty('--cols', 'repeat(' + cells.length + ', auto)');
     el.innerHTML = cells.map(function (x) { return '<div><div class="k">' + x[0] + '</div><div class="v">' + x[1] + '</div></div>'; }).join('');
   }
 
@@ -223,7 +237,7 @@
 
   function renderWindows() {
     var el = $('winLine'), wx = state.wx[state.spot.id], L = state.limits;
-    var rule = 'Your limits: wind up to ' + L.wind + ' kn for ' + hoursWords(L.hours) + ' or longer, between first light and last light.';
+    var rule = 'Your limits: ' + L.wind + ' kn for ' + hoursWords(L.hours) + ' or longer.';
     function line(lamp, body) {
       el.innerHTML = '<span class="pip' + (lamp ? ' ' + lamp : '') + '" aria-hidden="true"></span>' + body;
     }
@@ -248,12 +262,89 @@
     }).join('') + '<span class="muted">' + rule + '</span>' + part);
   }
 
+  /* ---------- Time bar ----------
+     The bar spans the day on screen, from the hour before first light to the hour after last light. It shows night,
+     the day's windows, now, and a knob at the pinned time. A drag moves the knob and the display's cursor, and
+     pins the time on release, so the map's chop is worked out once rather than at every step of the drag. */
+
+  var playTimer = null;
+
+  function tbRange() {
+    var d = E.day(state.spot, state.d0), a = d.d0, b = d.d1;
+    if (d.sun.dawn != null) a = Math.max(d.d0, Math.floor(d.sun.dawn / HOUR) * HOUR - HOUR);
+    if (d.sun.dusk != null) b = Math.min(d.d1, Math.ceil(d.sun.dusk / HOUR) * HOUR + HOUR);
+    return { a: a, b: b, d: d };
+  }
+
+  function renderTimebar(dragT) {
+    var R = tbRange(), a = R.a, b = R.b, w = b - a, now = Date.now(), pin = state.pin, sun = R.d.sun;
+    function X(t) { return clamp((t - a) / w * 100, 0, 100).toFixed(2); }
+    function box(cls, s, e) { return e > s ? '<i class="' + cls + '" style="left:' + X(s) + '%;width:' + (X(e) - X(s)).toFixed(2) + '%"></i>' : ''; }
+    var h = '';
+    if (sun.dawn != null) h += box('tb-night', a, sun.dawn);
+    if (sun.dusk != null) h += box('tb-night', sun.dusk, b);
+    var wx = state.wx[state.spot.id];
+    if (wx && wx.recs) E.dayWindows(state.spot, state.d0, wx.recs, state.limits).forEach(function (win) { h += box('tb-win', win.start, win.end); });
+    for (var t = a; t <= b; t += HOUR) {
+      var hr = E.parts(t).H, even = hr % 2 === 0;
+      h += '<i class="tb-tick' + (even ? ' long' : '') + '" style="left:' + X(t) + '%"></i>';
+      if (even) h += '<span class="tb-lab" style="left:' + X(t) + '%">' + E.pad2(hr) + '</span>';
+    }
+    if (now >= a && now <= b) h += '<i class="tb-now" style="left:' + X(now) + '%"></i>';
+    var shown = dragT != null ? dragT : pin != null ? pin : now;
+    if (shown >= a - 30 * MIN && shown <= b + 30 * MIN) h += '<i class="tb-knob' + (dragT != null || pin != null ? ' pinned' : '') + '" style="left:' + X(shown) + '%"></i>';
+    var track = $('tbTrack');
+    track.innerHTML = h;
+    track.setAttribute('aria-valuetext', (pin != null ? 'Pinned at ' + E.fmtTime(pin) + ', ' + E.fmtDay(pin) : 'Following now, ' + E.fmtTime(now)));
+    $('tbTime').textContent = E.fmtTime(shown);
+    $('tbState').textContent = dragT != null ? 'Release to pin' : pin != null ? 'Pinned, ' + E.fmtDay(pin) : 'Now';
+    $('tbNow').disabled = pin == null;
+    $('tbPlay').textContent = playTimer ? 'Pause' : 'Play';
+    $('tbPlay').setAttribute('aria-pressed', playTimer ? 'true' : 'false');
+  }
+
+  /* The time under a point on the bar. */
+  function tbTimeAt(clientX) {
+    var R = tbRange(), r = $('tbTrack').getBoundingClientRect();
+    return R.a + clamp((clientX - r.left) / r.width, 0, 1) * (R.b - R.a);
+  }
+
+  /* Play moves the pinned time on by 30 minutes every 0.9 seconds, and stops at the end of the bar. */
+  function stopPlay() {
+    if (!playTimer) return;
+    clearInterval(playTimer); playTimer = null;
+    renderTimebar();
+  }
+  /* The time that the bar's buttons and keys move from: the pinned time; or now, when the day on screen is
+     today; or else the start of the bar. */
+  function tbStart() {
+    if (state.pin != null) return state.pin;
+    var now = Date.now();
+    return E.dayStart(now) === state.d0 ? Math.round(now / (5 * MIN)) * 5 * MIN : tbRange().a;
+  }
+  /* Moves the pinned time by a step. The result stays on the day on screen; the date buttons change the day. */
+  function tbMove(ms) { pinTime(clamp(tbStart() + ms, state.d0, E.addDays(state.d0, 1) - 5 * MIN)); }
+
+  /* Play starts from the pinned time. With nothing pinned, or with the pin at the end of the bar, it starts
+     from now while now lies on the bar, and from the start of the bar otherwise. */
+  function startPlay() {
+    if (playTimer) { stopPlay(); return; }
+    var R = tbRange(), now = Math.round(Date.now() / (30 * MIN)) * 30 * MIN;
+    if (state.pin == null || state.pin >= R.b) pinTime(now >= R.a && now < R.b ? now : R.a);
+    playTimer = setInterval(function () {
+      var next = state.pin + 30 * MIN, end = tbRange().b;
+      if (next > end) { stopPlay(); return; }
+      pinTime(next);
+    }, 900);
+    renderTimebar();
+  }
+
   /* ---------- Place and now line ---------- */
 
   function renderPlace() {
     $('placeName').textContent = state.spot.name;
     $('placeSub').textContent = state.spot.sub || '';
-    $('placeDate').textContent = E.fmtDayLong(state.d0 + 12 * HOUR);
+    $('placeDate').textContent = E.fmtDay(state.d0 + 12 * HOUR);
     renderNow();
   }
 

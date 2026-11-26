@@ -2,12 +2,7 @@
 
   /* ---------- State changes ---------- */
 
-  function renderPin() {
-    var pinned = state.pin != null;
-    $('pinLamp').className = 'pip' + (pinned ? '' : ' on');
-    $('pinText').textContent = pinned ? 'Pinned at ' + E.fmtTime(state.pin) + ', ' + E.fmtDay(state.pin) + '.' : 'Following now.';
-    $('unpin').disabled = !pinned;
-  }
+  function renderPin() { renderTimebar(); }
 
   function renderAll() {
     $('spot').value = state.spot.id;
@@ -42,6 +37,7 @@
   }
 
   function unpin() {
+    stopPlay();
     state.pin = null; state.cursor = null;
     renderPin(); renderChart(); renderReadout(); renderGulf();
   }
@@ -98,7 +94,7 @@
   function setLimits(L) {
     state.limits = L;
     store.set('gulf-almanac-limits', JSON.stringify(L));
-    renderLimits(); renderWindows(); renderWeek();
+    renderLimits(); renderWindows(); renderTimebar(); renderWeek();
   }
 
   function stepLimit(key, dir) {
@@ -121,7 +117,7 @@
       renderNow();
       if (state.d0 === today) { renderChart(); renderCards(); if (state.cursor == null) renderReadout(); }
       if (state.pin == null) renderGulf();
-      renderStatus(); tickWeek();
+      renderStatus(); tickWeek(); renderTimebar();
     }
     loadWeather(false);
     syncField(false);
@@ -146,7 +142,39 @@
       var m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(this.value);
       if (m && +m[1] >= 1900 && +m[1] <= 2200) setDay(E.midnight(+m[1], +m[2], +m[3]));
     });
-    $('unpin').addEventListener('click', unpin);
+
+    /* Time bar. */
+    $('tbNow').addEventListener('click', unpin);
+    $('tbPlay').addEventListener('click', startPlay);
+    $('tbBack').addEventListener('click', function () { stopPlay(); tbMove(-30 * MIN); });
+    $('tbFwd').addEventListener('click', function () { stopPlay(); tbMove(30 * MIN); });
+    var track = $('tbTrack'), dragging = false;
+    function dragTo(e) {
+      var t = tbTimeAt(e.clientX);
+      renderTimebar(Math.round(t / (5 * MIN)) * 5 * MIN);
+      if (t >= state.d0 && t < E.addDays(state.d0, 1)) { state.cursor = Math.round(t / MIN) * MIN; drawCursor(); renderReadout(); }
+    }
+    track.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      dragging = true; stopPlay();
+      if (track.setPointerCapture) track.setPointerCapture(e.pointerId);
+      dragTo(e);
+    });
+    track.addEventListener('pointermove', function (e) { if (dragging) dragTo(e); });
+    track.addEventListener('pointerup', function (e) {
+      if (!dragging) return;
+      dragging = false;
+      pinTime(tbTimeAt(e.clientX));
+    });
+    track.addEventListener('pointercancel', function () { dragging = false; state.cursor = null; renderTimebar(); drawCursor(); renderReadout(); });
+    track.addEventListener('keydown', function (e) {
+      var step = (e.shiftKey ? 60 : 10) * MIN, R = tbRange();
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); stopPlay(); tbMove(-step); }
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); stopPlay(); tbMove(step); }
+      else if (e.key === 'Home') { e.preventDefault(); stopPlay(); pinTime(R.a); }
+      else if (e.key === 'End') { e.preventDefault(); stopPlay(); pinTime(R.b); }
+      else if (e.key === 'Escape') unpin();
+    });
 
     $('screens').addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('button[data-screen]') : null;
@@ -215,7 +243,9 @@
     $('probe').addEventListener('click', function (e) {
       var tAttr = e.target.getAttribute ? e.target.getAttribute('data-t') : null;
       if (tAttr) { pinTime(+tAttr); return; }
-      if (e.target.getAttribute && e.target.getAttribute('data-act') === 'reload') sync();
+      var act = e.target.closest ? e.target.closest('[data-act]') : null;
+      if (act && act.getAttribute('data-act') === 'reload') sync();
+      if (act && act.getAttribute('data-act') === 'clearprobe') { state.probe = null; state.probeMiss = false; renderProbeMark(); renderProbe(); }
     });
 
     /* A row in the days ahead opens that day on the Day screen. */
@@ -267,17 +297,19 @@
       }
     });
 
-    var lastW = 0, pending = false;
+    /* The display redraws when its width changes, or, in the wide layout, the height it is given. */
+    var lastW = 0, lastH = 0, pending = false;
     function onResize() {
       if (pending) return;
       pending = true;
       window.requestAnimationFrame(function () {
         pending = false;
-        var w = Math.floor(host.clientWidth);
-        if (w && w !== lastW) { lastW = w; renderChart(); }
+        var w = Math.floor(host.clientWidth), h = isWide() ? Math.floor(host.parentNode.clientHeight) : 0;
+        if (w && (w !== lastW || h !== lastH)) { lastW = w; lastH = h; renderChart(); }
+        renderTimebar();
       });
     }
-    if (window.ResizeObserver) { new ResizeObserver(onResize).observe(host); }
+    if (window.ResizeObserver) { new ResizeObserver(onResize).observe(host); new ResizeObserver(onResize).observe(host.parentNode); }
     window.addEventListener('resize', onResize);
 
     setInterval(tick, 60000);

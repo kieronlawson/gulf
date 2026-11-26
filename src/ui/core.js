@@ -33,6 +33,8 @@
     } catch (e) { /* use the defaults */ }
     return { wind: E.LIMITS.wind, hours: E.LIMITS.hours };
   }
+  /* The wide layout: an iPad in landscape, or larger. The same test as the wide-screen rule in style.css. */
+  function isWide() { return !!(window.matchMedia && window.matchMedia('(min-width: 1000px) and (min-height: 700px)').matches); }
   function hoursWords(h) { return (h % 1 ? h.toFixed(1) : String(h)) + ' h'; }
 
   var state = {
@@ -205,7 +207,7 @@
   function weatherChanged(id) {
     syncField(false);
     if (state.spot.id !== id) return;
-    renderStatus(); renderWindows(); renderWeek(); renderChart(); renderReadout(); renderWeather(); renderAhead();
+    renderStatus(); renderWindows(); renderTimebar(); renderWeek(); renderChart(); renderReadout(); renderWeather(); renderAhead();
   }
 
   /* The lamp and line under the title: whether a forecast is loaded for the spot, and how old it is. */

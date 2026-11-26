@@ -47,6 +47,7 @@
   --c-tide: #2A6FA8;
   --win: rgba(46, 139, 87, .12);
   --win2: rgba(46, 139, 87, .3);
+  --knob-pin: rgba(26, 26, 24, .12);
   --sans: 'Helvetica Neue', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   --mono: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -95,6 +96,7 @@
     --c-tide: #76B8EA;
     --win: rgba(55, 165, 107, .18);
     --win2: rgba(55, 165, 107, .36);
+    --knob-pin: rgba(236, 235, 230, .24);
   }
 }
 
@@ -140,6 +142,7 @@
   --c-tide: #76B8EA;
   --win: rgba(55, 165, 107, .18);
   --win2: rgba(55, 165, 107, .36);
+  --knob-pin: rgba(236, 235, 230, .24);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -229,57 +232,29 @@ button:active { transform: translateY(1px); box-shadow: none; }
 
 .dayside { min-width: 0; }
 .cap { font-size: 12px; color: var(--ink2); margin-top: 9px; max-width: 96ch; }
-.pinrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 9px; margin-top: 8px; font-size: 12.5px; color: var(--ink2); min-height: 44px; }
-.pinrow button { font-size: 12.5px; margin-left: 6px; }
+
 button:disabled { opacity: .45; cursor: default; }
 button:disabled:hover { border-color: var(--btn-edge); }
 button:disabled:active { transform: none; }
 
 /* ---------- Gulf map, probe ---------- */
 
-.gulfgrid { display: grid; grid-template-columns: minmax(260px, 470px) minmax(0, 1fr); gap: 28px; align-items: stretch; }
-.mapcol { min-width: 0; }
-.probecol { display: flex; flex-direction: column; min-width: 0; }
-.probecol .grille { flex: 1; min-height: 28px; margin-top: 14px; border-radius: 3px; }
-.maptime { font-size: 13px; color: var(--ink2); }
-.maptime b { font-family: var(--mono); font-weight: 500; color: var(--ink); }
-.layers { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
 .toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
-.probehint { font-size: 13.5px; padding: 12px 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); max-width: 60ch; }
-#probe { min-height: 150px; max-width: 560px; }
-#probe .kv { border-top: 1px solid var(--hair); }
-.chopline { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
-.chopline b { font-size: 19px; font-weight: 700; letter-spacing: -0.015em; }
 .sw { display: inline-block; flex: none; width: 14px; height: 14px; border: 1px solid var(--grille); background: var(--chassis); }
 .sw1 { background: var(--c1); } .sw2 { background: var(--c2); } .sw3 { background: var(--c3); } .sw4 { background: var(--c4); }
-.striphead { font-size: 12px; color: var(--ink2); margin-top: 14px; }
-.strip { display: block; width: 100%; max-width: 420px; height: auto; margin-top: 6px; overflow: visible; }
 .s-bar { cursor: pointer; }
 .s-cx { fill: var(--hair); } .s-c0 { fill: var(--pip); } .s-c1 { fill: var(--grille); } .s-c2 { fill: var(--ink2); } .s-c3 { fill: var(--red); opacity: .6; } .s-c4 { fill: var(--red); }
 .s-mark { fill: var(--amber); }
 .s-ax { font-family: var(--mono); font-size: 7px; fill: var(--ink2); }
-.chopkey { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--hair); font-size: 12px; max-width: 560px; }
-.chopkey span { display: block; }
-.chopkey .sw { display: block; margin-bottom: 5px; }
-.chopkey em { display: block; font-style: normal; font-family: var(--mono); font-size: 10.5px; color: var(--ink2); }
 
 /* The map frame. Its shape comes from the layout; the drawing fills it. */
-.mapframe { position: relative; aspect-ratio: 274.6 / 387; overflow: hidden; border: 1px solid var(--hair); border-radius: 3px; background: var(--chassis); }
+.mapframe { position: relative; aspect-ratio: 274.6 / 387; max-height: 75vh; max-height: 75dvh; overflow: hidden; border: 1px solid var(--hair); border-radius: 3px; background: var(--chassis); }
 #map, #map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 #map svg { display: block; cursor: crosshair; }
 /* The layers that redraw during a gesture take no pointer input, so a touch never starts on an element
    that a redraw then removes. */
 #ovTint, #ovArrows, #ovProbe { pointer-events: none; }
 .m-land { fill: url(#landDots); stroke: var(--land-edge); stroke-width: .9px; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-.mapctl { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; margin-bottom: 8px; }
-.presets, .zoombtns { display: flex; gap: 6px; min-width: 0; }
-.presets button { font-size: 13px; padding: 0 11px; }
-.presets button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--chassis); box-shadow: none; }
-#viewSpot { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.zoombtns button { width: 44px; padding: 0; font-size: 20px; }
-.mapscale { position: absolute; left: 10px; bottom: 8px; pointer-events: none; font-family: var(--mono); font-size: 10.5px; color: var(--ink2); }
-.mapscale i { display: block; height: 5px; margin-bottom: 3px; border: 1.5px solid var(--ink2); border-top: 0; }
-.mapnorth { position: absolute; left: 12px; bottom: 38px; width: 12px; height: 20px; pointer-events: none; overflow: visible; }
 .mapnorth path { fill: var(--ink2); }
 .mapnorth line { stroke: var(--ink2); stroke-width: 1.2; }
 .m-landbg { fill: var(--land); }
@@ -311,8 +286,7 @@ button:disabled:active { transform: none; }
 .place { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 20px; }
 .place h2 { font-size: clamp(21px, 2.4vw, 27px); font-weight: 700; letter-spacing: -0.015em; line-height: 1.1; }
 .place .sub { color: var(--ink2); font-size: 14px; margin-top: 2px; }
-.dayctl { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-.place .date { font-family: var(--mono); font-size: 13px; text-align: right; }
+
 .nowline { margin-top: 7px; font-size: 14.5px; min-height: 1.45em; }
 
 /* The day's windows: green marks a window, as on the Week screen. */
@@ -322,7 +296,7 @@ button:disabled:active { transform: none; }
 .winline .muted { font-size: 12.5px; }
 
 .readout { display: grid; grid-template-columns: var(--cols, 1fr); margin-top: 12px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
-.readout > div { padding: 7px 12px 8px; border-right: 1px solid var(--hair); min-width: 0; }
+.readout > div { padding: 7px 10px 8px; border-right: 1px solid var(--hair); min-width: 0; }
 .readout > div:first-child { padding-left: 0; }
 .readout > div:last-child { border-right: 0; }
 .readout .k { font-size: 11px; color: var(--ink2); }
@@ -391,6 +365,74 @@ button:disabled:active { transform: none; }
 .lk { display: inline-block; width: 16px; height: 0; border-top: 2px solid; }
 .lk-sol { border-color: var(--c-sol); } .lk-sun { border-color: var(--c-sun); } .lk-tide { border-color: var(--c-tide); }
 .lk-moon { border-top-style: dashed; border-color: var(--c-moon); }
+
+/* ---------- Day screen: map, day and time bar ----------
+   Narrow screens stack the day, the time bar and the map. The wide layout is at the end of this file. */
+
+.dayview { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "day" "bar" "map"; gap: 12px; }
+.mapunit { grid-area: map; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.dayside { grid-area: day; display: flex; flex-direction: column; min-width: 0; }
+.timebar { grid-area: bar; }
+.mapunit .stage, .dayside .stage { margin-bottom: 0; }
+.dayside .stage { margin-bottom: 8px; }
+#mapTime { font-family: var(--mono); font-size: 12px; }
+
+/* Buttons on the map: views at the top left, layers at the bottom left, zoom at the bottom right. */
+.mapbtns { position: absolute; z-index: 1; display: flex; flex-direction: column; gap: 6px; }
+.mapbtns button { font-size: 13px; box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.mb-views { left: 8px; top: 8px; }
+.mb-views button { width: 124px; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mb-views button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--chassis); }
+.mb-layers { left: 8px; bottom: 8px; }
+.mb-layers button { width: 92px; justify-content: flex-start; }
+.mb-zoom { right: 8px; bottom: 8px; }
+.mb-zoom button { width: 44px; padding: 0; font-size: 20px; }
+.mapmark { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding: 5px 7px; border-radius: 3px; background: var(--chassis); opacity: .92; pointer-events: none; }
+.mapnorth { width: 12px; height: 20px; overflow: visible; }
+.mapscale { font-family: var(--mono); font-size: 10.5px; color: var(--ink2); text-align: right; }
+.mapscale i { display: block; height: 5px; margin: 0 0 3px auto; border: 1.5px solid var(--ink2); border-top: 0; }
+
+/* The probe reading under the map. */
+#probe { min-width: 0; }
+.probehint { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; color: var(--ink2); }
+.probehint button { height: 44px; font-size: 13px; }
+.chopkey { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; font-size: 12px; color: var(--ink2); }
+.chopkey .sw { margin-left: 4px; }
+.probehead { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.probehead span { font-family: var(--mono); font-size: 12px; color: var(--ink2); }
+.probex { margin-left: auto; width: 44px; padding: 0; font-size: 20px; }
+.probegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 2px 12px; margin: 4px 0 0; }
+.probegrid div { min-width: 0; border-top: 1px solid var(--hair); padding-top: 3px; }
+.probegrid div:first-child { grid-column: span 2; }   /* the wind reading is the longest */
+.probegrid dt { font-size: 11px; color: var(--ink2); }
+.probegrid dd { margin: 0; font-family: var(--mono); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.probegrid dd .sw { width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
+#probe .small { margin-top: 4px; }
+.strip { display: block; width: 100%; max-width: 420px; height: auto; margin-top: 4px; overflow: visible; }
+
+/* The time bar. */
+.timebar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 10px 14px; }
+.tb-track { position: relative; flex: 1 1 320px; min-width: 0; height: 56px; cursor: pointer; touch-action: none; outline: none; }
+.tb-track:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.tb-track::before { content: ""; position: absolute; left: 0; right: 0; top: 6px; height: 22px; background: var(--sky-day); border: 1px solid var(--edge); }
+.tb-track > i, .tb-track > span { position: absolute; display: block; }
+.tb-night { top: 7px; height: 20px; background: var(--sky-night); }
+.tb-win { top: 7px; height: 20px; border: 2px solid var(--green); background: var(--win2); }
+.tb-tick { top: 28px; width: 1px; height: 5px; margin-left: -.5px; background: var(--ink2); }
+.tb-tick.long { height: 9px; }
+.tb-lab { top: 39px; transform: translateX(-50%); font-family: var(--mono); font-size: 11px; color: var(--ink2); }
+.tb-now { top: 2px; height: 30px; width: 2px; margin-left: -1px; background: var(--red); }
+.tb-knob { top: 0; width: 14px; height: 34px; margin-left: -7px; border: 2px solid var(--ink); border-radius: 3px; background: transparent; }
+.tb-knob.pinned { background: var(--knob-pin); }
+.tb-time { display: flex; flex-direction: column; min-width: 96px; line-height: 1.2; }
+.tb-time b { font-family: var(--mono); font-size: 20px; }
+.tb-time span { font-size: 12px; color: var(--ink2); }
+#tbPlay { width: 72px; }
+#tbPlay[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--chassis); }
+
+.place { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; }
+.placetext { min-width: 0; }
+.place .sub .date { margin-left: 8px; font-family: var(--mono); font-size: 12.5px; color: var(--ink2); }
 
 /* ---------- Week ---------- */
 
@@ -597,9 +639,6 @@ table { border-collapse: collapse; width: 100%; }
   .week { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 860px) {
-  .gulfgrid { grid-template-columns: minmax(0, 1fr); }
-  .mapcol { max-width: 470px; }
-  .probecol .grille { flex: none; height: 30px; }
 }
 @media (max-width: 760px) {
   .brand { flex-basis: 100%; }
@@ -613,9 +652,7 @@ table { border-collapse: collapse; width: 100%; }
   .app { padding: 10px 10px 28px; gap: 10px; }
   .unit { padding: 15px 14px 16px; }
   .almanac { grid-template-columns: minmax(0, 1fr); }
-  .dayctl { align-items: stretch; width: 100%; }
   .datenav input[type="date"] { flex: 1; min-width: 0; }
-  .place .date { text-align: left; }
   .sheet { width: 100vw; height: 100vh; height: 100dvh; margin: 0; border: 0; border-radius: 0; }
   .sheet.narrow { width: 100vw; height: fit-content; margin: auto 0 0; border-top: 1px solid var(--edge); }
   /* Each day's label sits on its own line above the row. */
@@ -633,13 +670,12 @@ table { border-collapse: collapse; width: 100%; }
   .readout > div:nth-child(2n) { border-right: 0; padding-left: 12px; }
   .notice { grid-template-columns: 22px minmax(0, 1fr); }
   .foot { padding: 8px 6px 0; }
-  .chopkey { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* ---------- Wide screens: an iPad in landscape, or larger ----------
-   The frame fills the window and the page itself does not scroll. Until a screen is laid out
-   to fit, the screen area scrolls inside the frame. Shorter windows fall back to a scrolling page. */
-@media (min-width: 1000px) and (min-height: 640px) {
+   The frame fills the window and the page itself does not scroll. Below 700 px of height, as on an
+   iPad mini in Safari, the page falls back to the stacked layout and scrolls. */
+@media (min-width: 1000px) and (min-height: 700px) {
   .app {
     height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
@@ -647,6 +683,21 @@ table { border-collapse: collapse; width: 100%; }
   }
   .topbar { flex-wrap: nowrap; }
   .stack { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; border-radius: 6px; }
+  /* Day fills the frame: the map on the left, the day on the right, the time bar along the bottom. */
+  #screen-day:not([hidden]) { display: flex; flex-direction: column; height: 100%; }
+  .dayview { flex: 1; min-height: 0; grid-template-columns: minmax(340px, 36%) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "map day" "bar bar"; }
+  .mapunit, .dayside { min-height: 0; }
+  .mapunit .mapframe { flex: 1; min-height: 0; max-height: none; aspect-ratio: auto; }
+  /* The reading under the map has a fixed height, so a change in its content never resizes the map. */
+  #probe { flex: none; height: 200px; overflow-y: auto; }
+  #probe .strip { max-height: 30px; }
+  .dayside .well { flex: 1 1 0; min-height: 0; }
+  .dayside .readout { flex: none; margin-top: 8px; }
+  .dayside .nowline { margin-top: 4px; }
+  .dayside .winline { margin-top: 2px; }
+  .dayside .well { margin-top: 8px; }
+  .timebar { flex-wrap: nowrap; padding: 6px 14px; }
+
   /* Week fills the frame: the rows share the height, and the best windows scroll in their column. */
   #screen-week:not([hidden]) { display: flex; flex-direction: column; height: 100%; }
   #screen-week .week { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
