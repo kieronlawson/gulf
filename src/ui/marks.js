@@ -1,0 +1,159 @@
+/* Saved places: the owner's numbered marks, and home, where the boat goes into and comes out of the water.
+   The iPad stores them. A place is saved from the probe, and selected, renamed, moved or deleted on the map. */
+
+  /* ---------- Saved places ---------- */
+
+  var confirmKey = null;    /* the place whose Delete button now asks for confirmation */
+  var sheetFor = null;      /* what the naming sheet will do: { kind: 'mark' | 'home' | 'rename', key, x, y } */
+
+  function onMap(p) {
+    return !!p && isFinite(p.lat) && isFinite(p.lon) && p.lat >= MAP.S && p.lat <= MAP.N && p.lon >= MAP.W && p.lon <= MAP.E;
+  }
+  function readPlaces() {
+    var marks = [], home = null;
+    try {
+      var m = JSON.parse(store.get('gulf-almanac-marks') || '[]');
+      if (Array.isArray(m)) marks = m.filter(function (q) { return onMap(q) && q.n >= 1 && typeof q.name === 'string'; });
+      var h = JSON.parse(store.get('gulf-almanac-home') || 'null');
+      if (onMap(h) && typeof h.name === 'string') home = h;
+    } catch (e) { /* start with no saved places */ }
+    state.marks = marks; state.home = home;
+  }
+  function savePlaces() {
+    store.set('gulf-almanac-marks', JSON.stringify(state.marks));
+    store.set('gulf-almanac-home', JSON.stringify(state.home));
+  }
+  function markByN(n) {
+    for (var i = 0; i < state.marks.length; i++) if (state.marks[i].n === n) return state.marks[i];
+    return null;
+  }
+  /* A key names a saved place: 'home', or a mark's number as text. */
+  function placeOf(key) { return key === 'home' ? state.home : markByN(+key); }
+  function placeTitle(key) {
+    var p = placeOf(key);
+    if (!p) return '';
+    return (key === 'home' ? 'Home' : 'Mark ' + p.n) + (p.name ? ', ' + p.name : '');
+  }
+  /* The lowest number no mark uses, so a deleted mark's number is used again. */
+  function nextMarkNumber() { for (var n = 1; ; n++) if (!markByN(n)) return n; }
+
+  /* The probe can sit anywhere on the map. Off Gulf water it gives a position and no estimates. */
+  function probeAt(x, y, key) {
+    var water = isWater(x, y);
+    state.probe = { x: x, y: y, w: nearest(x, y), water: water, near: water && landWithin(x, y, NEAR_LAND_KM), key: key == null ? null : String(key) };
+  }
+  function selectPlace(key) {
+    var p = placeOf(key);
+    if (!p) return;
+    confirmKey = null;
+    probeAt(mapX(p.lon), mapY(p.lat), key);
+    renderPlaces(); renderProbeMark(); renderProbe();
+  }
+
+  /* ---------- Saved places on the map ---------- */
+
+  function renderPlaces() {
+    var svg = $('mapSvg');
+    if (!svg) return;
+    var s = glyph().toFixed(4), sel = state.probe && state.probe.key, out = '';
+    function one(key, p, label, cls) {
+      var x = mapX(p.lon).toFixed(2), y = mapY(p.lat).toFixed(2);
+      return '<g class="place ' + cls + (sel === key ? ' sel' : '') + '" data-key="' + key + '" data-at="' + x + ' ' + y + '" transform="translate(' + x + ' ' + y + ') scale(' + s + ')"' +
+        ' tabindex="0" role="button" aria-label="' + esc(placeTitle(key)) + '"><circle class="hit" r="12"/><circle class="ring" r="8.6"/>' +
+        (cls === 'home' ? '<rect class="disc" x="-5.6" y="-5.6" width="11.2" height="11.2" rx="1.6"/>' : '<circle class="disc" r="5.9"/>') +
+        '<text y="2.5" text-anchor="middle">' + label + '</text></g>';
+    }
+    state.marks.forEach(function (m) { out += one(String(m.n), m, m.n, 'mark'); });
+    if (state.home) out += one('home', state.home, 'H', 'home');
+    svg.querySelector('#ovPlaces').innerHTML = out;
+  }
+
+  /* ---------- The probe reading's head: the place and what can be done with it ---------- */
+
+  function probeHead() {
+    var p = state.probe, key = p.key, acts;
+    var pos = degMin(mapLat(p.y), 'N', 'S') + ' ' + degMin(mapLon(p.x), 'E', 'W');
+    if (key && confirmKey === key) {
+      acts = '<span class="ask">' + (key === 'home' ? 'Remove home?' : 'Delete mark ' + key + '?') + '</span>' +
+        '<button type="button" data-act="delete-yes">' + (key === 'home' ? 'Remove' : 'Delete') + '</button>' +
+        '<button type="button" data-act="delete-no">Keep</button>';
+    } else if (key) {
+      acts = '<button type="button" data-act="rename">Rename</button><button type="button" data-act="move">Move</button>' +
+        '<button type="button" data-act="delete">' + (key === 'home' ? 'Remove' : 'Delete') + '</button>';
+    } else {
+      acts = '<button type="button" data-act="savemark">Save mark</button><button type="button" data-act="sethome">Set home</button>';
+    }
+    return '<div class="probehead"><div class="probename"><b>' + (key ? esc(placeTitle(key)) : 'Probe') + '</b><span>' + pos + '</span></div>' +
+      '<div class="probeacts">' + acts + '</div>' +
+      '<button type="button" class="probex" data-act="clearprobe" aria-label="Close the reading">&times;</button></div>';
+  }
+
+  /* While a place moves, the next tap on the map gives its new position. */
+  function movingPanel() {
+    return '<div class="probehead"><div class="probename"><b>Move ' + esc(placeTitle(state.moving)) + '</b>' +
+      '<span>Tap the map at the new position.</span></div><div class="probeacts"><button type="button" data-act="move-cancel">Cancel</button></div></div>';
+  }
+  function movePlaceTo(x, y) {
+    var p = placeOf(state.moving), key = state.moving;
+    state.moving = null;
+    if (p && x >= 0 && y >= 0 && x <= MAP.w && y <= MAP.h) {
+      p.lat = +mapLat(y).toFixed(5); p.lon = +mapLon(x).toFixed(5);
+      savePlaces();
+      if (key === 'home' && view.preset === 'spot') setPreset('spot');
+    }
+    selectPlace(key);
+  }
+
+  /* ---------- Probe actions ---------- */
+
+  function placeAction(act) {
+    var p = state.probe, key = p && p.key;
+    if (act === 'savemark' && p) openPlaceSheet({ kind: 'mark', x: p.x, y: p.y });
+    else if (act === 'sethome' && p) openPlaceSheet({ kind: 'home', x: p.x, y: p.y });
+    else if (act === 'rename' && key) openPlaceSheet({ kind: 'rename', key: key });
+    else if (act === 'move' && key) { state.moving = key; confirmKey = null; renderProbe(); }
+    else if (act === 'move-cancel') { var k = state.moving; state.moving = null; if (k) selectPlace(k); else renderProbe(); }
+    else if (act === 'delete' && key) { confirmKey = key; renderProbe(); }
+    else if (act === 'delete-no') { confirmKey = null; renderProbe(); }
+    else if (act === 'delete-yes' && key) {
+      if (key === 'home') state.home = null;
+      else state.marks = state.marks.filter(function (m) { return String(m.n) !== key; });
+      savePlaces();
+      confirmKey = null; state.probe = null;
+      if (key === 'home' && view.preset === 'spot') setPreset('spot');
+      renderPlaces(); renderProbeMark(); renderProbe(); markViewButtons();
+    }
+  }
+
+  /* ---------- The naming sheet ---------- */
+
+  function openPlaceSheet(what) {
+    sheetFor = what;
+    var title = { mark: 'Save mark ' + nextMarkNumber(), home: state.home ? 'Move home here' : 'Set home here', rename: 'Rename ' + placeTitle(what.key) }[what.kind];
+    $('placeSheetTitle').textContent = title;
+    var input = $('placeNameInput');
+    input.value = what.kind === 'rename' ? placeOf(what.key).name : what.kind === 'home' && state.home ? state.home.name : '';
+    input.placeholder = what.kind === 'home' || what.key === 'home' ? 'For example, the ramp or marina' : 'For example, the reef or channel';
+    $('placeHomeNote').hidden = !(what.kind === 'home' && state.home);
+    openSheet('placeSheet');
+    input.focus();
+  }
+  function savePlaceSheet() {
+    var what = sheetFor, name = $('placeNameInput').value.replace(/\s+/g, ' ').trim().slice(0, 40), key;
+    sheetFor = null;
+    closeSheet('placeSheet');
+    if (!what) return;
+    if (what.kind === 'rename') {
+      var p = placeOf(what.key);
+      if (p) p.name = name;
+      key = what.key;
+    } else {
+      var spot = { name: name, lat: +mapLat(what.y).toFixed(5), lon: +mapLon(what.x).toFixed(5) };
+      if (what.kind === 'home') { state.home = spot; key = 'home'; }
+      else { spot.n = nextMarkNumber(); state.marks.push(spot); key = String(spot.n); }
+    }
+    savePlaces();
+    if (key === 'home' && view.preset === 'spot') setPreset('spot');
+    markViewButtons();
+    selectPlace(key);
+  }

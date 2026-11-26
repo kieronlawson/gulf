@@ -12,6 +12,7 @@ Environment variables:
   SCALE   device pixel ratio (default 1). Use 2 for a screenshot a person will look at.
   SCREEN  week, day (default) or now: the screen the page opens on
   LAT, LON  position the page receives from the browser. Without them, the page gets no position.
+  INIT    JavaScript to run before the page's own scripts, for example to store saved marks
   SCHEME  light (default) or dark
   FULL    1 (default) captures the whole page, 0 only the viewport
   SEL     CSS selector to capture instead of the whole page
@@ -64,6 +65,7 @@ with sync_playwright() as p:
     if lat and lon: opts.update(geolocation={'latitude': float(lat), 'longitude': float(lon)}, permissions=['geolocation'])
     ctx = browser.new_context(**opts)
     ctx.add_init_script('try { localStorage.setItem("gulf-almanac-screen", %s); } catch (e) {}' % json.dumps(screen))
+    if env('INIT'): ctx.add_init_script(env('INIT'))
     page = ctx.new_page(); logs = []
     page.on('console', lambda m: logs.append(m.type + ': ' + m.text))
     page.on('pageerror', lambda e: logs.append('PAGE ERROR: ' + str(e)))

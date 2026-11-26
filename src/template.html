@@ -163,6 +163,24 @@
   </div>
 </dialog>
 
+<dialog class="sheet narrow" id="placeSheet" aria-labelledby="placeSheetTitle">
+  <form id="placeForm">
+    <div class="sheet-head">
+      <h2 id="placeSheetTitle">Save mark</h2>
+      <button type="button" id="placeCancel">Cancel</button>
+    </div>
+    <div class="sheet-body">
+      <div class="unit">
+        <label class="fieldname" for="placeNameInput">Name, if you want one</label>
+        <input type="text" id="placeNameInput" maxlength="40" autocomplete="off" enterkeyhint="done">
+        <p class="small" id="placeHomeNote" hidden>This moves your home to the new point.</p>
+        <p class="small">The iPad stores your marks and home. Safari deletes a site's stored data after seven days without a visit, unless you open the page from the Home Screen.</p>
+        <button type="submit" class="reset">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
 <dialog class="sheet" id="tables" aria-labelledby="tablesTitle">
   <div class="sheet-head">
     <h2 id="tablesTitle">Tables for <span id="tablesFor"></span></h2>
