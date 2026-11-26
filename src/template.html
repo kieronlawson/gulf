@@ -27,6 +27,7 @@
     <div class="tools">
       <button type="button" id="sync">Sync</button>
       <select id="spot" aria-label="Spot"></select>
+      <button type="button" id="limitsOpen" aria-haspopup="dialog">Limits</button>
       <button type="button" id="tablesOpen" aria-haspopup="dialog">Tables</button>
     </div>
   </header>
@@ -59,6 +60,7 @@
           </div>
         </div>
         <p class="nowline" id="nowLine"></p>
+        <p class="winline" id="winLine"></p>
         <div class="pinrow">
           <span class="pip on" id="pinLamp" aria-hidden="true"></span><span id="pinText">Following now.</span>
           <button type="button" id="unpin" disabled>Return to now</button>
@@ -113,6 +115,40 @@
 
   </main>
 </div>
+
+<dialog class="sheet narrow" id="limits" aria-labelledby="limitsTitle">
+  <div class="sheet-head">
+    <h2 id="limitsTitle">Your limits</h2>
+    <button type="button" id="limitsClose">Done</button>
+  </div>
+  <div class="sheet-body">
+    <div class="unit">
+      <p class="lede">A window is a time between first light and last light when the wind stays at or under your limit for your minimum time or longer. The page marks windows on the Day screen, and the Week screen will rank them.</p>
+      <div class="limit">
+        <span id="limWindName">Wind up to</span>
+        <div class="stepper" role="group" aria-labelledby="limWindName">
+          <button type="button" class="step" data-lim="wind" data-dir="-1" aria-label="Lower the wind limit">&minus;</button>
+          <output id="limWind" aria-live="polite"></output>
+          <button type="button" class="step" data-lim="wind" data-dir="1" aria-label="Raise the wind limit">+</button>
+        </div>
+      </div>
+      <div class="limit">
+        <span id="limHoursName">For at least</span>
+        <div class="stepper" role="group" aria-labelledby="limHoursName">
+          <button type="button" class="step" data-lim="hours" data-dir="-1" aria-label="Shorten the minimum time">&minus;</button>
+          <output id="limHours" aria-live="polite"></output>
+          <button type="button" class="step" data-lim="hours" data-dir="1" aria-label="Lengthen the minimum time">+</button>
+        </div>
+      </div>
+      <div class="limit">
+        <span>Between</span>
+        <span>First light and last light</span>
+      </div>
+      <p class="small">The wind limit applies to the sustained wind in the forecast, not to gusts. Chop does not close a window. The iPad stores these limits.</p>
+      <button type="button" id="limitsReset" class="reset">Use 15 kn and 3 h</button>
+    </div>
+  </div>
+</dialog>
 
 <dialog class="sheet" id="tables" aria-labelledby="tablesTitle">
   <div class="sheet-head">

@@ -329,8 +329,66 @@ var Engine = (function () {
     return { h: interp(c, t, 'h'), rising: next ? next.hi : null, prev: prev, next: next };
   }
 
+  /* ---------- Windows ---------- */
+
+  /* A window is a stretch between first light and last light when the sustained wind stays at or under
+     a limit, for at least a minimum time. The owner sets the limit and the time; these are the defaults. */
+  var LIMITS = { wind: 15, hours: 3 };
+
+  /* hours: hourly forecast values, [{ t, wind, gust }], in time order.
+     light: { from, to }, the times of first light and last light.
+     limits: { wind, hours }.
+     Each hourly value stands for the half hour either side of its time, so a window starts and ends
+     on the half hour unless first or last light cuts it. A missing hour ends a window: the page does
+     not assume calm where it has no forecast. Gusts do not close a window. */
+  function windows(hours, light, limits) {
+    var out = [], run = null, half = HOUR / 2, minMs = limits.hours * HOUR - 1;
+    function close() {
+      if (!run) return;
+      var a = Math.max(run.start, light.from), b = Math.min(run.end, light.to);
+      if (b - a >= minMs) {
+        var inside = run.hours.filter(function (h) { return h.t + half > a && h.t - half < b; });
+        var gusts = inside.map(function (h) { return h.gust; }).filter(function (g) { return g != null && !isNaN(g); });
+        out.push({
+          start: a, end: b,
+          maxWind: Math.max.apply(null, inside.map(function (h) { return h.wind; })),
+          maxGust: gusts.length ? Math.max.apply(null, gusts) : null
+        });
+      }
+      run = null;
+    }
+    if (light.from == null || light.to == null) return out;
+    hours.forEach(function (h) {
+      var calm = h.wind != null && !isNaN(h.wind) && h.wind <= limits.wind;
+      if (run && (!calm || h.t - run.last !== HOUR)) close();
+      if (!calm) return;
+      if (!run) run = { start: h.t - half, end: h.t + half, last: h.t, hours: [h] };
+      else { run.end = h.t + half; run.last = h.t; run.hours.push(h); }
+    });
+    close();
+    return out;
+  }
+
+  /* Best first: the longest window, then the lower top wind, then the earlier start. */
+  function rankWindows(list) {
+    return list.slice().sort(function (p, q) {
+      return (q.end - q.start) - (p.end - p.start) || p.maxWind - q.maxWind || p.start - q.start;
+    });
+  }
+
+  /* The windows of one day at one spot. recs maps an hour's time to its forecast, { wind, gust }. */
+  function dayWindows(spot, d0, recs, limits) {
+    var d = day(spot, d0), hours = [];
+    for (var t = d.d0; t < d.d1; t += HOUR) {
+      var r = recs[t];
+      if (r) hours.push({ t: t, wind: r.wind, gust: r.gust });
+    }
+    return windows(hours, { from: d.sun.dawn, to: d.sun.dusk }, limits || LIMITS);
+  }
+
   return {
     MIN: MIN, HOUR: HOUR, DAY: DAY,
+    LIMITS: LIMITS, windows: windows, rankWindows: rankWindows, dayWindows: dayWindows,
     parts: parts, midnight: midnight, dayStart: dayStart, addDays: addDays,
     fmtTime: fmtTime, fmtDay: fmtDay, fmtDayLong: fmtDayLong, fmtDuration: fmtDuration, isoDate: isoDate, pad2: pad2,
     spotExtremes: spotExtremes, spotCurve: spotCurve, interp: interp,
