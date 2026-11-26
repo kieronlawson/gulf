@@ -53,83 +53,70 @@
     </section>
 
     <section class="screen" id="screen-day" data-screen="day" aria-label="Day">
-      <div class="unit dayside">
-        <h2 class="stage"><span class="idx">01</span>Day</h2>
-        <div class="place">
-          <div>
-            <h2 id="placeName"></h2>
-            <p class="sub" id="placeSub"></p>
+      <div class="dayview">
+
+        <section class="unit mapunit" id="gulf" aria-labelledby="gulfTitle">
+          <h2 class="stage" id="gulfTitle"><span class="idx">01</span>Gulf at the pinned time<span class="stage-note" id="mapTime"></span></h2>
+          <div class="mapframe" id="mapFrame">
+            <div id="map"></div>
+            <div class="mapbtns mb-views" id="mapCtl" role="group" aria-label="Map view">
+              <button type="button" data-view="whole" aria-pressed="true">Whole Gulf</button>
+              <button type="button" data-view="inner" aria-pressed="false">Inner Gulf</button>
+              <button type="button" data-view="spot" aria-pressed="false" id="viewSpot">Around spot</button>
+            </div>
+            <div class="mapbtns mb-layers" id="layers" role="group" aria-label="Map layers">
+              <button type="button" class="toggle" data-layer="wind" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Wind</button>
+              <button type="button" class="toggle" data-layer="flow" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Flow</button>
+              <button type="button" class="toggle" data-layer="chop" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Chop</button>
+            </div>
+            <div class="mapbtns mb-zoom">
+              <button type="button" id="zoomIn" data-zoom="1" aria-label="Zoom in">+</button>
+              <button type="button" id="zoomOut" data-zoom="-1" aria-label="Zoom out">&minus;</button>
+            </div>
+            <div class="mapmark" aria-hidden="true">
+              <svg class="mapnorth" viewBox="-6 -9 12 20"><path d="M0 -9L3.2 -1.5H-3.2Z"/><line x1="0" y1="-2" x2="0" y2="10"/></svg>
+              <div class="mapscale" id="mapScale"></div>
+            </div>
           </div>
-          <div class="dayctl">
+          <div id="probe" aria-live="polite"></div>
+        </section>
+
+        <div class="unit dayside">
+          <h2 class="stage"><span class="idx">02</span>Day<span class="stage-note">Tap or drag the display to pin a time.</span></h2>
+          <div class="place">
+            <div class="placetext">
+              <h2 id="placeName"></h2>
+              <p class="sub"><span id="placeSub"></span> <span class="date" id="placeDate"></span></p>
+            </div>
             <div class="datenav">
               <button class="step" id="prev" type="button" aria-label="Previous day">&#8249;</button>
               <input type="date" id="date" aria-label="Day">
               <button class="step" id="next" type="button" aria-label="Next day">&#8250;</button>
               <button id="today" type="button">Today</button>
             </div>
-            <p class="date" id="placeDate"></p>
           </div>
-        </div>
-        <p class="nowline" id="nowLine"></p>
-        <p class="winline" id="winLine"></p>
-        <div class="pinrow">
-          <span class="pip on" id="pinLamp" aria-hidden="true"></span><span id="pinText">Following now.</span>
-          <button type="button" id="unpin" disabled>Return to now</button>
+          <p class="nowline" id="nowLine"></p>
+          <p class="winline" id="winLine"></p>
+          <div class="readout" id="readout"></div>
+          <div class="well">
+            <div class="chartbox" id="chart" tabindex="0" role="img"
+                 aria-label="Display of the day: solunar activity, sun and moon altitude, and tide height against time. Arrow keys move the reading by ten minutes. Enter pins the time. Escape returns to now."></div>
+          </div>
+          <div class="daylegend" id="dayLegend" hidden>
+            <span><i class="lk lk-sol"></i>Solunar</span><span><i class="lk lk-sun"></i>Sun</span><span><i class="lk lk-moon"></i>Moon</span><span><i class="lk lk-tide"></i>Tide</span>
+          </div>
         </div>
 
-        <div class="readout" id="readout"></div>
-        <div class="well">
-          <div class="chartbox" id="chart" tabindex="0" role="img"
-               aria-label="Display of the day: solunar activity, sun and moon altitude, and tide height against time. Arrow keys move the reading by ten minutes. Enter pins the time. Escape returns to now."></div>
+        <div class="unit timebar" id="timebar">
+          <button type="button" id="tbPlay" aria-pressed="false">Play</button>
+          <button type="button" id="tbBack">&minus;30 min</button>
+          <div class="tb-track" id="tbTrack" tabindex="0" role="slider" aria-label="Pinned time. Arrow keys move it by ten minutes."></div>
+          <button type="button" id="tbFwd">+30 min</button>
+          <p class="tb-time"><b id="tbTime"></b><span id="tbState"></span></p>
+          <button type="button" id="tbNow">Now</button>
         </div>
-        <div class="daylegend" id="dayLegend" hidden>
-          <span><i class="lk lk-sol"></i>Solunar</span><span><i class="lk lk-sun"></i>Sun</span><span><i class="lk lk-moon"></i>Moon</span><span><i class="lk lk-tide"></i>Tide</span>
-        </div>
-        <p class="cap">The ground is darker at night. Green bands mark solunar periods, and the green fish above each band rate that period from one to four. The red needle marks now. With a forecast loaded, a wind lane shows wind and gusts in knots. Select a time on the display to pin it. The map follows the pinned time.</p>
-      </div>
 
-    <section class="unit" id="gulf">
-      <h2 class="stage"><span class="idx">02</span>Gulf: wind, flow and chop</h2>
-      <div class="gulfgrid">
-        <div class="mapcol">
-          <div class="mapctl" id="mapCtl">
-            <div class="presets" role="group" aria-label="Map view">
-              <button type="button" data-view="whole" aria-pressed="true">Whole Gulf</button>
-              <button type="button" data-view="inner" aria-pressed="false">Inner Gulf</button>
-              <button type="button" data-view="spot" aria-pressed="false" id="viewSpot">Around spot</button>
-            </div>
-            <div class="zoombtns">
-              <button type="button" id="zoomOut" data-zoom="-1" aria-label="Zoom out">&minus;</button>
-              <button type="button" id="zoomIn" data-zoom="1" aria-label="Zoom in">+</button>
-            </div>
-          </div>
-          <div class="mapframe" id="mapFrame">
-            <div id="map"></div>
-            <svg class="mapnorth" viewBox="-6 -9 12 20" aria-hidden="true"><path d="M0 -9L3.2 -1.5H-3.2Z"/><line x1="0" y1="-2" x2="0" y2="10"/></svg>
-            <div class="mapscale" id="mapScale" aria-hidden="true"></div>
-          </div>
-          <p class="cap">Each lamp is a tide spot. Select a lamp to load that spot. Select any other point on the water to place the probe. Pinch, or use the buttons, to zoom. Once zoomed in, drag to move the map.</p>
-        </div>
-        <div class="probecol">
-          <p class="maptime" id="mapTime"></p>
-          <div class="layers" id="layers">
-            <button type="button" class="toggle" data-layer="wind" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Wind</button>
-            <button type="button" class="toggle" data-layer="flow" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Flow</button>
-            <button type="button" class="toggle" data-layer="chop" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Chop</button>
-          </div>
-          <div id="probe"></div>
-          <div class="chopkey" aria-label="Chop scale by estimated wave height">
-            <span><i class="sw sw0"></i>Smooth<em>under 0.15 m</em></span>
-            <span><i class="sw sw1"></i>Light<em>from 0.15 m</em></span>
-            <span><i class="sw sw2"></i>Moderate<em>from 0.3 m</em></span>
-            <span><i class="sw sw3"></i>Rough<em>from 0.5 m</em></span>
-            <span><i class="sw sw4"></i>Very rough<em>from 0.8 m</em></span>
-          </div>
-          <p class="cap">Solid arrows show wind and point downwind. Line arrows show flow and point downstream. A longer arrow means more wind or more flow. Dashed line arrows lie within 4 km of land, where the 8 km current model is unreliable. Chop is an estimate from wind, fetch and flow.</p>
-          <div class="grille" aria-hidden="true"></div>
-        </div>
       </div>
-    </section>
     </section>
 
     <section class="screen" id="screen-now" data-screen="now" aria-label="Now" hidden>
@@ -212,6 +199,12 @@
         <p>Wind and current come from Open-Meteo at grid points 0.1° apart. The current model has cells of about 8 km. It does not resolve the channels and is unreliable near land.</p>
         <p>Chop is an estimate. The page measures the open water upwind of a point, takes wave height and period from the JONSWAP growth curves, and assumes the wind has blown long enough. It then raises the waves where the current runs against them and lowers them where it runs with them. Swell is not included.</p>
         <p><strong>Not for navigation.</strong> Read the marine forecast before you go out.</p>
+      </div>
+      <div>
+        <h4>Reading the Day screen</h4>
+        <p>The day display's ground is darker at night. Green bands mark solunar periods, and the green fish above each band rate that period from one to four. The red needle marks now. With a forecast loaded, a wind lane shows wind and gusts in knots.</p>
+        <p>On the map, each lamp is a tide spot. Solid arrows show wind and point downwind. Line arrows show flow and point downstream. A longer arrow means more wind or more flow. Dashed line arrows lie within 4 km of land, where the 8 km current model is unreliable.</p>
+        <p>Chop is an estimate from wind, fetch and flow: smooth under 0.15 m, light from 0.15 m, moderate from 0.3 m, rough from 0.5 m, very rough from 0.8 m.</p>
       </div>
     </footer>
   </div>
