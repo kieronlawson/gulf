@@ -57,6 +57,7 @@
 
         <section class="unit mapunit" id="gulf" aria-labelledby="gulfTitle">
           <h2 class="stage" id="gulfTitle"><span class="idx">01</span><span id="mapTitle">Gulf now</span><span class="stage-note" id="mapTime"></span></h2>
+          <div class="mapslot" id="dayMapSlot">
           <div class="mapframe" id="mapFrame">
             <div id="map"></div>
             <div class="mapbtns mb-views" id="mapCtl" role="group" aria-label="Map view">
@@ -78,7 +79,8 @@
               <div class="mapscale" id="mapScale"></div>
             </div>
           </div>
-          <div id="probe" aria-live="polite"></div>
+          </div>
+          <div class="mapslot" id="dayGoSlot"><div id="probe" aria-live="polite"></div></div>
         </section>
 
         <div class="unit dayside">
@@ -120,9 +122,37 @@
     </section>
 
     <section class="screen" id="screen-now" data-screen="now" aria-label="Now" hidden>
-      <div class="unit">
-        <h2 class="stage"><span class="idx">01</span>Now</h2>
-        <p class="later">The Now screen comes in a later step. It will show the tide, bite, wind and chop at the iPad's position, the places to go from there, and when to leave for home.</p>
+      <div class="nowview">
+
+        <section class="unit nowmap" aria-labelledby="nowMapTitle">
+          <h2 class="stage"><span class="idx">01</span><span id="nowMapTitle">Gulf around you</span><span class="stage-note" id="nowMapTime"></span></h2>
+          <div class="mapslot" id="nowMapSlot"></div>
+          <div class="nowsteps" id="nowSteps" role="group" aria-label="Time on the map">
+            <button type="button" data-step="0" aria-pressed="true">Now</button>
+            <button type="button" data-step="1" aria-pressed="false">+1 h</button>
+            <button type="button" data-step="2" aria-pressed="false">+2 h</button>
+            <button type="button" data-step="3" aria-pressed="false">+3 h</button>
+          </div>
+        </section>
+
+        <div class="unit nowside">
+          <h2 class="stage"><span class="idx">02</span><span id="hereTitle">Here, now</span><span class="stage-note" id="hereTime"></span></h2>
+          <p class="posline" id="posLine" aria-live="polite"></p>
+          <div class="herecards" id="hereCards"></div>
+          <h2 class="stage"><span class="idx">03</span><span id="next6Title">Next 6 hours here</span></h2>
+          <div class="next6" id="next6"></div>
+          <div class="nowbottom">
+            <section class="nowgo" aria-labelledby="goTitle">
+              <h2 class="stage"><span class="idx">04</span><span id="goTitle">Where to go from here</span></h2>
+              <div class="mapslot" id="nowGoSlot"></div>
+            </section>
+            <section class="runhome" aria-labelledby="runTitle">
+              <h2 class="stage"><span class="idx">05</span><span id="runTitle">Run home</span></h2>
+              <div id="runHome"></div>
+            </section>
+          </div>
+        </div>
+
       </div>
     </section>
 
@@ -223,6 +253,11 @@
         <p>The day display's ground is darker at night. Green bands mark solunar periods, and the green fish above each band rate that period from one to four. The red needle marks now. With a forecast loaded, a wind lane shows wind and gusts in knots.</p>
         <p>On the map, each lamp is a tide spot. Solid arrows show wind and point downwind. Line arrows show flow and point downstream. A longer arrow means more wind or more flow. Dashed line arrows lie within 4 km of land, where the 8 km current model is unreliable.</p>
         <p>Chop is an estimate from wind, fetch and flow: smooth under 0.15 m, light from 0.15 m, moderate from 0.3 m, rough from 0.5 m, very rough from 0.8 m.</p>
+      </div>
+      <div>
+        <h4>Reading the Now screen</h4>
+        <p>The Now screen measures from the iPad's position, and from the selected spot while it has none. The tide and the bite come from the nearest tide spot. Wind over your limit shows in red.</p>
+        <p>In the next six hours, each slot holds one hour: an arrow that points downwind, the wind in knots, and a bar for the chop. The ground is darker at night, green bands mark solunar periods, and blue lines mark high and low water.</p>
       </div>
     </footer>
   </div>

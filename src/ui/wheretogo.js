@@ -6,8 +6,10 @@
   var REACH_NM = 10, SUGGEST = 3, SPACING_NM = 3, NAMED_NM = 3;
   var suggestions = [];
 
-  /* The starting point: home, or the selected tide spot until home is set. The Now screen will use the iPad's position. */
+  /* The starting point. On the Day screen: home, or the selected tide spot until home is set.
+     On the Now screen: the iPad's position, or the selected tide spot while there is none. */
   function goOrigin() {
+    if (state.mapScreen === 'now') return here();
     if (state.home) return { x: mapX(state.home.lon), y: mapY(state.home.lat), name: 'home' };
     return { x: mapX(state.spot.lon), y: mapY(state.spot.lat), name: state.spot.name };
   }
@@ -66,8 +68,10 @@
     });
     rows.sort(function (a, b) { return (a.c ? a.c.chop.h : 99) - (b.c ? b.c.chop.h : 99); });
 
-    var when = state.pin != null ? E.fmtTime(t) + ', ' + E.fmtDay(t) : 'now';
-    var html = '<div class="gohead"><b>Where to go ' + (state.pin != null ? 'at ' : '') + when + '</b><span>From ' + esc(o.name) + ', lowest chop first</span></div>';
+    /* The Now screen's heading already says where to go from, so its line gives only the time. */
+    var title = state.mapScreen === 'now' ? (state.nowStep ? 'In ' + state.nowStep + ' h, at ' + E.fmtTime(t) : 'Now') :
+      'Where to go ' + (state.pin != null ? 'at ' + E.fmtTime(t) + ', ' + E.fmtDay(t) : 'now');
+    var html = '<div class="gohead"><b>' + title + '</b><span>From ' + esc(o.name) + ', lowest chop first</span></div>';
     if (!rows.length) {
       html += problem || '';
       html += '<p class="probehint">Save marks from the map, and the calmest water within ' + REACH_NM + ' nautical miles shows here. Tap the map to read any point.</p>';

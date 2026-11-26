@@ -202,13 +202,13 @@
   function loadField() {
     if (!gridPts.length) return;
     field.status = 'loading';
-    renderGulf();
+    renderGulf(); renderNowSide();
     Promise.all([loadWindField(gridPts), loadFlowField(gridPts).catch(function () { return null; })]).then(function (res) {
       field.wind = res[0]; field.flow = res[1]; field.at = Date.now(); field.status = 'ok'; field.failedAt = 0;
       store.set('gulf-almanac-field', JSON.stringify({ at: field.at, npts: gridPts.length, wind: field.wind, flow: field.flow }));
     }).catch(function () {
       field.status = 'failed'; field.failedAt = Date.now();
-    }).then(renderGulf);
+    }).then(function () { renderGulf(); renderNowSide(); });
   }
 
   function readCachedField() {
@@ -270,7 +270,12 @@
 
   /* ---------- Map drawing ---------- */
 
-  function mapTime() { return state.pin != null ? state.pin : Date.now(); }
+  /* The map's time. On the Day screen it is the pinned time, or now. On the Now screen it is now, or one,
+     two or three hours ahead. */
+  function mapTime() {
+    if (state.mapScreen === 'now') return Math.floor(Date.now() / MIN) * MIN + state.nowStep * HOUR;
+    return state.pin != null ? state.pin : Date.now();
+  }
 
   function renderMap() {
     var c = MAP, k;
@@ -304,7 +309,7 @@
     });
     /* Suggestions and saved places sit above the lamps, each in its own layer: the suggestions change with
        the map's time, and the saved places change only when the owner changes them. */
-    $('map').innerHTML = s + '<g id="ovSugg"></g><g id="ovPlaces"></g></svg>';
+    $('map').innerHTML = s + '<g id="ovSugg"></g><g id="ovPlaces"></g><g id="ovYou"></g></svg>';
     applyView();
   }
 
@@ -428,8 +433,9 @@
   var PRESETS = {
     whole: function () { return { cx: MAP.w / 2, cy: MAP.h / 2, z: 1 }; },
     inner: function () { return fitBox(mapX(174.70), mapY(-36.55), mapX(175.25), mapY(-36.95)); },
-    /* Near home once home is set, and near the selected spot until then. */
-    spot: function () { var c = state.home || state.spot; return around(mapX(c.lon), mapY(c.lat), 10); }
+    /* On the Day screen: near home once home is set, and near the selected spot until then.
+       On the Now screen: around the iPad's position. */
+    spot: function () { var o = goOrigin(); return around(o.x, o.y, REACH_NM); }
   };
   function setPreset(name) {
     var v = PRESETS[name]();
@@ -486,9 +492,9 @@
     for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-view') === view.preset ? 'true' : 'false');
     $('zoomOut').disabled = view.z <= 1.001;
     $('zoomIn').disabled = view.z >= ZOOM_MAX - 0.001;
-    var near = state.home ? 'home' : state.spot.name;
-    $('viewSpot').textContent = 'Near ' + near;
-    $('viewSpot').setAttribute('aria-label', 'Near ' + near + ', 10 nautical miles around it');
+    var o = goOrigin();
+    $('viewSpot').textContent = o.you ? 'Around me' : 'Near ' + o.name;
+    $('viewSpot').setAttribute('aria-label', o.you ? 'Around me, 10 nautical miles around your position' : 'Near ' + o.name + ', 10 nautical miles around it');
   }
 
   /* The frame's size sets the view's shape. A preset view keeps its fit when the frame changes. */
@@ -636,7 +642,8 @@
       cell('Chop', '<i class="sw sw' + c.chop.level + '"></i>' + CHOP_NAMES[c.chop.level]) +
       '</dl>' + (note ? '<p class="small">' + note + '</p>' : '');
 
-    /* Chop at this point for each hour of the day. Selecting a bar pins that hour. */
+    /* Chop at this point for each hour of the day. Selecting a bar pins that hour, so only the Day screen has it. */
+    if (state.mapScreen === 'now') { el.innerHTML = html; return; }
     var d0 = E.dayStart(t), d1 = E.addDays(d0, 1), hourNow = Math.floor(t / HOUR) * HOUR, bars = '', n = 0;
     for (var th = d0; th < d1; th += HOUR) {
       var cc = condAt(p.x, p.y, p.w, th), lv = cc ? cc.chop.level : -1, hgt = lv < 0 ? 2 : 5 + lv * 6, bx = n * 10;
@@ -654,6 +661,7 @@
     var t = mapTime(), el = $('mapTime');
     if (el) el.textContent = state.pin != null ? E.fmtDay(t) + ' ' + E.fmtTime(t) : 'Now, ' + E.fmtTime(t);
     $('mapTitle').textContent = state.pin != null ? 'Gulf at the pinned time' : 'Gulf now';
+    if (state.mapScreen === 'now') markNowSteps();
     renderOverlay(); renderProbe();
   }
 

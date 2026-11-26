@@ -8,7 +8,7 @@
     $('spot').value = state.spot.id;
     $('date').value = E.isoDate(state.d0 + 12 * HOUR);
     $('tablesFor').textContent = state.spot.name + ', ' + E.fmtDay(state.d0 + 12 * HOUR);
-    renderStatus(); renderPlace(); renderWindows(); renderWeek(); renderPin(); renderChart(); renderReadout(); renderCards(); renderWeather(); renderAhead(); markMap(); renderGulf();
+    renderStatus(); renderPlace(); renderWindows(); renderWeek(); renderPin(); renderChart(); renderReadout(); renderCards(); renderWeather(); renderAhead(); markMap(); renderGulf(); renderNowSide();
   }
 
   function setSpot(sp) {
@@ -50,7 +50,9 @@
     if (stack && stack.scrollTo) stack.scrollTo(how);
   }
 
-  /* The three screens share the spot, the day and the pinned time. Switching only changes what is shown. */
+  /* The three screens share the spot, the day and the pinned time. The Day and Now screens share the map,
+     which moves to the one that shows. The Now screen opens at now, and asks the iPad for its position
+     while it shows. */
   function setScreen(name) {
     if (SCREENS.indexOf(name) < 0) return;
     state.screen = name;
@@ -58,6 +60,10 @@
     SCREENS.forEach(function (n) { $('screen-' + n).hidden = n !== name; });
     var bs = $('screens').querySelectorAll('button[data-screen]');
     for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-screen') === name ? 'true' : 'false');
+    if (name === 'now') state.nowStep = 0;
+    if (name !== 'week' && name !== state.mapScreen) moveMap(name);
+    else if (name === 'now') renderGulf();
+    if (name === 'now') { startPosition(); renderNowSide(); } else stopPosition();
     if (name === 'week') renderWeek();
   }
 
@@ -116,7 +122,8 @@
     } else {
       renderNow();
       if (state.d0 === today) { renderChart(); renderCards(); if (state.cursor == null) renderReadout(); }
-      if (state.pin == null) renderGulf();
+      if (state.pin == null || state.mapScreen === 'now') renderGulf();
+      renderNowSide();
       renderStatus(); tickWeek(); renderTimebar();
     }
     loadWeather(false);
@@ -350,6 +357,7 @@
     renderMap();
     renderPlaces();
     wireMapGestures();
+    wireNow();
     renderAll();
     lastW = Math.floor(host.clientWidth);
     loadWeather(false);
