@@ -503,6 +503,20 @@ button:disabled:active { transform: none; }
 .routepanel .probehint { margin-top: 8px; }
 .routepanel .small button { height: 36px; margin-left: 6px; font-size: 12.5px; }
 
+/* The strip under the map: the route by distance. */
+.sthead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 12px; font-size: 13px; }
+.stlegend { display: inline-flex; flex-wrap: wrap; gap: 2px 12px; font-size: 11.5px; color: var(--ink2); }
+.stlegend span { display: inline-flex; align-items: center; gap: 5px; }
+.rstrip { display: block; margin-top: 6px; overflow: visible; }
+.lvf0 { fill: var(--wind-0); } .lvf1 { fill: var(--wind-1); } .lvf2 { fill: var(--wind-2); } .lvf3 { fill: var(--wind-3); } .lvf4 { fill: var(--wind-4); } .lvfx { fill: var(--hair); }
+.st-k { font-size: 11px; font-weight: 600; fill: var(--ink); }
+.st-cause { font-size: 10.5px; fill: var(--ink2); }
+.st-speed { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linejoin: round; }
+.st-v { font-family: var(--mono); font-size: 10.5px; fill: var(--ink); }
+.st-axis { stroke: var(--ink2); stroke-width: 1; }
+.st-ax { font-family: var(--mono); font-size: 10.5px; fill: var(--ink2); }
+#probe .probehint button { margin-left: 2px; }
+
 /* With a route open, the day display collapses to one Week row, and the route panel takes the space under it. */
 .daylane { margin-top: 10px; }
 .daylane[hidden] { display: none; }
@@ -905,6 +919,8 @@ table { border-collapse: collapse; width: 100%; }
   .dayview.compact .mb-views button { width: auto; min-width: 76px; }
   .dayview.compact .mb-layers button { width: 84px; }
   .dayview.compact .mb-zoom { flex-direction: row-reverse; }
+  /* The strip needs less height than the list it replaces, so the map takes the rest. A reading scrolls in the box. */
+  .dayview.compact #probe { height: 150px; }
   /* Under the wide map, four buttons fit beside the name. */
   .dayview.compact .probehead.many { display: flex; }
 

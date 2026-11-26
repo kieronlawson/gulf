@@ -160,8 +160,8 @@ Each step is one pull request, merged before the next starts.
 | Step | Work | State |
 |---|---|---|
 | 1 | The arithmetic, in `engine.js`: the path search, the legs, the clock, the scoring rules, the comfortable speed and the stretches. Their tests. | Done. |
-| 2 | The route on the Day screen: the Route buttons, the path on the map with A and B, the Route view, the collapsed day display, the route panel and the time bar's Leave time. | Done. Where to go stays under the map until step 3 puts the strip there. |
-| 3 | The strip under the map. | Not started. |
+| 2 | The route on the Day screen: the Route buttons, the path on the map with A and B, the Route view, the collapsed day display, the route panel and the time bar's Leave time. | Done. |
+| 3 | The strip under the map. | Done. |
 | 4 | The Now screen: a route from the iPad's position, and Run home on the path. | Not started. |
 | 5 | Ferry lanes. | Not started. |
 
@@ -185,3 +185,10 @@ Each step is one pull request, merged before the next starts.
 - **No boat speed.** The page draws the path and gives its distance. It asks for a boat speed under Limits before it scores, as Run home does.
 - **Suggestions.** While a route is open, the suggestions leave the map and the list, and the reach ring goes with them. Their letters, A to C, would read as the route's A and B. A route to a suggestion names it "Calmest water", with the nearest tide spot when there is one.
 - **The leave time on the Day screen.** A route leaves at a time on the day shown: the pinned time, or now on today. Opening a route on another day with nothing pinned, or moving to another day, pins the start of the bar. With a route open, Now returns to today and leaves now. The bar's Leave time therefore always names the time the route was scored for. This rule came from the review of step 2.
+- **The strip's place.** While a route is open, the strip takes the place of Where to go under the map. A tap on the map still opens a reading there, and closing the reading brings the strip back. In the wide route layout the box under the map is 150 px tall, not 200 px, so the map gains the difference.
+- **The strip's drawing.**
+  - The level bar has one rectangle per stretch.
+  - A cause label too long for its stretch drops its height and keeps the cause.
+  - The speed line runs from 8 kn, or the cruising speed when that is lower, at its foot to the cruising speed at its top. It passes through each leg's middle, and it has a gap where a leg has no score.
+  - The axis labels every 2 nautical miles when there is room, and every 4, 10, 20 or 50 when there is not.
+  - The heading gives the leave day when it is not today.

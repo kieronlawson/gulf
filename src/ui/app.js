@@ -292,6 +292,7 @@
       if (tAttr) { pinTime(+tAttr); return; }
       var act = e.target.closest ? e.target.closest('[data-act]') : null;
       if (act && act.getAttribute('data-act') === 'reload') sync();
+      if (act && act.getAttribute('data-act') === 'limits') { renderLimits(); openSheet('limits'); return; }
       if (act && act.getAttribute('data-act') === 'clearprobe') { state.probe = null; confirmKey = null; renderPlaces(); renderProbeMark(); renderProbe(); }
       else if (act) placeAction(act.getAttribute('data-act'));
       var go = e.target.closest ? e.target.closest('[data-go]') : null;
@@ -310,6 +311,8 @@
       else if (act === 'limits') { renderLimits(); openSheet('limits'); }
     });
     $('dayToggle').addEventListener('click', toggleDayDisplay);
+    if (window.ResizeObserver) new ResizeObserver(fitStrip).observe($('probe'));
+    window.addEventListener('resize', fitStrip);
     /* The collapsed day display: a tap or click pins the time under it, and a mouse gets the hairline and time flag. */
     $('dayLane').addEventListener('click', function (e) {
       var lane = e.target.closest ? e.target.closest('.wk-lane') : null;

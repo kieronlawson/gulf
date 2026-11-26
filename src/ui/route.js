@@ -138,6 +138,7 @@
     drawRouteMap();
     if (compact) { renderRoutePanel(); renderDayLane(); }
     else { $('routePanel').innerHTML = ''; $('dayLane').innerHTML = ''; }
+    if (shown && !state.probe && state.moving == null) renderStrip();
   }
 
   var LEVEL_NAMES = E.COMFORT.names;
@@ -242,4 +243,87 @@
     var mark = pin != null && pin >= R.a && pin <= R.b ? '<i class="wk-pin" style="left:' + ((pin - R.a) / (R.b - R.a) * 100).toFixed(2) + '%"></i>' : '';
     el.innerHTML = '<div class="wk-lane" data-d0="' + R.d.d0 + '" data-a="' + R.a + '" data-b="' + R.b + '" role="img" aria-label="' +
       'The day in one row: wind by the hour, windows, major periods and the tide. Select a point on the row to set the leave time.">' + part.html + mark + '</div>';
+  }
+
+  /* ---------- The strip under the map ----------
+     The route from A to B by distance: the level of each leg, the cause under each stretch wider than 70 px,
+     the comfortable speed as a line with its value at each end, and a tick every 2 nautical miles. It takes
+     the place of Where to go while a route is open, until a tap on the map opens a reading. */
+
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  var stripW = 0;
+  function renderStrip() {
+    var el = $('probe'), r = state.route, tr = trip;
+    if (!r || !tr) { el.innerHTML = ''; return; }
+    var W = Math.floor(el.clientWidth);
+    stripW = W;
+    var head = '<div class="sthead"><b>From A to B, leaving ' + E.fmtTime(tr.t0) + (E.dayStart(tr.t0) !== E.dayStart(Date.now()) ? ', ' + E.fmtDay(tr.t0) : '') + '</b>';
+    var levels = '';
+    if (tr.score) {
+      var seen = {};
+      tr.score.legs.forEach(function (L) { seen[L.level == null ? 'x' : L.level] = true; });
+      LEVEL_NAMES.forEach(function (n, i) { levels += '<span><i class="lvb lvb' + i + '" aria-hidden="true"></i>' + n + '</span>'; });
+      if (seen.x) levels += '<span><i class="lvb lvbx" aria-hidden="true"></i>No forecast</span>';
+    }
+    head += '<span class="stlegend">' + levels + '</span></div>';
+    var p = tr.path;
+    if (!p || !p.found || !tr.legs.length) { el.innerHTML = head + '<p class="probehint">The route panel says why there is no path to draw.</p>'; return; }
+    if (!tr.score) {
+      el.innerHTML = head + '<p class="probehint">Set your boat speed under Limits to score this route. <button type="button" data-act="limits">Limits</button></p>';
+      return;
+    }
+    if (!W) { el.innerHTML = head; return; }
+
+    var legs = tr.score.legs, total = tr.nm, x0 = 56, x1 = W - 4, s = [], n = function (v) { return v.toFixed(1); };
+    function X(nm) { return x0 + nm / total * (x1 - x0); }
+    var BAR = 4, BAR_H = 20, CAUSE = BAR + BAR_H + 13, SP_TOP = 58, SP_BOT = 78, AXIS = 88, H = 106;
+    var vMin = Math.min(E.COMFORT.minKn, tr.cruise), vMax = tr.cruise;
+    function Y(v) { return vMax > vMin ? SP_BOT - (v - vMin) / (vMax - vMin) * (SP_BOT - SP_TOP) : SP_TOP; }
+
+    s.push('<text class="st-k" x="0" y="' + (BAR + 14) + '">Comfort</text><text class="st-k" x="0" y="' + ((SP_TOP + SP_BOT) / 2 + 4) + '">Speed</text>');
+    /* One rectangle per stretch, which holds the legs of one level, a hair wider so no seam shows between neighbors. */
+    tr.stretches.forEach(function (st) {
+      var a = X(st.at), b = X(st.at + st.nm);
+      s.push('<rect class="lvf' + (st.level == null ? 'x' : st.level) + '" x="' + n(a) + '" y="' + BAR + '" width="' + n(b - a + 0.4) + '" height="' + BAR_H + '"/>');
+    });
+    /* The cause under each stretch wider than 70 px. A label too long for its stretch drops its height. */
+    tr.stretches.forEach(function (st) {
+      var a = X(st.at), b = X(st.at + st.nm);
+      if (b - a <= 70) return;
+      var text = st.level == null ? 'No forecast' : cap(causeWords(st));
+      if (text.length * 6 > b - a - 4 && st.level != null) text = cap(st.cause);
+      s.push('<text class="st-cause" x="' + n(a + 2) + '" y="' + CAUSE + '">' + esc(text) + '</text>');
+    });
+    /* The comfortable speed: a line through each leg's middle, held level to the ends, with a gap where a leg
+       has no score. */
+    var runs = [], run = null;
+    legs.forEach(function (L) {
+      if (L.v == null) { run = null; return; }
+      if (!run) { run = []; runs.push(run); run.push(n(X(L.at)) + ',' + n(Y(L.v))); }
+      run.push(n(X(L.at + L.nm / 2)) + ',' + n(Y(L.v)));
+      run.last = n(X(L.at + L.nm)) + ',' + n(Y(L.v));
+    });
+    runs.forEach(function (pts) { s.push('<polyline class="st-speed" points="' + pts.concat([pts.last]).join(' ') + '"/>'); });
+    var first = legs[0], last = legs[legs.length - 1];
+    if (first.v != null) s.push('<text class="st-v" x="' + n(x0) + '" y="' + n(Y(first.v) - 4) + '">' + Math.round(first.v) + ' kn</text>');
+    if (last.v != null) s.push('<text class="st-v" x="' + n(x1) + '" y="' + n(Y(last.v) - 4) + '" text-anchor="end">' + Math.round(last.v) + ' kn</text>');
+    /* The axis: a tick every 2 nautical miles, labeled as often as the width allows. */
+    s.push('<line class="st-axis" x1="' + n(x0) + '" y1="' + AXIS + '" x2="' + n(x1) + '" y2="' + AXIS + '"/>');
+    var per = (x1 - x0) / total, every = [2, 4, 10, 20, 50].filter(function (k) { return k * per >= 34; })[0] || 50;
+    for (var nm = 0; nm <= total + 1e-9; nm += 2) {
+      var tx = X(nm);
+      s.push('<line class="st-axis" x1="' + n(tx) + '" y1="' + AXIS + '" x2="' + n(tx) + '" y2="' + (AXIS + 4) + '"/>');
+      if (nm % every === 0 && x1 - tx > 14) s.push('<text class="st-ax" x="' + n(tx) + '" y="' + (AXIS + 15) + '"' + (nm ? ' text-anchor="middle"' : '') + '>' + (nm ? nm : '0 nm') + '</text>');
+    }
+    var said = tr.stretches.map(function (st) {
+      return (st.level == null ? 'no forecast' : LEVEL_NAMES[st.level] + ', ' + causeWords(st)) + ' for ' + st.nm.toFixed(1) + ' nautical miles';
+    }).join('; ');
+    var label = 'Comfort from A to B by distance: ' + said + '.' + (first.v != null && last.v != null ? ' Comfortable speed ' + Math.round(first.v) + ' knots at A and ' + Math.round(last.v) + ' knots at B.' : '');
+    el.innerHTML = head + '<svg class="rstrip" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(label) + '">' + s.join('') + '</svg>';
+  }
+  /* The strip is drawn to its box's width, so it draws again when the box changes width. */
+  function fitStrip() {
+    if (!routeShown() || state.probe || state.moving != null) return;
+    if (Math.floor($('probe').clientWidth) !== stripW) renderStrip();
   }
