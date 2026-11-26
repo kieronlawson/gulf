@@ -313,7 +313,10 @@
       var on = g.getAttribute('data-id') === state.spot.id;
       g.classList.toggle('sel', on);
       g.setAttribute('aria-pressed', on ? 'true' : 'false');
-      if (on && g !== svg.lastElementChild) svg.appendChild(g);
+      /* The selected lamp rises above the other lamps, but stays below the saved places, so a place saved
+         beside it can still be tapped. */
+      var places = svg.querySelector('#ovPlaces');
+      if (on && g.nextElementSibling !== places) svg.insertBefore(g, places);
     });
   }
 
