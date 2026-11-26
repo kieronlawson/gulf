@@ -18,13 +18,19 @@ const data = {
   coast: json('data/coast.json'),
 };
 
+/* The page script is split into files under src/ui/. They share one function scope, so the build
+   joins them in this order inside a single function. Later files may use anything an earlier file declares. */
+const UI_FILES = ['core', 'day', 'tables', 'map', 'app'];
+const ui = '/* Hauraki Gulf Almanac: page behavior. Needs Engine and DATA. */\n(function () {\n  \'use strict\';\n\n' +
+  UI_FILES.map((f) => read(`src/ui/${f}.js`)).join('') + '})();\n';
+
 const parts = {
   '/*__CSS__*/': read('src/style.css'),
   '/*__ASTRONOMY__*/': read('node_modules/astronomy-engine/astronomy.browser.min.js'),
   '/*__NEAPS__*/': neaps,
   '/*__DATA__*/': 'var DATA=' + JSON.stringify(data) + ';\n',
   '/*__ENGINE__*/': read('src/engine.js'),
-  '/*__UI__*/': read('src/ui.js'),
+  '/*__UI__*/': ui,
 };
 
 let html = read('src/template.html');

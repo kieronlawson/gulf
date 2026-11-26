@@ -18,7 +18,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 | `src/template.html` | Page markup. `build.mjs` replaces each `/*__NAME__*/` marker. |
 | `src/style.css` | All styles. Color tokens are on `:root`, for light and dark. |
 | `src/engine.js` | Time, tides, sun, moon, solunar. No DOM. Exposes the global `Engine`. |
-| `src/ui.js` | Everything on screen, the forecast loaders, and the map overlay. |
+| `src/ui/` | Everything on screen. `build.mjs` joins these files, in the order its `UI_FILES` list gives, inside one function, so they share one scope. `core.js` holds the helpers, the state and the spot forecast. `day.js`, `tables.js` and `map.js` each draw one part. `app.js` holds the state changes and the wiring, and runs last. |
 | `data/` | Auckland harmonic constants and tidal levels, the spots, the coastline. |
 | `test/` | Node tests. `test/engine.mjs` loads the engine as the page does. |
 | `tools/` | The scripts that produced the data, and the screenshot tool. |
@@ -70,7 +70,7 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 
 **Weather.** The browser fetches Open-Meteo. Each spot gets a forecast and marine data. The map gets a grid of 83 water points: wind from the forecast service, current from the marine service. The page keeps the last loaded data in `localStorage` under keys that start with `gulf-almanac-`.
 
-**Flow.** The current model has cells of about 8 km. It does not resolve the channels. `loadFlowField` in `ui.js` is the only code that knows the source, so a better source can replace it there.
+**Flow.** The current model has cells of about 8 km. It does not resolve the channels. `loadFlowField` in `src/ui/map.js` is the only code that knows the source, so a better source can replace it there.
 
 **Chop.** The page measures fetch on a raster of the coastline, takes wave height and period from the JONSWAP growth curves, then applies a wave and current factor. The rating steps are 0.15, 0.3, 0.5 and 0.8 m. The owner has not yet confirmed these against the boat.
 
