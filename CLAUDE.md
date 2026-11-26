@@ -18,7 +18,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 | `src/template.html` | Page markup. `build.mjs` replaces each `/*__NAME__*/` marker. |
 | `src/style.css` | All styles. Color tokens are on `:root`, for light and dark. |
 | `src/engine.js` | Time, tides, sun, moon, solunar. No DOM. Exposes the global `Engine`. |
-| `src/ui/` | Everything on screen. `build.mjs` joins these files, in the order its `UI_FILES` list gives, inside one function, so they share one scope. `core.js` holds the helpers, the state and the spot forecast. `day.js`, `tables.js`, `map.js` and `week.js` each draw one part. `marks.js` holds the saved marks and home. `app.js` holds the state changes and the wiring, and runs last. |
+| `src/ui/` | Everything on screen. `build.mjs` joins these files, in the order its `UI_FILES` list gives, inside one function, so they share one scope. `core.js` holds the helpers, the state and the spot forecast. `day.js`, `tables.js`, `map.js` and `week.js` each draw one part. `marks.js` holds the saved marks and home, and `wheretogo.js` the list of places to go. `app.js` holds the state changes and the wiring, and runs last. |
 | `data/` | Auckland harmonic constants and tidal levels, the spots, the coastline. |
 | `test/` | Node tests. `test/engine.mjs` loads the engine as the page does. |
 | `tools/` | The scripts that produced the data, and the screenshot tool. |
@@ -80,6 +80,8 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 **Screen layout.** The wide layout applies from 1000 px wide and 700 px tall: `isWide` in `src/ui/core.js` and the media query at the end of `src/style.css` use the same test. In it, the frame fills the window and the page does not scroll. Below 700 px of height, as on an iPad mini in Safari, the screens stack and the page scrolls. Day puts the map on the left, the day on the right and the time bar along the bottom, and the day display takes the height that is left.
 
 **Saved places.** The owner saves the probe's point as a numbered mark or as home, from the probe reading under the map. The iPad stores them in `localStorage` under `gulf-almanac-marks` and `gulf-almanac-home`, as latitude and longitude. A deleted mark's number goes to the next new mark. A place may sit on land in the simplified coastline, as a marina often does; there the page gives a position and no wind, flow or chop estimate. Once home is set, the map's third preset centers on it.
+
+**Where to go.** Under the map, a list ranks the owner's marks and up to three suggestions, lowest chop first, at the map's time. A suggestion is one of the calmest chop cells within 10 nautical miles of the starting point, at least 3 nautical miles from the other suggestions and 1 from any mark. It makes no claim about fish. The starting point is home, or the selected tide spot until home is set; the Now screen uses the iPad's position. A dashed ring on the map shows the reach.
 
 **Map view.** The map's view is a center and a zoom, `view` in `src/ui/map.js`. At zoom 1 the whole map fits its frame, and the viewBox takes the frame's shape. Zoom stops at 6, because the coastline and the current model hold no finer detail. Pins, labels, arrows and the probe keep one size on screen at any zoom. Arrows sit 22 map units apart, or 11 once 22 units would be 70 px or more on screen. The presets are Whole Gulf, Inner Gulf, and 10 nautical miles around the selected spot.
 

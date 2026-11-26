@@ -43,6 +43,7 @@
     state.probe = { x: x, y: y, w: nearest(x, y), water: water, near: water && landWithin(x, y, NEAR_LAND_KM), key: key == null ? null : String(key) };
   }
   function selectPlace(key) {
+    if (key.charAt(0) === 's') { openGo(key); return; }   /* a suggestion from Where to go */
     var p = placeOf(key);
     if (!p) return;
     confirmKey = null;
@@ -52,20 +53,44 @@
 
   /* ---------- Saved places on the map ---------- */
 
+  /* One place on the map: a numbered disc for a mark or a suggestion, a square H for home. */
+  function placeGlyph(key, mx, my, label, cls, title, sel) {
+    var x = mx.toFixed(2), y = my.toFixed(2);
+    return '<g class="place ' + cls + (sel ? ' sel' : '') + '" data-key="' + key + '" data-at="' + x + ' ' + y + '" transform="translate(' + x + ' ' + y + ') scale(' + glyph().toFixed(4) + ')"' +
+      ' tabindex="0" role="button" aria-label="' + esc(title) + '"><circle class="hit" r="12"/><circle class="ring" r="8.6"/>' +
+      (cls === 'home' ? '<rect class="disc" x="-5.6" y="-5.6" width="11.2" height="11.2" rx="1.6"/>' : '<circle class="disc" r="5.9"/>') +
+      '<text y="2.5" text-anchor="middle">' + label + '</text></g>';
+  }
+
+  /* The saved places. Only the owner's own actions redraw them, so a timer never removes a disc that has
+     the keyboard's focus or is under a finger. */
   function renderPlaces() {
     var svg = $('mapSvg');
     if (!svg) return;
-    var s = glyph().toFixed(4), sel = state.probe && state.probe.key, out = '';
-    function one(key, p, label, cls) {
-      var x = mapX(p.lon).toFixed(2), y = mapY(p.lat).toFixed(2);
-      return '<g class="place ' + cls + (sel === key ? ' sel' : '') + '" data-key="' + key + '" data-at="' + x + ' ' + y + '" transform="translate(' + x + ' ' + y + ') scale(' + s + ')"' +
-        ' tabindex="0" role="button" aria-label="' + esc(placeTitle(key)) + '"><circle class="hit" r="12"/><circle class="ring" r="8.6"/>' +
-        (cls === 'home' ? '<rect class="disc" x="-5.6" y="-5.6" width="11.2" height="11.2" rx="1.6"/>' : '<circle class="disc" r="5.9"/>') +
-        '<text y="2.5" text-anchor="middle">' + label + '</text></g>';
-    }
-    state.marks.forEach(function (m) { out += one(String(m.n), m, m.n, 'mark'); });
-    if (state.home) out += one('home', state.home, 'H', 'home');
+    var sel = state.probe && state.probe.key, out = '';
+    state.marks.forEach(function (m) { var k = String(m.n); out += placeGlyph(k, mapX(m.lon), mapY(m.lat), m.n, 'mark', placeTitle(k), sel === k); });
+    if (state.home) out += placeGlyph('home', mapX(state.home.lon), mapY(state.home.lat), 'H', 'home', placeTitle('home'), sel === 'home');
     svg.querySelector('#ovPlaces').innerHTML = out;
+    renderReach();
+  }
+
+  /* The reach of Where to go: a dashed ring around its starting point. Its layer takes no taps, so it can
+     redraw whenever the starting point may have moved. */
+  function renderReach() {
+    var svg = $('mapSvg');
+    if (!svg) return;
+    var o = goOrigin();
+    svg.querySelector('#ovReach').innerHTML = '<circle class="m-reach" cx="' + o.x.toFixed(2) + '" cy="' + o.y.toFixed(2) + '" r="' + (REACH_NM * NM).toFixed(2) + '"/>';
+  }
+
+  /* The suggestions, redrawn only when the set changes. */
+  function renderSuggestions() {
+    var layer = $('ovSugg');
+    if (!layer) return;
+    var sig = suggestions.map(function (q) { return q.key + ' ' + q.x + ' ' + q.y; }).join('|');
+    if (layer.getAttribute('data-sig') === sig) return;
+    layer.setAttribute('data-sig', sig);
+    layer.innerHTML = suggestions.map(function (q) { return placeGlyph(q.key, q.x, q.y, q.label, 'sugg', 'Calmest water ' + q.label, false); }).join('');
   }
 
   /* ---------- The probe reading's head: the place and what can be done with it ---------- */

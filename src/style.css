@@ -253,7 +253,7 @@ button:disabled:active { transform: none; }
 #map svg { display: block; cursor: crosshair; }
 /* The layers that redraw during a gesture take no pointer input, so a touch never starts on an element
    that a redraw then removes. */
-#ovTint, #ovArrows, #ovProbe { pointer-events: none; }
+#ovTint, #ovReach, #ovArrows, #ovProbe { pointer-events: none; }
 .m-land { fill: url(#landDots); stroke: var(--land-edge); stroke-width: .9px; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .mapnorth path { fill: var(--ink2); }
 .mapnorth line { stroke: var(--ink2); stroke-width: 1.2; }
@@ -387,8 +387,8 @@ button:disabled:active { transform: none; }
 .mb-layers button { width: 92px; justify-content: flex-start; }
 .mb-zoom { right: 8px; bottom: 8px; }
 .mb-zoom button { width: 44px; padding: 0; font-size: 20px; }
-.mapmark { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; padding: 5px 7px; border-radius: 3px; background: var(--chassis); opacity: .92; pointer-events: none; }
-.mapnorth { width: 12px; height: 20px; overflow: visible; }
+.mapmark { position: absolute; right: 8px; top: 8px; display: flex; align-items: flex-end; gap: 8px; padding: 4px 7px; border-radius: 3px; background: var(--chassis); opacity: .85; pointer-events: none; }
+.mapnorth { width: 9px; height: 16px; overflow: visible; }
 .mapscale { font-family: var(--mono); font-size: 10.5px; color: var(--ink2); text-align: right; }
 .mapscale i { display: block; height: 5px; margin: 0 0 3px auto; border: 1.5px solid var(--ink2); border-top: 0; }
 
@@ -396,8 +396,6 @@ button:disabled:active { transform: none; }
 #probe { min-width: 0; }
 .probehint { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 13px; color: var(--ink2); }
 .probehint button { height: 44px; font-size: 13px; }
-.chopkey { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; font-size: 12px; color: var(--ink2); }
-.chopkey .sw { margin-left: 4px; }
 .probehead { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .probename { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .probename b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -406,6 +404,27 @@ button:disabled:active { transform: none; }
 .probeacts button { font-size: 12.5px; padding: 0 10px; }
 .probeacts .ask { font-size: 12.5px; font-weight: 600; color: var(--red); }
 
+/* Where to go: one row per place, lowest chop first. */
+.gohead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; font-size: 13px; }
+.gohead span { font-size: 12px; color: var(--ink2); }
+.golist { display: grid; margin-top: 4px; }
+.gorow {
+  display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 10px;
+  height: 44px; padding: 0 2px; border: 0; border-top: 1px solid var(--hair); border-radius: 0; background: none; box-shadow: none;
+  text-align: left; font-weight: 400; font-size: 13px;
+}
+.gorow:hover { background: var(--t1); }
+.gorow:active { transform: none; }
+.gomid, .gochop { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.gomid b, .gochop b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gomid span, .gochop span { font-family: var(--mono); font-size: 11.5px; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gochop { align-items: flex-end; text-align: right; }
+.gorow .sw { width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
+.badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-family: var(--mono); font-size: 11.5px; font-weight: 700; }
+.badge.mark { background: var(--ink); color: var(--chassis); }
+.badge.sugg { border: 1.5px dashed var(--ink2); color: var(--ink); }
+.m-reach { fill: none; stroke: var(--ink2); stroke-width: 1px; stroke-dasharray: 5 4; opacity: .75; vector-effect: non-scaling-stroke; }
+
 /* Saved places on the map: numbered discs for marks, a square H for home. Amber rings the selected one. */
 .place { cursor: pointer; outline: none; }
 .place .hit { fill: transparent; }
@@ -413,6 +432,8 @@ button:disabled:active { transform: none; }
 .place text { font-family: var(--mono); font-size: 7px; font-weight: 700; fill: var(--chassis); pointer-events: none; }
 .place.home .disc { fill: var(--chassis); stroke: var(--ink); stroke-width: 1.4; }
 .place.home text { fill: var(--ink); }
+.place.sugg .disc { fill: var(--chassis); stroke: var(--ink2); stroke-width: 1.2; stroke-dasharray: 2 1.6; }
+.place.sugg text { fill: var(--ink); }
 .place .ring { display: none; fill: none; stroke: var(--amber); stroke-width: 1.6; }
 .place.sel .ring, .place:focus-visible .ring { display: block; }
 

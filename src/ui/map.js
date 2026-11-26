@@ -295,14 +295,16 @@
       label('m-landname', 175.555, -36.94, 0, 'Coromandel');
 
     /* The scale bar and the north mark sit in a corner of the frame, outside the zoomed drawing. */
-    s += '<g id="ovArrows"></g><g id="ovProbe"></g>';
+    s += '<g id="ovReach"></g><g id="ovArrows"></g><g id="ovProbe"></g>';
     spots.forEach(function (sp) {
       var px = mapX(sp.lon), py = mapY(sp.lat), left = px > c.w * 0.6;
       s += '<g class="pin" data-id="' + sp.id + '" data-at="' + px.toFixed(1) + ' ' + py.toFixed(1) + '" tabindex="0" role="button" aria-label="' + esc(sp.name) + '">' +
         '<circle class="hit" r="10"/><circle class="ring" r="5.2"/><circle class="dot" r="2.9"/>' +
         '<text x="' + (left ? -8 : 8) + '" y="2.6" text-anchor="' + (left ? 'end' : 'start') + '">' + esc(sp.name) + '</text></g>';
     });
-    $('map').innerHTML = s + '<g id="ovPlaces"></g></svg>';
+    /* Suggestions and saved places sit above the lamps, each in its own layer: the suggestions change with
+       the map's time, and the saved places change only when the owner changes them. */
+    $('map').innerHTML = s + '<g id="ovSugg"></g><g id="ovPlaces"></g></svg>';
     applyView();
   }
 
@@ -313,10 +315,10 @@
       var on = g.getAttribute('data-id') === state.spot.id;
       g.classList.toggle('sel', on);
       g.setAttribute('aria-pressed', on ? 'true' : 'false');
-      /* The selected lamp rises above the other lamps, but stays below the saved places, so a place saved
-         beside it can still be tapped. */
-      var places = svg.querySelector('#ovPlaces');
-      if (on && g.nextElementSibling !== places) svg.insertBefore(g, places);
+      /* The selected lamp rises above the other lamps, but stays below the suggestions and saved places,
+         so a place beside it can still be tapped. */
+      var above = svg.querySelector('#ovSugg');
+      if (on && g.nextElementSibling !== above) svg.insertBefore(g, above);
     });
   }
 
@@ -591,9 +593,6 @@
     return d + '°' + (m < 9.95 ? '0' : '') + m.toFixed(1) + '′' + (v < 0 ? neg : pos);
   }
 
-  var CHOP_KEY = '<span class="chopkey" aria-label="Chop scale"><i class="sw sw0"></i>Smooth<i class="sw sw1"></i>Light' +
-    '<i class="sw sw2"></i>Moderate<i class="sw sw3"></i>Rough<i class="sw sw4"></i>Very rough</span>';
-
   /* The probe reading under the map: the values at the probe at the map's time, and chop through the day. */
   /* A line when the map has no estimates for this time, or an empty string. */
   function fieldProblem(t) {
@@ -612,12 +611,10 @@
 
   function renderProbe() {
     var el = $('probe'), t = mapTime();
+    updateSuggestions();
     if (state.moving != null) { el.innerHTML = movingPanel(); return; }
     var problem = fieldProblem(t);
-    if (!state.probe) {
-      el.innerHTML = problem || '<p class="probehint">Tap the map to read wind, flow and chop there, or to save a mark.</p>' + CHOP_KEY;
-      return;
-    }
+    if (!state.probe) { renderGo(); return; }
     var p = state.probe, head = probeHead();
     if (!p.water) {
       el.innerHTML = head + '<p class="small">The page has no wind, flow or chop estimate here. This point is on land, or on water that the map does not join to the Gulf.</p>';
