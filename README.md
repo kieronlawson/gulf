@@ -6,6 +6,8 @@ For a chosen spot and day the page shows tides, sun, moon, solunar periods and w
 
 ## Build and test
 
+Use the Node version named in `.nvmrc`.
+
 ```
 npm install
 npm run build     # writes dist/index.html
@@ -14,7 +16,7 @@ npm test
 
 `dist/index.html` is the whole product. Any static host can serve it.
 
-A push to `main` publishes the page to GitHub Pages. `.github/workflows/pages.yml` runs the tests first, and a failing test stops the publish.
+A push to `main` publishes the page to GitHub Pages. `.github/workflows/pages.yml` runs the tests first, and a failing test stops the publish. A pull request runs the tests and the build, but does not publish.
 
 ## What needs a connection
 

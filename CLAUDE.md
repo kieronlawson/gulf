@@ -6,7 +6,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 
 | Command | Result |
 |---|---|
-| `npm install` | Installs the build dependencies. |
+| `npm install` | Installs the build dependencies. Use the Node version in `.nvmrc`; the publish workflow uses it too. |
 | `npm run build` | Writes `dist/index.html`, one self-contained file. |
 | `npm test` | Checks tide predictions against the LINZ 2028 table for Auckland, and one day of sun, moon and solunar values against recorded results. |
 | `python3 tools/screenshot.py` | Renders the built page with a mocked forecast. Needs Python Playwright. Read the header of the file for options. |
@@ -23,7 +23,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 | `test/` | Node tests. `test/engine.mjs` loads the engine as the page does. |
 | `tools/` | The scripts that produced the data, and the screenshot tool. |
 | `docs/ipad-plan.md` | The agreed next step. |
-| `.github/workflows/pages.yml` | Tests, builds and publishes `dist/` to GitHub Pages on every push to `main`. |
+| `.github/workflows/pages.yml` | Tests, builds and publishes `dist/` to GitHub Pages on every push to `main`. Tests and builds each pull request without publishing. |
 
 The page scripts are plain globals, loaded in this order: `Astronomy`, `Neaps`, `DATA`, `Engine`, then the UI. The build inlines `astronomy-engine` and a bundle of `@neaps/tide-predictor`.
 
@@ -36,6 +36,7 @@ The page scripts are plain globals, loaded in this order: `Astronomy`, `Neaps`, 
 5. Write interface text plainly: name the actor, make one claim per sentence, use no idiom.
 6. The map uses no third-party component. It is SVG drawn from `data/coast.json`.
 7. Check both themes and a 390 px wide screen after any layout change.
+8. Open a pull request when a task is complete.
 
 ## Design
 
