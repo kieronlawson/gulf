@@ -5,7 +5,22 @@
   /* Fish icon: Font Awesome Free "fish" (solid), CC BY 4.0. Its view box is 576 by 512. */
   var FISH = 'M180.5 141.5C219.7 108.5 272.6 80 336 80s116.3 28.5 155.5 61.5c39.1 33 66.9 72.4 81 99.8 4.7 9.2 4.7 20.1 0 29.3-14.1 27.4-41.9 66.8-81 99.8-39.2 33.1-92 61.5-155.5 61.5s-116.3-28.5-155.5-61.5c-16.2-13.7-30.5-28.5-42.7-43.1L48.1 379.6c-12.5 7.3-28.4 5.3-38.7-4.9s-12.4-26-5.3-38.6L50 256 4.2 175.9c-7.2-12.6-5-28.4 5.3-38.6s26.1-12.2 38.7-4.9l89.7 52.3c12.2-14.6 26.5-29.4 42.7-43.1zM448 256a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z', FISH_W = 576, FISH_H = 512;
 
+  /* The size of the display's box: its width and, in the wide layout, the height the column gives it. A hidden
+     screen measures 0 by 0. */
+  function chartBox() {
+    var host = $('chart');
+    return { w: Math.floor(host.clientWidth), h: isWide() ? Math.floor(host.parentNode.clientHeight) : 0 };
+  }
+  /* The box size the display was last drawn for. A draw while the Day screen is hidden uses default sizes, so
+     fitChart draws again once the box no longer matches, as when the Day screen shows. */
+  var chartFor = { w: 0, h: 0 };
+  function fitChart() {
+    var b = chartBox();
+    if (b.w && (b.w !== chartFor.w || b.h !== chartFor.h)) renderChart();
+  }
+
   function renderChart() {
+    chartFor = chartBox();
     var host = $('chart'), W = Math.max(300, Math.floor(host.clientWidth || 900));
     var d = E.day(state.spot, state.d0), c = E.dayCurves(state.spot, state.d0);
     var hrs = dayRecs(d.d0, d.d1), sun = d.sun, small = W < 560;
