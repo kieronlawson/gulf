@@ -314,7 +314,7 @@
     track.setAttribute('aria-valuetext', (pin != null ? 'Pinned at ' + E.fmtTime(pin) + ', ' + E.fmtDay(pin) : 'Following now, ' + E.fmtTime(now)));
     $('tbTime').textContent = E.fmtTime(shown);
     /* While a route is open, the time on the bar is the time the boat leaves. */
-    $('tbState').textContent = dragT != null ? 'Release to pin' : routeShown() ? 'Leave time' : pin != null ? 'Pinned, ' + E.fmtDay(pin) : 'Now';
+    $('tbState').textContent = dragT != null ? 'Release to pin' : state.routes.day ? 'Leave time' : pin != null ? 'Pinned, ' + E.fmtDay(pin) : 'Now';
     $('tbNow').disabled = pin == null;
     $('tbPlay').textContent = playTimer ? 'Pause' : 'Play';
     $('tbPlay').setAttribute('aria-pressed', playTimer ? 'true' : 'false');

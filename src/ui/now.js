@@ -96,6 +96,8 @@
     if (state.screen !== 'now') return;
     renderNowSide();
     if (view.preset === 'spot') setPreset('spot'); else markViewButtons();
+    /* An open route starts at the iPad's position, so it follows the move. */
+    if (state.routes.now) renderRoute();
     renderReach(); renderProbe();
   }
 
@@ -107,8 +109,16 @@
     $('nowMapTitle').textContent = h.you ? 'Gulf around you' : 'Gulf around ' + h.name;
     $('hereTitle').textContent = h.you ? 'Here, now' : h.name + ', now';
     $('next6Title').textContent = 'Next 6 hours ' + h.at;
-    $('goTitle').textContent = 'Where to go from ' + (h.you ? 'here' : h.name);
+    nowGoTitle();
     renderPosLine(); renderHere(h); renderNext6(h); renderRunHome(h); markNowSteps();
+  }
+
+  /* The fourth part lists the places to go, or, while a route is open, shows the route from here. */
+  function nowGoTitle() {
+    var h = here(), r = state.routes.now, where = h.you ? 'here' : h.name;
+    /* After Swap the route runs to the iPad's position, so the title follows the live end. */
+    $('goTitle').textContent = !r ? 'Where to go from ' + where : r.b.live ? 'Route to ' + where : 'Route from ' + where;
+    $('nowRouteClose').hidden = !r;
   }
 
   /* The line that says where the position comes from. */
@@ -277,60 +287,72 @@
   }
 
   /* ---------- Run home ----------
-     The leave-by time is last light, less the straight-line run at the owner's speed, less the owner's margin.
-     Chop on the way is the roughest water on that line, at the time the run would start. */
+     The run home is the route over open water from the Now screen's starting point to home, leaving now. The
+     leave-by time is last light, less the trip at comfortable speeds, less the owner's margin. */
 
-  /* Points every quarter mile along the straight line. The ends often sit on land, at a marina or a ramp;
-     land between two stretches of water means the line crosses land. */
-  function chopOnTheWay(a, b, t) {
-    var n = Math.max(2, Math.ceil(distNm(a, b) / 0.25)), pts = [], worst = null, firstW = -1, lastW = -1, i;
-    for (i = 0; i <= n; i++) {
-      var x = a.x + (b.x - a.x) * i / n, y = a.y + (b.y - a.y) * i / n, water = isWater(x, y);
-      pts.push(water);
-      if (!water) continue;
-      if (firstW < 0) firstW = i;
-      lastW = i;
-      var c = condAt(x, y, nearest(x, y), t);
-      if (c && (!worst || c.chop.h > worst.chop.h)) worst = c;
-    }
-    var crosses = false;
-    for (i = firstW + 1; i < lastW; i++) if (!pts[i]) crosses = true;
-    return { worst: worst, water: firstW >= 0, crosses: crosses };
+  /* The trip home leaving at t0: the path's legs at comfortable speeds, and the water between the path's ends
+     and the places themselves at the owner's boat speed. A home at a marina, or a position beside one, sits off
+     the path, which keeps about 200 m from land, and the boat still covers that water. run is null without a
+     path or a boat speed. */
+  function homeTrip(h, home, t0) {
+    var tr = scoreTrip(h, home, t0), p = tr.path, speed = state.limits.speed;
+    if (!p || !p.found || speed == null) return { tr: tr, run: null };
+    var off = (p.fromNm || 0) + (p.toNm || 0);
+    return { tr: tr, nm: tr.nm + off, run: (tr.score ? tr.score.ms : 0) + off / speed * HOUR };
   }
 
   function renderRunHome(h) {
-    var el = $('runHome'), t = Date.now(), sp = nearestSpot(h.x, h.y), sun = E.day(sp, E.dayStart(t)).sun, L = state.limits;
-    var home = state.home ? { x: mapX(state.home.lon), y: mapY(state.home.lat) } : null;
-    var nm = home ? distNm(h, home) : null, lv = home ? E.leaveBy(sun.dusk, nm, L.speed, L.margin) : null;
-    var rows = [], notes = [];
+    var el = $('runHome'), t = Date.now(), now = Math.floor(t / MIN) * MIN, sp = nearestSpot(h.x, h.y), sun = E.day(sp, E.dayStart(t)).sun, L = state.limits;
+    var home = state.home ? { name: 'Home', x: mapX(state.home.lon), y: mapY(state.home.lat) } : null;
+    var trip = home ? homeTrip(h, home, now) : null, tr = trip && trip.tr, p = tr && tr.path, found = !!(p && p.found);
+    /* The sea at the leave-by time can differ from the sea now. The trip is scored again leaving at the leave-by
+       time, up to three times, and the earliest leave-by time stands. Once that time has passed, leaving now is
+       the trip. */
+    var lv = trip && trip.run != null ? E.leaveBy(sun.dusk, trip.run, L.margin) : null;
+    for (var i = 0, cur = lv; cur && cur.at > now && i < 3; i++) {
+      var again = homeTrip(h, home, cur.at), next = again.run != null ? E.leaveBy(sun.dusk, again.run, L.margin) : null;
+      if (!next) break;
+      if (i === 0 || next.at < lv.at) lv = next;
+      if (Math.abs(next.at - cur.at) < MIN) break;
+      cur = next;
+    }
+    /* The trip leaving at the leave-by time, for the note under it. */
+    var later = lv && lv.at > now ? homeTrip(h, home, lv.at) : null;
+    var rows = [], notes = [], where = h.you ? 'here' : h.name;
     function row(k, v, cls) { return '<div' + (cls ? ' class="' + cls + '"' : '') + '><dt>' + k + '</dt><dd>' + v + '</dd></div>'; }
 
     if (!home) {
       rows.push(row('Leave by', 'No home set', 'lead'));
       notes.push('To set home, tap the map where the boat comes out of the water, then select Set home.');
+    } else if (!p) {
+      rows.push(row('Leave by', 'No path', 'lead'));
+      notes.push('The map has no coastline to search, so the page cannot find a path home.');
+    } else if (!found) {
+      rows.push(row('Leave by', 'No path', 'lead'));
+      notes.push('The page found no path over open water from ' + where + ' to home.');
     } else if (!lv) {
       rows.push(row('Leave by', 'Not set', 'lead'));
       notes.push('Set your boat speed and margin under Limits. <button type="button" data-act="limits">Limits</button>');
     } else {
       var late = lv.at <= t;
       rows.push(row('Leave by', E.fmtTime(lv.at) + '<span>' + (late ? E.fmtDuration(t - lv.at) + ' ago' : 'in ' + E.fmtDuration(lv.at - t)) + '</span>', 'lead' + (late ? ' alert' : '')));
-      if (late) notes.push('The leave-by time has passed. At ' + L.speed + ' kn you reach home ' + E.fmtDuration(Math.abs(t + lv.run - sun.dusk)) + (t + lv.run > sun.dusk ? ' after' : ' before') + ' last light.');
+      if (late) notes.push('The leave-by time has passed. Leaving now, at comfortable speeds, you reach home ' + E.fmtDuration(Math.abs(t + trip.run - sun.dusk)) + (t + trip.run > sun.dusk ? ' after' : ' before') + ' last light.');
+      else if (later && later.run != null && Math.abs(later.run - trip.run) >= MIN) notes.push('Leaving at ' + E.fmtTime(lv.at) + ', the trip takes ' + E.fmtDuration(later.run) + ' at comfortable speeds, for the sea forecast then. The leave-by time allows for that trip.');
     }
-    rows.push(row('Home', home ? nm.toFixed(1) + ' nm ' + compass(bearingFrom(h, home)) : 'Not set'));
-    rows.push(L.speed == null ? row('Run', home ? 'No speed set' : '–') : row('Run at ' + L.speed + ' kn', home ? E.fmtDuration(nm / L.speed * HOUR) : '–'));
+    rows.push(row('Home', !home ? 'Not set' : found ? (trip.nm != null ? trip.nm : tr.nm).toFixed(1) + ' nm ' + compass(bearingFrom(h, home)) : '–'));
+    if (home && found) rows.push(row('Trip now', L.speed == null ? 'No speed set' : E.fmtDuration(trip.run)));
     rows.push(row('Sunset', E.fmtTime(sun.set)), row('Last light', E.fmtTime(sun.dusk)));
-
-    if (home) {
-      /* The chop at the start of the run: the leave-by time while it is ahead, and now once it has passed. */
-      var tc = lv && lv.at > t ? lv.at : t, way = field.wind && fieldIndex(field.wind, tc) != null ? chopOnTheWay(h, home, tc) : null;
-      var when = tc === t ? 'now' : 'at ' + E.fmtTime(tc), chopTxt;
-      if (!way) chopTxt = 'No forecast';
-      else if (!way.worst) chopTxt = way.water ? 'No forecast' : 'No water on the line';
-      else chopTxt = '<i class="sw sw' + way.worst.chop.level + '" aria-hidden="true"></i>' + CHOP_SHORT[way.worst.chop.level] + ' at worst' +
-        (way.worst.chop.h >= 0.05 ? ', ' + way.worst.chop.h.toFixed(1) + ' m' : '');
-      rows.push(row('Chop on the way ' + when, chopTxt, 'wide'));
-      notes.push(way && way.crosses ? 'The straight line crosses land, so the real run is longer than this.' :
-        'The run is a straight line. The map cannot route around land.');
+    if (tr && tr.score) {
+      var w = tr.worst;
+      rows.push(row('Worst stretch now', w ? '<i class="lvb lvb' + w.level + '" aria-hidden="true"></i>' + E.COMFORT.names[w.level] + ', ' + causeWords(w) : 'No forecast', 'wide'));
+      if (tr.score.missingNm > 0) notes.push('The forecast does not cover ' + (tr.score.missingNm >= tr.nm - 1e-6 ? 'the trip' : tr.score.missingNm.toFixed(1) + ' nm of the trip') + ', so the trip time counts that part at your boat speed.');
+    }
+    /* The water between the path's ends and the places, when it is 0.2 nautical miles or more. */
+    if (found) {
+      var off = [];
+      if (p.fromNm >= 0.2) off.push((h.you ? 'Your position' : h.name) + ' is ' + p.fromNm.toFixed(1) + ' nm');
+      if (p.toNm >= 0.2) off.push('Home is ' + p.toNm.toFixed(1) + ' nm');
+      if (off.length) notes.push(off.join(', and ') + ' from the nearest open water on the map. The trip counts that water at your boat speed.');
     }
     el.innerHTML = '<dl class="runrows">' + rows.join('') + '</dl>' + notes.map(function (n) { return '<p class="small">' + n + '</p>'; }).join('');
   }

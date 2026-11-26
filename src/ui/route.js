@@ -3,13 +3,14 @@
 
   /* ---------- The path and its score ---------- */
 
-  /* The last few paths, by their ends, so a new leave time does not search again. */
+  /* The last few paths, by the raster cells of their ends, so a new leave time, or a move of the iPad within
+     one cell, does not search again. */
   var routePaths = [];
   /* The path between two points in map units, as map units. fromNm and toNm say how far each end moved to
      reach open water, in nautical miles. Null until the map's water raster exists. */
   function routePath(a, b) {
     if (!MASK) return null;
-    var key = [a.x, a.y, b.x, b.y].map(function (v) { return v.toFixed(3); }).join(' ');
+    var key = [a.x, a.y, b.x, b.y].map(function (v) { return Math.round(v * MASK.R); }).join(' ');
     for (var i = 0; i < routePaths.length; i++) if (routePaths[i].key === key) return routePaths[i].res;
     var R = MASK.R, r = E.findPath(MASK, { x: a.x * R, y: a.y * R }, { x: b.x * R, y: b.y * R });
     var res = {
@@ -45,24 +46,41 @@
     return out;
   }
 
-  /* ---------- Opening and closing ---------- */
+  /* ---------- Opening and closing ----------
+     Each screen with the map keeps its own route, state.routes.day and state.routes.now, or null. A route
+     holds its ends A and B, whether the day display shows in full, and the map view from before it opened.
+     An end is { name, x, y } in map units, or { live: true }, which follows the iPad's position. trip is the
+     shown route as last scored. */
+  var trip = null;
 
-  /* state.route is the open route, or null: its ends A and B, each { name, x, y } in map units, and whether
-     the day display shows in full. trip is the route as last scored. */
-  var trip = null, routeBack = null;
+  function curRoute() { return state.routes[state.mapScreen] || null; }
+  /* Whether the screen that holds the map shows a route now. */
+  function routeShown() { return !!curRoute(); }
+  /* An end as a place. A live end is the Now screen's starting point: the iPad's position, or the selected
+     spot while there is none. */
+  function endAt(e) {
+    if (!e.live) return e;
+    var h = here();
+    return { name: h.you ? 'Your position' : h.name, x: h.x, y: h.y };
+  }
 
-  /* A is the starting point of Where to go: home, or the selected spot until home is set. */
+  /* A is the starting point of Where to go. On the Day screen it is home, or the selected spot until home is
+     set. On the Now screen it is the iPad's position, and it follows the boat. */
   function openRoute(b) {
-    var o = goOrigin();
-    if (!state.route) routeBack = { cx: view.cx, cy: view.cy, z: view.z, preset: view.preset };
-    state.route = { a: { name: o.name === 'home' ? 'Home' : o.name, x: o.x, y: o.y }, b: b, showDay: false };
+    var old = curRoute(), o = goOrigin();
+    state.routes[state.mapScreen] = {
+      a: state.mapScreen === 'now' ? { live: true } : { name: o.name === 'home' ? 'Home' : o.name, x: o.x, y: o.y },
+      b: b, showDay: false,
+      back: old ? old.back : { cx: view.cx, cy: view.cy, z: view.z, preset: view.preset }
+    };
     state.probe = null; confirmKey = null;
-    /* The route leaves at a time on the day shown: the pinned time, or now on today. On another day with
-       nothing pinned, the start of the bar is pinned. */
-    if (state.pin == null && state.d0 !== E.dayStart(Date.now())) pinTime(tbRange().a);   /* pinTime draws the route */
+    $('probe').scrollTop = 0;
+    /* On the Day screen the route leaves at a time on the day shown: the pinned time, or now on today. On
+       another day with nothing pinned, the start of the bar is pinned. */
+    if (state.mapScreen === 'day' && state.pin == null && state.d0 !== E.dayStart(Date.now())) pinTime(tbRange().a);   /* pinTime draws the route */
     else renderRoute();
     setPreset('route');
-    renderPlaces(); renderProbeMark(); renderProbe(); renderTimebar();
+    renderPlaces(); renderProbeMark(); renderProbe(); renderTimebar(); nowGoTitle();
   }
   function routeToPlace(key) {
     if (key.charAt(0) === 's') {
@@ -82,36 +100,38 @@
   }
   /* The map returns to the view it had before the route opened, unless the owner has moved it since. */
   function closeRoute() {
-    state.route = null; trip = null;
-    var v = routeBack;
-    routeBack = null;
+    var r = curRoute();
+    if (!r) return;
+    state.routes[state.mapScreen] = null; trip = null;
+    $('probe').scrollTop = 0;
     renderRoute();
     if (view.preset === 'route') {
+      var v = r.back;
       if (v && v.preset && v.preset !== 'route') setPreset(v.preset);
       else if (v) { view.cx = v.cx; view.cy = v.cy; view.z = v.z; view.preset = null; applyView(); }
       else setPreset('whole');
     }
-    renderProbe(); renderTimebar(); markViewButtons();
+    renderProbe(); renderTimebar(); markViewButtons(); nowGoTitle();
   }
   function swapRoute() {
-    var r = state.route;
+    var r = curRoute();
     if (!r) return;
     var a = r.a; r.a = r.b; r.b = a;
-    renderRoute();
+    renderRoute(); nowGoTitle();
   }
   function toggleDayDisplay() {
-    if (!state.route) return;
-    state.route.showDay = !state.route.showDay;
+    var r = state.routes.day;
+    if (!r) return;
+    r.showDay = !r.showDay;
     renderRoute();
   }
-  /* Whether the Day screen shows a route now. The route belongs to the Day screen's map. */
-  function routeShown() { return !!state.route && state.mapScreen === 'day'; }
 
   /* The map view that fits the path. The path keeps 60 px clear at the top and bottom of the map, where its
      buttons sit, and 24 px at the sides. A short path still shows at least a nautical mile each way. */
   function routeBox() {
-    var r = state.route, p = r ? routePath(r.a, r.b) : null, pts = p && p.found ? p.points : r ? [r.a, r.b] : [];
-    if (!pts.length) return PRESETS.whole();
+    var r = curRoute();
+    if (!r) return PRESETS.whole();
+    var a = endAt(r.a), b = endAt(r.b), p = routePath(a, b), pts = p && p.found ? p.points : [a, b];
     var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     pts.forEach(function (q) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); });
     var fw = frame.w || 400, fh = frame.h || 400;
@@ -122,23 +142,28 @@
 
   /* ---------- Drawing ---------- */
 
-  /* Everything the route changes: the Day screen's layout, the view buttons, the path on the map, the route
-     panel and the one-row day. The route is scored for the map's time, the leave time. */
+  /* Everything a route changes: the Day screen's layout, the view buttons, the path on the map, the panels and
+     the one-row day. The Day screen's route leaves at the time on the bar; the Now screen's leaves now. */
   function renderRoute() {
-    var shown = routeShown(), compact = shown && !state.route.showDay;
+    var r = curRoute(), onDay = state.mapScreen === 'day', dr = state.routes.day, compact = !!dr && !dr.showDay;
     $('dayView').classList.toggle('compact', compact);
     $('routeUnit').hidden = !compact;
     $('dayLane').hidden = !compact;
     $('dayNote').hidden = compact;
-    $('dayToggle').hidden = !shown;
+    $('dayToggle').hidden = !dr;
     $('dayToggle').textContent = compact ? 'Show day display' : 'Show route';
-    $('viewRoute').hidden = !shown;
-    $('viewSpot').hidden = shown;
-    trip = shown ? scoreTrip(state.route.a, state.route.b, mapTime()) : null;
+    $('viewRoute').hidden = !r;
+    $('viewSpot').hidden = !!r;
+    if (r) {
+      var a = endAt(r.a), b = endAt(r.b);
+      trip = scoreTrip(a, b, onDay ? mapTime() : Math.floor(Date.now() / MIN) * MIN);
+      trip.a = a; trip.b = b;
+    } else trip = null;
     drawRouteMap();
-    if (compact) { renderRoutePanel(); renderDayLane(); }
-    else { $('routePanel').innerHTML = ''; $('dayLane').innerHTML = ''; }
-    if (shown && !state.probe && state.moving == null) renderStrip();
+    /* The Day screen's panel draws only while the map is there, because trip is the shown route. */
+    if (onDay && compact) { renderRoutePanel(); renderDayLane(); }
+    else if (onDay) { $('routePanel').innerHTML = ''; $('dayLane').innerHTML = ''; }
+    if (r && !state.probe && state.moving == null) renderStrip();
   }
 
   var LEVEL_NAMES = E.COMFORT.names;
@@ -155,9 +180,9 @@
     var layer = $('ovRoute'), ends = $('ovEnds');
     if (!layer || !ends) return;
     if (!trip) { layer.innerHTML = ''; ends.innerHTML = ''; return; }
-    var r = state.route, p = trip.path, s = '';
+    var p = trip.path, s = '';
     function pt(x, y) { return x.toFixed(2) + ',' + y.toFixed(2); }
-    var A = r.a, B = r.b;
+    var A = trip.a, B = trip.b;
     if (p && p.found) {
       A = p.points[0]; B = p.points[p.points.length - 1];
       s += '<polyline class="m-route-under" points="' + p.points.map(function (q) { return pt(q.x, q.y); }).join(' ') + '"/>';
@@ -179,9 +204,29 @@
     return s.cause === 'sheltered' ? 'sheltered' : s.cause + ', ' + s.h.toFixed(1) + ' m';
   }
 
+  /* Why a route has no path to draw. The panel and the strip both say it. */
+  function noPathWords(tr) {
+    var p = tr.path;
+    if (!p) return '<p class="probehint">The map has no coastline to search, so the page cannot find a path.</p>';
+    if (!p.found) return '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>The page found no path over open water from A to B. ' +
+      'It keeps a path about 200 m off land, so a narrow entrance can close it.</span></p>';
+    return '<p class="probehint">A and B are at the same point of open water.</p>';
+  }
+  /* Why part or all of a scored route is gray: how much the forecast misses, and why, with Load now after a
+     failed load. Empty when every leg has a score. */
+  function missingWords(tr) {
+    if (!tr.score || !(tr.score.missingNm > 0)) return '';
+    var all = tr.score.missingNm >= tr.nm - 1e-6, problem = fieldProblem(tr.t0);
+    return '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>Score incomplete. ' +
+      (all ? 'The forecast does not cover this route at the leave time.' :
+        'The forecast does not cover ' + tr.score.missingNm.toFixed(1) + ' nm of the route, drawn gray.') +
+      ' The trip time counts ' + (all ? 'the route' : 'those legs') + ' at cruising speed.</span></p>' + (problem || '');
+  }
+
   /* The route panel: A, B and Swap; the distance, the trip time and the worst stretch; then the stretches. */
-  function renderRoutePanel() {
-    var el = $('routePanel'), r = state.route, tr = trip, html = '', notes = [];
+  function renderRoutePanel() { $('routePanel').innerHTML = routePanelHtml(); }
+  function routePanelHtml() {
+    var r = trip, tr = trip, html = '', notes = [];
     function end(label, name) {
       return '<div class="rt-end"><span class="rt-badge" aria-hidden="true">' + label + '</span><span class="rt-name">' +
         '<span class="vh">' + label + ', </span>' + esc(name) + '</span></div>';
@@ -190,13 +235,8 @@
     html += '<div class="rt-ends">' + end('A', r.a.name) +
       '<button type="button" data-act="route-swap" aria-label="Swap A and B">Swap</button>' + end('B', r.b.name) + '</div>';
     var p = tr.path;
-    if (!p) {
-      html += '<p class="probehint">The map has no coastline to search, so the page cannot find a path.</p>';
-    } else if (!p.found) {
-      html += '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>The page found no path over open water from A to B. ' +
-        'It keeps a path about 200 m off land, so a narrow entrance can close it.</span></p>';
-    } else if (!tr.legs.length) {
-      html += '<p class="probehint">A and B are at the same point of open water.</p>';
+    if (!p || !p.found || !tr.legs.length) {
+      html += noPathWords(tr);
     } else {
       var rows = [row('Distance', tr.nm.toFixed(1) + ' nm')];
       if (!tr.score) {
@@ -208,14 +248,7 @@
         rows.push(row('Worst stretch', w ? LEVEL_NAMES[w.level] + ', ' + causeWords(w) : 'No forecast'));
       }
       html += '<dl class="rt-totals">' + rows.join('') + '</dl>';
-      if (tr.score && tr.score.missingNm > 0) {
-        var all = tr.score.missingNm >= tr.nm - 1e-6, problem = fieldProblem(tr.t0);
-        html += '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>Score incomplete. ' +
-          (all ? 'The forecast does not cover this route at the leave time.' :
-            'The forecast does not cover ' + tr.score.missingNm.toFixed(1) + ' nm of the route, drawn gray.') +
-          ' The trip time counts ' + (all ? 'the route' : 'those legs') + ' at cruising speed.</span></p>';
-        if (problem) html += problem;
-      }
+      html += missingWords(tr);
       if (tr.stretches) {
         var listed = tr.stretches.filter(function (s) { return s.nm >= E.COMFORT.stretchNm; });
         html += '<div class="rt-list">' + listed.map(function (s) {
@@ -230,7 +263,7 @@
       });
     }
     notes.push('A line for scoring. Not a route to steer.');
-    el.innerHTML = html + notes.map(function (n) { return '<p class="small">' + n + '</p>'; }).join('');
+    return html + notes.map(function (n) { return '<p class="small">' + n + '</p>'; }).join('');
   }
 
   /* The day display, collapsed: the selected day drawn as a Week row over the time bar's hours, with a line
@@ -253,12 +286,22 @@
   function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
   var stripW = 0;
+  /* On the Now screen the route panel comes first and the strip under it, in the place of Where to go, whose
+     box there is short. */
   function renderStrip() {
-    var el = $('probe'), r = state.route, tr = trip;
-    if (!r || !tr) { el.innerHTML = ''; return; }
+    var el = $('probe');
+    if (!trip) { el.innerHTML = ''; return; }
     var W = Math.floor(el.clientWidth);
     stripW = W;
-    var head = '<div class="sthead"><b>From A to B, leaving ' + E.fmtTime(tr.t0) + (E.dayStart(tr.t0) !== E.dayStart(Date.now()) ? ', ' + E.fmtDay(tr.t0) : '') + '</b>';
+    /* On the Day screen the strip says why it draws no route or no score. Once the day display shows again, the
+       panel is hidden, so the strip also says why legs are gray. On the Now screen the panel above it says both. */
+    var r = state.routes.day, panelHidden = !!(r && r.showDay);
+    el.innerHTML = state.mapScreen === 'now' ? '<div class="routepanel">' + routePanelHtml() + '</div>' + stripHtml(W, false, false) : stripHtml(W, true, panelHidden);
+  }
+  /* The strip's markup at width W. With hints, it says why it draws no route or no score; with gaps, why legs are gray. */
+  function stripHtml(W, hints, gaps) {
+    var tr = trip;
+    var head = '<div class="sthead"><b>From A to B, leaving ' + (state.mapScreen === 'now' ? 'now' : E.fmtTime(tr.t0) + (E.dayStart(tr.t0) !== E.dayStart(Date.now()) ? ', ' + E.fmtDay(tr.t0) : '')) + '</b>';
     var levels = '';
     if (tr.score) {
       var seen = {};
@@ -268,12 +311,9 @@
     }
     head += '<span class="stlegend">' + levels + '</span></div>';
     var p = tr.path;
-    if (!p || !p.found || !tr.legs.length) { el.innerHTML = head + '<p class="probehint">The route panel says why there is no path to draw.</p>'; return; }
-    if (!tr.score) {
-      el.innerHTML = head + '<p class="probehint">Set your boat speed under Limits to score this route. <button type="button" data-act="limits">Limits</button></p>';
-      return;
-    }
-    if (!W) { el.innerHTML = head; return; }
+    if (!p || !p.found || !tr.legs.length) return head + (hints ? noPathWords(tr) : '');
+    if (!tr.score) return head + (hints ? '<p class="probehint">Set your boat speed under Limits to score this route. <button type="button" data-act="limits">Limits</button></p>' : '');
+    if (!W) return head;
 
     var legs = tr.score.legs, total = tr.nm, x0 = 56, x1 = W - 4, s = [], n = function (v) { return v.toFixed(1); };
     function X(nm) { return x0 + nm / total * (x1 - x0); }
@@ -320,7 +360,8 @@
       return (st.level == null ? 'no forecast' : LEVEL_NAMES[st.level] + ', ' + causeWords(st)) + ' for ' + st.nm.toFixed(1) + ' nautical miles';
     }).join('; ');
     var label = 'Comfort from A to B by distance: ' + said + '.' + (first.v != null && last.v != null ? ' Comfortable speed ' + Math.round(first.v) + ' knots at A and ' + Math.round(last.v) + ' knots at B.' : '');
-    el.innerHTML = head + '<svg class="rstrip" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(label) + '">' + s.join('') + '</svg>';
+    return head + '<svg class="rstrip" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(label) + '">' + s.join('') + '</svg>' +
+      (gaps ? missingWords(tr) : '');
   }
   /* The strip is drawn to its box's width, so it draws again when the box changes width. */
   function fitStrip() {

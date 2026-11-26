@@ -86,8 +86,8 @@
       var chopCell = r.c ? '<b><i class="sw sw' + r.c.chop.level + '"></i>' + CHOP_SHORT[r.c.chop.level] + '</b><span>' + (r.c.chop.h >= 0.05 ? r.c.chop.h.toFixed(1) + ' m' : 'under 0.1 m') + '</span>' :
         '<b>' + (r.water ? 'No forecast' : 'No estimate') + '</b>';
       var label = r.name + ', ' + d.toFixed(1) + ' nautical miles ' + dir + ' of ' + o.name + (r.c ? ', wind ' + wind + ', ' + chopText(r.c) : '');
-      /* On the Day screen each row has a Route button: a route from the starting point to the place. */
-      var route = state.mapScreen === 'day' ? '<button type="button" class="goroute" data-route="' + r.key + '" aria-label="' + esc('Route from ' + o.name + ' to ' + r.name) + '">Route</button>' : '';
+      /* Each row has a Route button: a route from the starting point to the place. */
+      var route = '<button type="button" class="goroute" data-route="' + r.key + '" aria-label="' + esc('Route from ' + o.name + ' to ' + r.name) + '">Route</button>';
       return '<div class="goitem"><button type="button" class="gorow" data-go="' + r.key + '" aria-label="' + esc(label) + '">' +
         '<span class="badge ' + r.kind + '">' + r.badge + '</span>' +
         '<span class="gomid"><b>' + esc(r.name) + '</b><span>' + d.toFixed(1) + ' nm ' + dir + (wind ? ', wind ' + wind : '') + '</span></span>' +

@@ -61,7 +61,8 @@
     moving: null,       /* the key of a saved place that the next map tap moves */
     mapScreen: 'day',   /* the screen that holds the map: day or now */
     nowStep: 0,         /* hours ahead that the map shows on the Now screen: 0 to 3 */
-    layers: { wind: true, flow: true, chop: true }
+    layers: { wind: true, flow: true, chop: true },
+    routes: { day: null, now: null }   /* the open route on each screen with the map: see route.js */
   };
 
   /* ---------- Small drawing helpers ---------- */

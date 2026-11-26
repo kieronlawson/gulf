@@ -162,7 +162,7 @@ Each step is one pull request, merged before the next starts.
 | 1 | The arithmetic, in `engine.js`: the path search, the legs, the clock, the scoring rules, the comfortable speed and the stretches. Their tests. | Done. |
 | 2 | The route on the Day screen: the Route buttons, the path on the map with A and B, the Route view, the collapsed day display, the route panel and the time bar's Leave time. | Done. |
 | 3 | The strip under the map. | Done. |
-| 4 | The Now screen: a route from the iPad's position, and Run home on the path. | Not started. |
+| 4 | The Now screen: a route from the iPad's position, and Run home on the path. | Done. |
 | 5 | Ferry lanes. | Not started. |
 
 ## Decisions made in the build
@@ -192,3 +192,13 @@ Each step is one pull request, merged before the next starts.
   - The speed line runs from 8 kn, or the cruising speed when that is lower, at its foot to the cruising speed at its top. It passes through each leg's middle, and it has a gap where a leg has no score.
   - The axis labels every 2 nautical miles when there is room, and every 4, 10, 20 or 50 when there is not.
   - The heading gives the leave day when it is not today.
+- **A route on each screen.** The Day and Now screens each keep their own route. A route opened on one does not show on the other.
+- **A on the Now screen.** A follows the iPad's position, so the route redraws as the boat moves: on a move of a tenth of a mile or more, and once a minute. Without a position, A is the selected spot, as for the rest of the Now screen. The route leaves now, whatever time the Now map shows.
+- **The Now screen's layout.** The route panel and the strip take the place of Where to go, whose title reads "Route from here" and gains a Close route button. The panel comes first, because that box is short.
+- **Run home.** `Engine.leaveBy` now takes the trip time in place of a distance and a speed. Run home gives the path's distance, the trip time at comfortable speeds, and the worst stretch leaving now, which replaces the chop on the straight line. The map draws the path home dotted. Without a path, Run home says so and gives no leave-by time.
+- **Path cache.** Paths are kept by the raster cells of their ends, so a move of the iPad within one cell, 185 m, does not search again.
+- **The strip's own reasons.** On the Day screen, the strip says why it draws no path, in the panel's words, and asks for a boat speed when none is set. With the day display shown again, the panel is hidden, so the strip also says why legs are gray, with Load now after a failed load. This came from the review of step 3.
+- **Water off the path in Run home.** The path keeps about 200 m from land, so a home at a marina, or a position beside one, sits off it. Run home counts that water at the owner's boat speed, in the distance and the trip time, and says so when an end is 0.2 nautical miles or more from open water. This came from the review of step 4.
+- **The leave-by time and the sea then.** The brief scores the trip home leaving now. The sea at the leave-by time can differ, so Run home scores the trip again leaving at the leave-by time, up to three times, and keeps the earliest leave-by time. When the trip then differs from the trip now by a minute or more, a note gives it. The Trip now row and the worst stretch still describe leaving now. This came from the review of step 4.
+- **No map raster.** When the browser cannot build the water raster, Run home says the map has no coastline to search, and gives no leave-by time. It does not fall back to a straight line.
+- **The Now screen's title after Swap.** The title follows the live end: "Route from here", or "Route to here" after Swap.

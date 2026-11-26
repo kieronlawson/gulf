@@ -53,4 +53,4 @@ For each place, note what the page said and what the boat felt.
 - **Chop steps.** If the page's rating is often one step off, the heights in the table above change. They are set in the `chop` function in `src/ui/map.js`.
 - **Sunlight.** Text that cannot be read gets darker ink, a larger size or a heavier weight. The colors are tokens in `src/style.css`, so a change applies across the page in both themes.
 - **Touch.** A control that is missed gets a larger target. Buttons are 44 px tall today, and a lamp's tap circle is 34 px across.
-- **Run home.** If the straight-line run proves too short, the margin under Limits is the first thing to change. A run that routes around land would need a better coastline; the plan lists that as open.
+- **Run home.** The run follows a path over open water at comfortable speeds. If the trip proves longer than the page says, the margin under Limits is the first thing to change, and the comfort numbers in `Engine.COMFORT` the second.

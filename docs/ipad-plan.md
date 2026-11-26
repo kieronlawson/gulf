@@ -46,7 +46,7 @@ Wireframes: https://claude.ai/artifact/LZJbcXCBTyxqeHZdmehFqo
   - MetService Point Forecast API: 5 km model, needs a key, browser access unconfirmed.
   - NIWA: its tide model computes currents, but no public download was found.
 - Great Barrier and Port Jackson spots. LINZ refers them to Marsden Point, not Auckland.
-- The "run home" estimate. The map cannot route around land, so the run is a straight line, and the page says when that line crosses land.
+- The "run home" estimate. Since the route work in `docs/route-comfort.md`, the run follows a path over open water, about 200 m off land, with no depths. The trip time comes from the comfort rules, which the owner's trip ratings have not yet checked.
 - Type and contrast that read in sunlight. Step 11 checks them on the boat.
 
 ## Storage on the iPad
@@ -68,6 +68,6 @@ Each step ends with a working page that the owner can try on the iPad. Logic tha
 | 6 | Saved marks and home: place, name, move, delete. | Done. A tap on the map places the probe, and the probe reading saves it as a mark or as home. |
 | 7 | Where to go: marks and suggested water, lowest chop first, for Day and Now. | Done for Day. The list sits under the map, where there is room. Now uses it in step 8. |
 | 8 | Now screen, with the iPad's position. | Done. The map moves between Day and Now, and each keeps its own view. Without a position, Now measures from the selected spot. Run home shows the distance, sunset and last light. |
-| 9 | Run home and leave-by. | Done. Boat speed and margin sit under Limits and start unset. The run is a straight line to home, drawn on the Now map, and Run home says when that line crosses land. |
+| 9 | Run home and leave-by. | Done. Boat speed and margin sit under Limits and start unset. Run home no longer uses a straight line: since step 4 of `docs/route-comfort.md`, it follows the path over open water to home, and the leave-by time uses the trip time at comfortable speeds. |
 | 10 | Service worker, stored fonts, and Home Screen tags. | Done. The page comes from the network first, so a new build shows at once when online. Without a connection, the iPad's stored copy and fonts serve. |
 | 11 | Check on the boat: sunlight, touch size, chop steps. | Ready for the owner. `docs/boat-check.md` lists the checks and has a table for the chop notes. |

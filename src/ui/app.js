@@ -26,7 +26,7 @@
     if (state.pin != null) state.pin = clamp(d0 + (state.pin - state.d0), d0, E.addDays(d0, 1) - 5 * MIN);
     state.d0 = d0; state.cursor = null;
     state.followToday = d0 === E.dayStart(Date.now());
-    if (state.pin == null && state.route && !state.followToday) state.pin = tbRange().a;
+    if (state.pin == null && state.routes.day && !state.followToday) state.pin = tbRange().a;
     renderAll();
   }
 
@@ -42,7 +42,7 @@
   function unpin() {
     stopPlay();
     state.pin = null; state.cursor = null;
-    if (state.route && state.d0 !== E.dayStart(Date.now())) { setDay(E.dayStart(Date.now())); return; }
+    if (state.routes.day && state.d0 !== E.dayStart(Date.now())) { setDay(E.dayStart(Date.now())); return; }
     renderPin(); renderChart(); renderReadout(); renderDayMap();
   }
 
@@ -293,6 +293,7 @@
       var act = e.target.closest ? e.target.closest('[data-act]') : null;
       if (act && act.getAttribute('data-act') === 'reload') sync();
       if (act && act.getAttribute('data-act') === 'limits') { renderLimits(); openSheet('limits'); return; }
+      if (act && act.getAttribute('data-act') === 'route-swap') { swapRoute(); return; }
       if (act && act.getAttribute('data-act') === 'clearprobe') { state.probe = null; confirmKey = null; renderPlaces(); renderProbeMark(); renderProbe(); }
       else if (act) placeAction(act.getAttribute('data-act'));
       var go = e.target.closest ? e.target.closest('[data-go]') : null;
@@ -311,6 +312,7 @@
       else if (act === 'limits') { renderLimits(); openSheet('limits'); }
     });
     $('dayToggle').addEventListener('click', toggleDayDisplay);
+    $('nowRouteClose').addEventListener('click', closeRoute);
     if (window.ResizeObserver) new ResizeObserver(fitStrip).observe($('probe'));
     window.addEventListener('resize', fitStrip);
     /* The collapsed day display: a tap or click pins the time under it, and a mouse gets the hairline and time flag. */
