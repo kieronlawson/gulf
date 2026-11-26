@@ -94,7 +94,9 @@
     if (state.mapScreen === 'now' && state.home) {
       ring += '<line class="m-run" x1="' + x + '" y1="' + y + '" x2="' + mapX(state.home.lon).toFixed(2) + '" y2="' + mapY(state.home.lat).toFixed(2) + '"/>';
     }
-    svg.querySelector('#ovReach').innerHTML = ring + '<circle class="m-reach" cx="' + x + '" cy="' + y + '" r="' + (REACH_NM * NM).toFixed(2) + '"/>';
+    /* The reach belongs to the suggestions, so it goes while a route is open. */
+    if (!routeShown()) ring += '<circle class="m-reach" cx="' + x + '" cy="' + y + '" r="' + (REACH_NM * NM).toFixed(2) + '"/>';
+    svg.querySelector('#ovReach').innerHTML = ring;
     svg.querySelector('#ovYou').innerHTML = you;
   }
 
@@ -118,14 +120,23 @@
         '<button type="button" data-act="delete-yes">' + (key === 'home' ? 'Remove' : 'Delete') + '</button>' +
         '<button type="button" data-act="delete-no">Keep</button>';
     } else if (key) {
-      acts = '<button type="button" data-act="rename">Rename</button><button type="button" data-act="move">Move</button>' +
+      acts = routeButton(key) + '<button type="button" data-act="rename">Rename</button><button type="button" data-act="move">Move</button>' +
         '<button type="button" data-act="delete">' + (key === 'home' ? 'Remove' : 'Delete') + '</button>';
     } else {
-      acts = '<button type="button" data-act="savemark">Save mark</button><button type="button" data-act="sethome">Set home</button>';
+      acts = routeButton(null) + '<button type="button" data-act="savemark">Save mark</button><button type="button" data-act="sethome">Set home</button>';
     }
-    return '<div class="probehead"><div class="probename"><b>' + (key ? esc(placeTitle(key)) : 'Probe') + '</b><span>' + pos + '</span></div>' +
-      '<div class="probeacts">' + acts + '</div>' +
-      '<button type="button" class="probex" data-act="clearprobe" aria-label="Close the reading">&times;</button></div>';
+    /* Four buttons leave the name too little room on one line, so they take a line of their own. */
+    var many = (acts.match(/<button/g) || []).length >= 4;
+    return '<div class="probehead' + (many ? ' many' : '') + '"><div class="probename"><b>' + (key ? esc(placeTitle(key)) : 'Probe') + '</b><span>' + pos + '</span></div>' +
+      '<button type="button" class="probex" data-act="clearprobe" aria-label="Close the reading">&times;</button>' +
+      '<div class="probeacts">' + acts + '</div></div>';
+  }
+
+  /* The Route button opens a route from the starting point of Where to go to this point. The Day screen has it.
+     Home has none while home is the starting point. */
+  function routeButton(key) {
+    if (state.mapScreen !== 'day' || (key === 'home' && state.home)) return '';
+    return '<button type="button" data-act="route">Route</button>';
   }
 
   /* While a place moves, the next tap on the map gives its new position. */
@@ -151,6 +162,7 @@
     if (act === 'savemark' && p) openPlaceSheet({ kind: 'mark', x: p.x, y: p.y });
     else if (act === 'sethome' && p) openPlaceSheet({ kind: 'home', x: p.x, y: p.y });
     else if (act === 'rename' && key) openPlaceSheet({ kind: 'rename', key: key });
+    else if (act === 'route' && p) routeToProbe();
     else if (act === 'move' && key) { state.moving = key; confirmKey = null; renderProbe(); }
     else if (act === 'move-cancel') { var k = state.moving; state.moving = null; if (k) selectPlace(k); else renderProbe(); }
     else if (act === 'delete' && key) { confirmKey = key; renderProbe(); }

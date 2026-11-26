@@ -96,16 +96,90 @@
     return compass(su.dir) + ' ' + (lo === hi ? hi : lo + '–' + hi) + ' kn' + (isFinite(su.gust) ? ', gusts ' + Math.round(su.gust) : '');
   }
 
+  /* One day drawn as a Week row, from a to b. From its top: the major periods with their rating lamps, the
+     wind, the windows' brackets and the tide. o holds the wind colors (stops), the top of the tide scale (hTop),
+     now, and whether to add the window buttons. Returns the lane's markup, the day's windows, whether any hour
+     between first light and last light has no forecast, and how much of the day's light the forecast covers. */
+  function weekLane(d, a, b, recs, o) {
+    var L = state.limits, w = b - a, sun = d.sun, lane = '', wins = [], holes = [], cover = null;
+    function X(t) { return clamp((t - a) / w * 100, 0, 100); }
+    function box(cls, s, e) {
+      var x0 = X(s), x1 = X(e);
+      if (x1 - x0 <= 0) return '';
+      return '<i class="' + cls + '" style="left:' + x0.toFixed(2) + '%;width:' + (x1 - x0).toFixed(2) + '%"></i>';
+    }
+    /* Left and width as shares of the lane, without clamping: the lane clips what falls outside it. */
+    function place(s, e) { return 'left:' + ((s - a) / w * 100).toFixed(2) + '%;width:' + ((e - s) / w * 100).toFixed(2) + '%'; }
+    /* A speed as a share of the lane's height, in whole knots: calm at the foot of the wind field, twice the
+       limit at its top. The field is half the lane tall, and faster wind stops at its top. */
+    function windHeight(kn) { return Math.min(1, Math.round(kn) / (2 * L.wind)) * 50; }
+    var lit = function (t) { return sun.dawn != null && t >= sun.dawn && t <= sun.dusk; };
+    /* Ground: darker before first light and after last light. */
+    if (sun.dawn != null) lane += box('wk-night', a, sun.dawn);
+    if (sun.dusk != null) lane += box('wk-night', sun.dusk, b);
+
+    if (recs) {
+      wins = E.dayWindows(state.spot, d.d0, recs, L);
+      /* The windows, as a wash behind the wind. */
+      wins.forEach(function (win) { lane += box('wk-wash', win.start, win.end); });
+      /* Hours with no forecast matter only between first light and last light. */
+      holes = hourSpans(d, recs, function (r) { return !r; }).map(function (s) {
+        return { start: Math.max(s.start, sun.dawn), end: Math.min(s.end, sun.dusk) };
+      }).filter(function (s) { return s.end > s.start; });
+      holes.forEach(function (s) { lane += box('wk-nofc grille', s.start, s.end); });
+      /* One bar for each forecast hour, with a tick at the gust. Speeds are in whole knots, as the
+         window rule compares them, so an hour inside a window never rises over the limit line. */
+      for (var t = d.d0; t < d.d1; t += HOUR) {
+        var r = recs[t];
+        if (!r || t + BAR / 2 < a || t - BAR / 2 > b) continue;
+        var dim = lit(t) ? '' : ' dim', where = place(t - BAR / 2, t + BAR / 2);
+        lane += '<i class="wk-bar' + dim + '" style="' + where + ';height:' + windHeight(r.wind).toFixed(2) + '%;background:' + E.windColor(r.wind, L.wind, o.stops) + '"></i>';
+        if (ok(r.gust)) lane += '<i class="wk-gust' + dim + '" style="' + where + ';bottom:' + (27 + windHeight(r.gust)).toFixed(2) + '%"></i>';
+      }
+      lane += '<i class="wk-limit"></i><span class="wk-limtext" aria-hidden="true">' + L.wind + '</span>';
+      cover = coverage(d, recs);
+    }
+    /* Major periods: a bracket with the rating lamps above it. */
+    d.solunar.periods.forEach(function (p) {
+      if (!p.major || p.end <= a || p.start >= b) return;
+      if (Math.min(p.end, b) - Math.max(p.start, a) < 15 * MIN) return;   /* too little of it shows to read */
+      var lamps = '';
+      for (var k = 0; k < 4; k++) lamps += '<b' + (k < p.fish ? ' class="on"' : '') + '></b>';
+      var x0 = X(p.start), x1 = X(p.end), at = 'left:' + x0.toFixed(2) + '%;width:' + (x1 - x0).toFixed(2) + '%';
+      lane += '<i class="wk-maj" style="' + at + '"></i><i class="wk-lamps" style="' + at + '">' + lamps + '</i>';
+    });
+    /* The windows' brackets, under the wind field. */
+    wins.forEach(function (win) { lane += box('wk-wb', win.start, win.end); });
+    /* The tide, on one scale for all rows. */
+    var c = E.spotCurve(state.spot, a, b, 15 * MIN), pts = c.map(function (q) {
+      return X(q.t).toFixed(2) + ',' + (100 - Math.max(0, q.h) / o.hTop * 100).toFixed(2);
+    }).join(' ');
+    lane += '<svg class="wk-tide" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + pts + '"/></svg>';
+    /* The windows: buttons that open the day with the window's start pinned. Each draws only its focus ring. */
+    if (o.buttons) {
+      wins.forEach(function (win) {
+        var x0 = X(win.start), x1 = X(win.end);
+        lane += '<button type="button" class="wk-win" data-d0="' + d.d0 + '" data-t="' + win.start + '" data-end="' + win.end + '" style="left:' + x0.toFixed(2) + '%;width:' + (x1 - x0).toFixed(2) + '%"' +
+          ' aria-label="Window ' + E.fmtDay(d.d0 + 12 * HOUR) + ', ' + E.fmtTime(win.start) + ' to ' + E.fmtTime(win.end) + '. Open this day."></button>';
+      });
+    }
+    if (o.now >= a && o.now <= b) lane += '<i class="wk-now" style="left:' + X(o.now).toFixed(2) + '%"></i>';
+    if (!recs) lane += '<span class="wk-msg">No forecast</span>';
+    return { html: lane, wins: wins, holes: holes.length > 0, cover: cover };
+  }
+
+  /* The top of the tide scale for the selected spot, shared by every row: highest astronomical tide, in half meters. */
+  function tideTop() {
+    var hat = (DATA.auckland.hat - DATA.auckland.msl) * state.spot.ratio + state.spot.msl;
+    return Math.max(1, Math.ceil(hat * 2) / 2);
+  }
+
   /* Drawn only while the Week screen is shown. setScreen draws it when the owner switches to it. */
   function renderWeek() {
     if (state.screen !== 'week') return;
     var M = weekModel(), wx = state.wx[state.spot.id], recs = wx && wx.recs ? wx.recs : null, L = state.limits;
-    var now = Date.now(), hat = (DATA.auckland.hat - DATA.auckland.msl) * state.spot.ratio + state.spot.msl;
-    var hTop = Math.max(1, Math.ceil(hat * 2) / 2), anyMissing = false, all = [], gaps = [];
+    var now = Date.now(), hTop = tideTop(), anyMissing = false, all = [], gaps = [];
     var stops = windStops();
-    /* A speed as a share of the lane's height, in whole knots: calm at the foot of the wind field, twice the
-       limit at its top. The field is half the lane tall, and faster wind stops at its top. */
-    function windHeight(kn) { return Math.min(1, Math.round(kn) / (2 * L.wind)) * 50; }
     weekStart = M.today;
 
     $('wkLimWind').textContent = 'Wind up to ' + L.wind + ' kn';
@@ -119,71 +193,11 @@
     $('wkAxis').innerHTML = ax;
 
     var rows = M.days.map(function (d, i) {
-      var a = atLocalHour(d.d0, M.h0), b = atLocalHour(d.d0, M.h1), w = b - a;
-      function X(t) { return clamp((t - a) / w * 100, 0, 100); }
-      function box(cls, s, e, extra) {
-        var x0 = X(s), x1 = X(e);
-        if (x1 - x0 <= 0) return '';
-        return '<i class="' + cls + '" style="left:' + x0.toFixed(2) + '%;width:' + (x1 - x0).toFixed(2) + '%"' + (extra || '') + '></i>';
-      }
-      /* Left and width as shares of the lane, without clamping: the lane clips what falls outside it. */
-      function place(s, e) { return 'left:' + ((s - a) / w * 100).toFixed(2) + '%;width:' + ((e - s) / w * 100).toFixed(2) + '%'; }
-      var sun = d.sun, lane = '';
-      var lit = function (t) { return sun.dawn != null && t >= sun.dawn && t <= sun.dusk; };
-      /* Ground: darker before first light and after last light. */
-      if (sun.dawn != null) lane += box('wk-night', a, sun.dawn);
-      if (sun.dusk != null) lane += box('wk-night', sun.dusk, b);
-
-      var wins = [];
-      if (recs) {
-        wins = E.dayWindows(state.spot, d.d0, recs, L);
-        /* The windows, as a wash behind the wind. */
-        wins.forEach(function (win) { lane += box('wk-wash', win.start, win.end); });
-        /* Hours with no forecast matter only between first light and last light. */
-        var holes = hourSpans(d, recs, function (r) { return !r; }).map(function (s) {
-          return { start: Math.max(s.start, sun.dawn), end: Math.min(s.end, sun.dusk) };
-        }).filter(function (s) { return s.end > s.start; });
-        if (holes.length) anyMissing = true;
-        holes.forEach(function (s) { lane += box('wk-nofc grille', s.start, s.end); });
-        /* One bar for each forecast hour, with a tick at the gust. Speeds are in whole knots, as the
-           window rule compares them, so an hour inside a window never rises over the limit line. */
-        for (var t = d.d0; t < d.d1; t += HOUR) {
-          var r = recs[t];
-          if (!r || t + BAR / 2 < a || t - BAR / 2 > b) continue;
-          var dim = lit(t) ? '' : ' dim', where = place(t - BAR / 2, t + BAR / 2);
-          lane += '<i class="wk-bar' + dim + '" style="' + where + ';height:' + windHeight(r.wind).toFixed(2) + '%;background:' + E.windColor(r.wind, L.wind, stops) + '"></i>';
-          if (ok(r.gust)) lane += '<i class="wk-gust' + dim + '" style="' + where + ';bottom:' + (27 + windHeight(r.gust)).toFixed(2) + '%"></i>';
-        }
-        lane += '<i class="wk-limit"></i><span class="wk-limtext" aria-hidden="true">' + L.wind + '</span>';
-        var cover = coverage(d, recs);
-        if (cover !== 'all') gaps.push({ label: i === 0 ? 'today' : E.fmtDay(d.d0 + 12 * HOUR), cover: cover });
-      }
-      /* Major periods: a bracket with the rating lamps above it. */
-      d.solunar.periods.forEach(function (p) {
-        if (!p.major || p.end <= a || p.start >= b) return;
-        if (Math.min(p.end, b) - Math.max(p.start, a) < 15 * MIN) return;   /* too little of it shows to read */
-        var lamps = '';
-        for (var k = 0; k < 4; k++) lamps += '<b' + (k < p.fish ? ' class="on"' : '') + '></b>';
-        var x0 = X(p.start), x1 = X(p.end), at = 'left:' + x0.toFixed(2) + '%;width:' + (x1 - x0).toFixed(2) + '%';
-        lane += '<i class="wk-maj" style="' + at + '"></i><i class="wk-lamps" style="' + at + '">' + lamps + '</i>';
-      });
-      /* The windows' brackets, under the wind field. */
-      wins.forEach(function (win) { lane += box('wk-wb', win.start, win.end); });
-      /* The tide, on one scale for all rows. */
-      var c = E.spotCurve(state.spot, a, b, 15 * MIN), pts = c.map(function (q) {
-        return X(q.t).toFixed(2) + ',' + (100 - Math.max(0, q.h) / hTop * 100).toFixed(2);
-      }).join(' ');
-      lane += '<svg class="wk-tide" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points="' + pts + '"/></svg>';
-      /* The windows: buttons that open the day with the window's start pinned. Each draws only its focus ring. */
-      wins.forEach(function (win) {
-        all.push({ d: d, w: win });
-        var x0 = X(win.start), x1 = X(win.end);
-        lane += '<button type="button" class="wk-win" data-d0="' + d.d0 + '" data-t="' + win.start + '" data-end="' + win.end + '" style="left:' + x0.toFixed(2) + '%;width:' + (x1 - x0).toFixed(2) + '%"' +
-          ' aria-label="Window ' + E.fmtDay(d.d0 + 12 * HOUR) + ', ' + E.fmtTime(win.start) + ' to ' + E.fmtTime(win.end) + '. Open this day."></button>';
-      });
-      if (now >= a && now <= b) lane += '<i class="wk-now" style="left:' + X(now).toFixed(2) + '%"></i>';
-      if (!recs) lane += '<span class="wk-msg">No forecast</span>';
-
+      var a = atLocalHour(d.d0, M.h0), b = atLocalHour(d.d0, M.h1);
+      var part = weekLane(d, a, b, recs, { stops: stops, hTop: hTop, now: now, buttons: true });
+      if (part.holes) anyMissing = true;
+      if (part.cover && part.cover !== 'all') gaps.push({ label: i === 0 ? 'today' : E.fmtDay(d.d0 + 12 * HOUR), cover: part.cover });
+      part.wins.forEach(function (win) { all.push({ d: d, w: win }); });
       var highs = d.extremes.filter(function (e) { return e.hi; }).map(function (e) { return E.fmtTime(e.t); });
       var sel = d.d0 === state.d0;
       return '<div class="wk-row">' +
@@ -193,7 +207,7 @@
           '<span class="wk-wind">' + windWords(d, recs) + '</span>' +
           '<span class="wk-high">High ' + (highs.join(', ') || '–') + '</span>' +
         '</button>' +
-        '<div class="wk-lane" data-d0="' + d.d0 + '" data-a="' + a + '" data-b="' + b + '">' + lane + '</div>' +
+        '<div class="wk-lane" data-d0="' + d.d0 + '" data-a="' + a + '" data-b="' + b + '">' + part.html + '</div>' +
       '</div>';
     });
     var keep = focusKey();

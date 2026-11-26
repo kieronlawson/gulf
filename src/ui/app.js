@@ -109,7 +109,7 @@
   function setLimits(L) {
     state.limits = L;
     store.set('gulf-almanac-limits', JSON.stringify(L));
-    renderLimits(); renderWindows(); renderTimebar(); renderWeek(); renderNowSide();
+    renderLimits(); renderWindows(); renderTimebar(); renderWeek(); renderNowSide(); renderRoute();
   }
 
   function stepLimit(key, dir) {
@@ -292,7 +292,30 @@
       else if (act) placeAction(act.getAttribute('data-act'));
       var go = e.target.closest ? e.target.closest('[data-go]') : null;
       if (go) openGo(go.getAttribute('data-go'));
+      var rt = e.target.closest ? e.target.closest('[data-route]') : null;
+      if (rt) routeToPlace(rt.getAttribute('data-route'));
     });
+
+    /* The route: Swap, Close route, and Limits when no boat speed is set. Show day display and Show route
+       switch the right-hand column between the day display and the route panel. */
+    $('routeUnit').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-act]') : null, act = b && b.getAttribute('data-act');
+      if (act === 'route-swap') swapRoute();
+      else if (act === 'route-close') closeRoute();
+      else if (act === 'limits') { renderLimits(); openSheet('limits'); }
+    });
+    $('dayToggle').addEventListener('click', toggleDayDisplay);
+    /* The collapsed day display: a tap or click pins the time under it, and a mouse gets the hairline and time flag. */
+    $('dayLane').addEventListener('click', function (e) {
+      var lane = e.target.closest ? e.target.closest('.wk-lane') : null;
+      if (lane) pinTime(laneTimeAt(lane, e.clientX));
+    });
+    $('dayLane').addEventListener('pointermove', function (e) {
+      if (e.pointerType !== 'mouse') return;
+      var lane = e.target.closest ? e.target.closest('.wk-lane') : null;
+      weekHover(lane, e.clientX);
+    });
+    $('dayLane').addEventListener('pointerleave', function () { weekHover(null); });
 
     /* A row in the days ahead opens that day on the Day screen. */
     $('ahead').addEventListener('click', function (e) {

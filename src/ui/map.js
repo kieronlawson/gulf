@@ -300,7 +300,7 @@
       label('m-landname', 175.555, -36.94, 0, 'Coromandel');
 
     /* The scale bar and the north mark sit in a corner of the frame, outside the zoomed drawing. */
-    s += '<g id="ovReach"></g><g id="ovArrows"></g><g id="ovProbe"></g>';
+    s += '<g id="ovReach"></g><g id="ovArrows"></g><g id="ovRoute"></g><g id="ovProbe"></g>';
     spots.forEach(function (sp) {
       var px = mapX(sp.lon), py = mapY(sp.lat), left = px > c.w * 0.6;
       s += '<g class="pin" data-id="' + sp.id + '" data-at="' + px.toFixed(1) + ' ' + py.toFixed(1) + '" tabindex="0" role="button" aria-label="' + esc(sp.name) + '">' +
@@ -309,7 +309,8 @@
     });
     /* Suggestions and saved places sit above the lamps, each in its own layer: the suggestions change with
        the map's time, and the saved places change only when the owner changes them. */
-    $('map').innerHTML = s + '<g id="ovSugg"></g><g id="ovPlaces"></g><g id="ovYou"></g></svg>';
+    /* The route's A and B sit over the saved places, which they mark, but take no taps. */
+    $('map').innerHTML = s + '<g id="ovSugg"></g><g id="ovPlaces"></g><g id="ovEnds"></g><g id="ovYou"></g></svg>';
     applyView();
   }
 
@@ -435,7 +436,9 @@
     inner: function () { return fitBox(mapX(174.70), mapY(-36.55), mapX(175.25), mapY(-36.95)); },
     /* On the Day screen: near home once home is set, and near the selected spot until then.
        On the Now screen: around the iPad's position. */
-    spot: function () { var o = goOrigin(); return around(o.x, o.y, REACH_NM); }
+    spot: function () { var o = goOrigin(); return around(o.x, o.y, REACH_NM); },
+    /* While a route is open: the whole path, with a margin. */
+    route: function () { return routeBox(); }
   };
   function setPreset(name) {
     var v = PRESETS[name]();
@@ -662,6 +665,6 @@
     if (el) el.textContent = state.pin != null ? E.fmtDay(t) + ' ' + E.fmtTime(t) : 'Now, ' + E.fmtTime(t);
     $('mapTitle').textContent = state.pin != null ? 'Gulf at the pinned time' : 'Gulf now';
     if (state.mapScreen === 'now') markNowSteps();
-    renderOverlay(); renderProbe();
+    renderOverlay(); renderRoute(); renderProbe();
   }
 

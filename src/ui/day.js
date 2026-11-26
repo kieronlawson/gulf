@@ -231,21 +231,22 @@
     var period = null;
     d.solunar.periods.forEach(function (p) { if (t >= p.start && t <= p.end) period = p; });
     var act = Math.round(E.activityAt(t, d.solunar, d.sun) * 100);
+    /* The third value names each cell. With a route open, the collapsed day display keeps only time, tide and wind. */
     var cells = [
-      ['Time', E.fmtTime(t) + tag],
-      ['Tide', h == null ? '–' : meters(h) + ', ' + trend],
-      ['Sun', sa == null ? '–' : sa >= 0 ? Math.round(sa) + '° up' : sa > -6 ? 'Twilight' : 'Down'],
-      ['Moon', ma == null ? '–' : ma >= 0 ? Math.round(ma) + '° up' : 'Down'],
-      ['Solunar activity', (period ? (period.major ? 'Major period' : 'Minor period') : 'No period') + ', ' + act + '%']
+      ['Time', E.fmtTime(t) + tag, 'time'],
+      ['Tide', h == null ? '–' : meters(h) + ', ' + trend, 'tide'],
+      ['Sun', sa == null ? '–' : sa >= 0 ? Math.round(sa) + '° up' : sa > -6 ? 'Twilight' : 'Down', 'sun'],
+      ['Moon', ma == null ? '–' : ma >= 0 ? Math.round(ma) + '° up' : 'Down', 'moon'],
+      ['Solunar activity', (period ? (period.major ? 'Major period' : 'Minor period') : 'No period') + ', ' + act + '%', 'sol']
     ];
     var wx = state.wx[state.spot.id];
     if (wx && wx.recs) {
       var r = wx.recs[Math.round(t / HOUR) * HOUR];
-      if (r) cells.push(['Wind, kn', compass(r.dir) + ' ' + Math.round(r.wind) + (ok(r.gust) ? ', gusts ' + Math.round(r.gust) : '')]);
+      if (r) cells.push(['Wind, kn', compass(r.dir) + ' ' + Math.round(r.wind) + (ok(r.gust) ? ', gusts ' + Math.round(r.gust) : ''), 'wind']);
     }
     /* Columns size to their values, so none is cut short while the row has room. */
     el.style.setProperty('--cols', 'repeat(' + cells.length + ', auto)');
-    el.innerHTML = cells.map(function (x) { return '<div><div class="k">' + x[0] + '</div><div class="v">' + x[1] + '</div></div>'; }).join('');
+    el.innerHTML = cells.map(function (x) { return '<div class="rd-' + x[2] + '"><div class="k">' + x[0] + '</div><div class="v">' + x[1] + '</div></div>'; }).join('');
   }
 
   /* ---------- Windows of the day on screen ---------- */
@@ -312,10 +313,12 @@
     track.innerHTML = h;
     track.setAttribute('aria-valuetext', (pin != null ? 'Pinned at ' + E.fmtTime(pin) + ', ' + E.fmtDay(pin) : 'Following now, ' + E.fmtTime(now)));
     $('tbTime').textContent = E.fmtTime(shown);
-    $('tbState').textContent = dragT != null ? 'Release to pin' : pin != null ? 'Pinned, ' + E.fmtDay(pin) : 'Now';
+    /* While a route is open, the time on the bar is the time the boat leaves. */
+    $('tbState').textContent = dragT != null ? 'Release to pin' : routeShown() ? 'Leave time' : pin != null ? 'Pinned, ' + E.fmtDay(pin) : 'Now';
     $('tbNow').disabled = pin == null;
     $('tbPlay').textContent = playTimer ? 'Pause' : 'Play';
     $('tbPlay').setAttribute('aria-pressed', playTimer ? 'true' : 'false');
+    if (dragT == null) renderDayLane();
   }
 
   /* The time under a point on the bar. */
