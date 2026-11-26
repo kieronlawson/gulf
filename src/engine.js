@@ -417,6 +417,17 @@ var Engine = (function () {
     return rampColor(Math.round(speed) / limit, colors);
   }
 
+  /* ---------- Week rows ---------- */
+
+  /* The time under a point on a Week row, rounded to 5 minutes, as the Day screen pins it. share is the
+     point's distance from the row's left edge as a share of its width, and a and b are the times at the two
+     edges. The time stays inside the row's calendar day, which starts at d0: from midnight to 5 minutes before
+     the next midnight, so the pin never moves to the next day. */
+  function laneTime(share, a, b, d0) {
+    var step = 5 * MIN, t = a + Math.min(1, Math.max(0, share)) * (b - a);
+    return Math.min(Math.max(Math.round(t / step) * step, d0), addDays(d0, 1) - step);
+  }
+
   /* ---------- Run home ---------- */
 
   /* The latest time to leave for home: last light, less the run at the owner's speed, less the owner's margin.
@@ -433,7 +444,7 @@ var Engine = (function () {
   return {
     MIN: MIN, HOUR: HOUR, DAY: DAY,
     LIMITS: LIMITS, windows: windows, rankWindows: rankWindows, dayWindows: dayWindows, leaveBy: leaveBy,
-    rampColor: rampColor, windColor: windColor,
+    rampColor: rampColor, windColor: windColor, laneTime: laneTime,
     parts: parts, midnight: midnight, dayStart: dayStart, addDays: addDays,
     fmtTime: fmtTime, fmtDay: fmtDay, fmtDayLong: fmtDayLong, fmtDuration: fmtDuration, isoDate: isoDate, pad2: pad2,
     spotExtremes: spotExtremes, spotCurve: spotCurve, interp: interp,

@@ -217,6 +217,34 @@
     refocus(keep);
   }
 
+  /* The time under a pointer on a lane, rounded to 5 minutes and kept inside the lane's day. The lane's
+     drawing fills the area inside its border, so the share is measured there. */
+  function laneTimeAt(lane, clientX) {
+    var left = lane.getBoundingClientRect().left + lane.clientLeft;
+    return E.laneTime((clientX - left) / lane.clientWidth, +lane.getAttribute('data-a'), +lane.getAttribute('data-b'), +lane.getAttribute('data-d0'));
+  }
+
+  /* With a mouse, a hairline follows the pointer over a lane, with a flag that gives the time a click would pin.
+     Without a lane, both go. */
+  var hoverLine = null, hoverFlag = null;
+  function weekHover(lane, clientX) {
+    if (!lane) {
+      if (hoverLine && hoverLine.parentNode) hoverLine.parentNode.removeChild(hoverLine);
+      if (hoverFlag && hoverFlag.parentNode) hoverFlag.parentNode.removeChild(hoverFlag);
+      return;
+    }
+    if (!hoverLine) {
+      hoverLine = document.createElement('i'); hoverLine.className = 'wk-hover';
+      hoverFlag = document.createElement('span'); hoverFlag.className = 'wk-flag'; hoverFlag.setAttribute('aria-hidden', 'true');
+    }
+    if (hoverLine.parentNode !== lane) { lane.appendChild(hoverLine); lane.appendChild(hoverFlag); }
+    var x = clientX - lane.getBoundingClientRect().left - lane.clientLeft;
+    hoverLine.style.left = x.toFixed(1) + 'px';
+    hoverFlag.textContent = E.fmtTime(laneTimeAt(lane, clientX));
+    hoverFlag.style.left = x.toFixed(1) + 'px';
+    hoverFlag.classList.toggle('flip', x > lane.clientWidth - 48);   /* near the right edge, the flag sits left of the line */
+  }
+
   /* A redraw replaces the buttons. These two put focus back on the button that had it, so a keyboard or
      VoiceOver user keeps their place. */
   function focusKey() {

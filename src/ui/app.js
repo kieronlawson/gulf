@@ -199,22 +199,23 @@
     });
     $('sync').addEventListener('click', sync);
 
-    /* Week: a window opens its day with the start pinned. A day name, or a part of a row outside
-       any window, opens that day without a pin. */
+    /* Week: a click or tap on a lane, inside a window or not, opens its day with the time under the pointer
+       pinned. A window button pressed with a key has no pointer position: the click event then has a detail
+       of 0, and the window's start is pinned. A day name opens its day with no new pin. */
     $('wkRows').addEventListener('click', function (e) {
       var el = e.target.closest ? e.target.closest('.wk-win, .wk-day, .wk-lane') : null;
       if (!el) return;
       var d0 = +el.getAttribute('data-d0');
-      if (el.classList.contains('wk-win')) { openDay(d0, +el.getAttribute('data-t')); return; }
-      if (el.classList.contains('wk-lane')) {
-        var r = el.getBoundingClientRect(), a = +el.getAttribute('data-a'), b = +el.getAttribute('data-b');
-        var t = a + (e.clientX - r.left) / r.width * (b - a), wins = el.querySelectorAll('.wk-win');
-        for (var i = 0; i < wins.length; i++) {
-          if (t >= +wins[i].getAttribute('data-t') && t <= +wins[i].getAttribute('data-end')) { openDay(d0, +wins[i].getAttribute('data-t')); return; }
-        }
-      }
-      openDay(d0, null);
+      if (el.classList.contains('wk-day')) { openDay(d0, null); return; }
+      if (el.classList.contains('wk-win') && e.detail === 0) { openDay(d0, +el.getAttribute('data-t')); return; }
+      openDay(d0, laneTimeAt(el.closest('.wk-lane'), e.clientX));
     });
+    /* A mouse gets a hairline and a time flag over the lanes. A touch screen gets neither. */
+    $('wkRows').addEventListener('pointermove', function (e) {
+      if (e.pointerType !== 'mouse') return;
+      weekHover(e.target.closest ? e.target.closest('.wk-lane') : null, e.clientX);
+    });
+    $('wkRows').addEventListener('pointerleave', function () { weekHover(null); });
     $('wkBest').addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('.wk-open') : null;
       if (b) openDay(+b.getAttribute('data-d0'), +b.getAttribute('data-t'));
