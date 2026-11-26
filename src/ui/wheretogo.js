@@ -47,9 +47,11 @@
   /* The suggestions for the starting point, the map's time and the forecast, with the reach ring around
      the same starting point. The reading under the map calls this each time it redraws, so the discs and
      the ring always move together, and match the map's time. */
+  /* While a route is open, the suggestions leave the map and the list: their letters would read as the
+     route's A and B. */
   function updateSuggestions() {
     var t = mapTime();
-    suggestions = fieldProblem(t) ? [] : findSuggestions(goOrigin(), t);
+    suggestions = fieldProblem(t) || routeShown() ? [] : findSuggestions(goOrigin(), t);
     renderSuggestions(); renderReach();
   }
 
@@ -74,7 +76,8 @@
     var html = '<div class="gohead"><b>' + title + '</b><span>From ' + esc(o.name) + ', lowest chop first</span></div>';
     if (!rows.length) {
       html += problem || '';
-      html += '<p class="probehint">Save marks from the map, and the calmest water within ' + REACH_NM + ' nautical miles shows here. Tap the map to read any point.</p>';
+      html += routeShown() ? '<p class="probehint">Save marks from the map to list them here. Close the route to see the calmest water within ' + REACH_NM + ' nautical miles.</p>' :
+        '<p class="probehint">Save marks from the map, and the calmest water within ' + REACH_NM + ' nautical miles shows here. Tap the map to read any point.</p>';
       el.innerHTML = html;
       return;
     }
@@ -84,13 +87,16 @@
       var chopCell = r.c ? '<b><i class="sw sw' + r.c.chop.level + '"></i>' + CHOP_SHORT[r.c.chop.level] + '</b><span>' + (r.c.chop.h >= 0.05 ? r.c.chop.h.toFixed(1) + ' m' : 'under 0.1 m') + '</span>' :
         '<b>' + (r.water ? 'No forecast' : 'No estimate') + '</b>';
       var label = r.name + ', ' + d.toFixed(1) + ' nautical miles ' + dir + ' of ' + o.name + (r.c ? ', wind ' + wind + ', ' + chopText(r.c) : '');
-      return '<button type="button" class="gorow" data-go="' + r.key + '" aria-label="' + esc(label) + '">' +
+      /* On the Day screen each row has a Route button: a route from the starting point to the place. */
+      var route = state.mapScreen === 'day' ? '<button type="button" class="goroute" data-route="' + r.key + '" aria-label="' + esc('Route from ' + o.name + ' to ' + r.name) + '">Route</button>' : '';
+      return '<div class="goitem"><button type="button" class="gorow" data-go="' + r.key + '" aria-label="' + esc(label) + '">' +
         '<span class="badge ' + r.kind + '">' + r.badge + '</span>' +
         '<span class="gomid"><b>' + esc(r.name) + '</b><span>' + d.toFixed(1) + ' nm ' + dir + (wind ? ', wind ' + wind : '') + '</span></span>' +
-        '<span class="gochop">' + chopCell + '</span></button>';
+        '<span class="gochop">' + chopCell + '</span></button>' + route + '</div>';
     }).join('') + '</div>';
     if (problem) html += problem;
-    html += '<p class="small">Suggestions are the calmest water within ' + REACH_NM + ' nautical miles. They say nothing about fish. Tap the map to read any point.</p>';
+    html += routeShown() ? '<p class="small">Close the route to see the calmest water within ' + REACH_NM + ' nautical miles. Tap the map to read any point.</p>' :
+      '<p class="small">Suggestions are the calmest water within ' + REACH_NM + ' nautical miles. They say nothing about fish. Tap the map to read any point.</p>';
     el.innerHTML = html;
   }
 

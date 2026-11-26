@@ -131,7 +131,7 @@
       line('Air, °C', function (r) { return ok(r.temp) ? Math.round(r.temp) : '–'; }) +
       line('Pressure, hPa', function (r) { return ok(r.p) ? Math.round(r.p) : '–'; }) +
       '</tbody></table></div>';
-    var foot = '<p class="small">Arrows point the way the wind and waves are traveling. Grey tint marks wind from 10 and 15 knots. Red tint marks wind from 20 and 25 knots.' +
+    var foot = '<p class="small">Arrows point the way the wind and waves are traveling. Gray tint marks wind from 10 and 15 knots. Red tint marks wind from 20 and 25 knots.' +
       (hasWaves ? '' : ' The wave model has no data for this spot.') + '</p>';
     el.innerHTML = head + t + foot;
   }

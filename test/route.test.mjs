@@ -55,11 +55,11 @@ test('the angle runs from 0 for a head sea to 180 for a following sea', () => {
   assert.equal(Engine.seaAngle(270, 0), 90);
 });
 
-// A made-up raster: '#' is land, '.' is water.
-function raster(rows) {
+// A made-up raster: '#' is land, '.' is water. seed, when given, is a cell in the open Gulf.
+function raster(rows, seed) {
   const h = rows.length, w = rows[0].length, water = new Uint8Array(w * h);
   rows.forEach((r, y) => [...r].forEach((c, x) => { water[x + y * w] = c === '.' ? 1 : 0; }));
-  return { w, h, water };
+  return seed ? { w, h, water, seed: seed[0] + seed[1] * w } : { w, h, water };
 }
 // Every cell a straight segment touches, sampled finely.
 function touched(p, q) {
@@ -148,6 +148,42 @@ test('a narrow passage closes, because the path keeps a cell off the land on bot
     '..........#####..........',
   ]), { x: 3, y: 2 }, { x: 21, y: 2 });
   assert.equal(r.found, false);
+});
+
+// An inlet joined to the Gulf by an entrance one cell wide, which closes. Open water in the inlet lies from
+// x = 2 to 7 and y = 2 to 4; in the Gulf, from y = 9 down.
+const INLET = [
+  '####################',
+  '#........###########',
+  '#........###########',
+  '#........###########',
+  '#........###########',
+  '#........###########',
+  '#####.##############',
+  '#####.##############',
+  '....................',
+  '....................',
+  '....................',
+  '....................',
+  '....................',
+  '....................',
+];
+
+test('an end on land beside a cut-off inlet starts from open water joined to the Gulf', () => {
+  // The inlet's open water, at (2, 4), is nearer than the Gulf's, at (2, 9). Without a seed the end goes there,
+  // and finds no path.
+  assert.equal(Engine.findPath(raster(INLET), { x: 2, y: 6 }, { x: 15, y: 11 }).found, false);
+  const r = Engine.findPath(raster(INLET, [10, 11]), { x: 2, y: 6 }, { x: 15, y: 11 });
+  assert.equal(r.found, true);
+  assert.deepEqual(plain(r.points[0]), { x: 2, y: 9 });
+  assert.equal(r.from.moved, 3);
+});
+
+test('an end on open water in a cut-off inlet moves out to the Gulf', () => {
+  const r = Engine.findPath(raster(INLET, [10, 11]), { x: 4, y: 3 }, { x: 15, y: 11 });
+  assert.equal(r.found, true);
+  assert.deepEqual(plain(r.points[0]), { x: 4, y: 9 });
+  assert.equal(r.from.moved, 6);
 });
 
 test('a path is cut into legs no longer than 0.3 nautical miles', () => {

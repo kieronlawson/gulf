@@ -30,7 +30,7 @@ Build steps 1 to 4 first. Ferry lanes, section 5, are a second step.
 - Cut the path into legs no longer than 0.3 nautical miles.
 - Start the clock at the leave time: the pinned time on Day, now on Now.
 - For each leg in order: read wind and chop at the leg's middle for the clock time (`condAt`), score the leg, add the leg's time at its comfortable speed to the clock.
-- A leg the forecast does not cover gets no score. Draw it grey, and say in the totals that the score is incomplete.
+- A leg the forecast does not cover gets no score. Draw it gray, and say in the totals that the score is incomplete.
 
 ## 3. Scoring rules
 
@@ -160,17 +160,28 @@ Each step is one pull request, merged before the next starts.
 | Step | Work | State |
 |---|---|---|
 | 1 | The arithmetic, in `engine.js`: the path search, the legs, the clock, the scoring rules, the comfortable speed and the stretches. Their tests. | Done. |
-| 2 | The route on the Day screen: the Route buttons, the path on the map with A and B, the Route view, the collapsed day display, the route panel and the time bar's Leave time. | Not started. |
+| 2 | The route on the Day screen: the Route buttons, the path on the map with A and B, the Route view, the collapsed day display, the route panel and the time bar's Leave time. | Done. Where to go stays under the map until step 3 puts the strip there. |
 | 3 | The strip under the map. | Not started. |
 | 4 | The Now screen: a route from the iPad's position, and Run home on the path. | Not started. |
 | 5 | Ferry lanes. | Not started. |
 
 ## Decisions made in the build
 
-- **Narrow passages.** A water cell is closed when any of its eight neighbors is land or water the map does not join to the Gulf. A cell is 185 m across, so a passage needs three cells of water across, about 0.3 nautical miles, to stay open. On the map's coastline the Gulf stays one body of open water, and only a few narrow inlets are cut off. An end in one of them finds no path, and the page says so.
+- **Narrow passages.** A water cell is closed when any of its eight neighbors is land or water the map does not join to the Gulf. A cell is 185 m across, so a passage needs three cells of water across, about 0.3 nautical miles, to stay open. On the map's coastline the Gulf stays one body of open water, and only a few narrow inlets are cut off. Only open water joined to the Gulf counts, so an end in such an inlet, or on land beside one, starts from the Gulf's nearest open cell, and the route panel says how far it moved. This came from the review of step 1: before it, such an end found no path. The page's search therefore always finds a path; the engine still reports no path for a raster without a seed, and the panel still has words for that case.
 - **Corners.** A diagonal step needs both cells beside it open, and a straightened line that passes exactly through a corner needs the same. A path therefore never squeezes between two closed cells.
 - **Moved ends.** `Engine.findPath` reports how far each end moved to reach open water, so the route panel can say so.
 - **Legs without a forecast.** The clock crosses them at cruising speed, because the page has nothing to slow down for. The trip time is then a lower bound, and the totals say the score is incomplete.
 - **A stretch's values.** Its cause is the one that covers most of its length. Its height is the highest chop on it. Its speed is its length over its time at comfortable speeds, so the stretches' times add up to the trip time.
 - **Worst stretch.** The stretch with the highest level, and of two at one level, the one with the higher score. A stretch shorter than 0.5 nautical miles can be the worst, though the list leaves it out.
 - **A slow boat.** The comfortable speed never drops under 8 kn, or under the cruising speed when that is under 8 kn.
+- **A without home.** On the Day screen, A is the starting point of Where to go: home, or the selected tide spot until home is set. The brief names home; the selected spot covers the time before the owner sets it.
+- **Fixed ends.** A route keeps the positions its ends had when it opened. Moving home or a mark later does not move an open route.
+- **A and B on the map.** They mark the ends of the path, where the scoring starts and stops. They sit over the saved places, because B is usually a mark, and they take no taps, so the mark under B can still be selected.
+- **Moved ends in the panel.** When an end moved 0.2 nautical miles or more to reach open water, the panel says how far.
+- **The collapsed day display.** It keeps the date buttons, so the owner can leave on another day. Its reading keeps the time, the tide and the wind. Its Week row spans the time bar's hours, and a tap or click on it sets the leave time, as on the Week screen. With the day display shown again, the route stays open: the path stays on the map, the bar still reads Leave time, and the button reads Show route.
+- **The map's buttons.** With a route open in the wide layout, the map's buttons sit in rows, as in the mock: views along the top, layers and zoom along the bottom. The Route view keeps the path 60 px clear of the top and bottom of the map, where those rows sit. The Route view takes the place of the view around the starting point while a route is open.
+- **The probe reading.** A saved place's reading now has four buttons. Below the wide map they fit beside the name. Elsewhere they take a line of their own, so the name keeps its room.
+- **Closing a route.** The map returns to the view it had before the route opened, unless the owner moved the map since.
+- **No boat speed.** The page draws the path and gives its distance. It asks for a boat speed under Limits before it scores, as Run home does.
+- **Suggestions.** While a route is open, the suggestions leave the map and the list, and the reach ring goes with them. Their letters, A to C, would read as the route's A and B. A route to a suggestion names it "Calmest water", with the nearest tide spot when there is one.
+- **The leave time on the Day screen.** A route leaves at a time on the day shown: the pinned time, or now on today. Opening a route on another day with nothing pinned, or moving to another day, pins the start of the bar. With a route open, Now returns to today and leaves now. The bar's Leave time therefore always names the time the route was scored for. This rule came from the review of step 2.

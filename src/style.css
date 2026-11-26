@@ -183,6 +183,13 @@ h1, h2, h3, h4, p, ul { margin: 0; }
   font-size: 13px; font-weight: 600; letter-spacing: -0.005em;
 }
 .idx { font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--ink2); }
+/* A stage heading with a button at its right. The hairline runs over both. */
+.stagebar { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--hair); padding-top: 6px; margin-bottom: 8px; }
+.stagebar .stage { flex: 1; min-width: 0; border-top: 0; padding-top: 0; margin: 0; }
+.stagebar > button { flex: none; height: 36px; font-size: 13px; }
+.stagebar > button[hidden] { display: none; }
+/* Text for screen readers only. */
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* LED pip. */
 .pip {
@@ -406,11 +413,20 @@ button:disabled:active { transform: none; }
 .probeacts { display: flex; align-items: center; gap: 6px; flex: none; }
 .probeacts button { font-size: 12.5px; padding: 0 10px; }
 .probeacts .ask { font-size: 12.5px; font-weight: 600; color: var(--red); }
+/* The close button comes second in the markup, so it can stay beside the name when the buttons take their own line. */
+.probex { order: 1; }
+.probehead.many { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name x" "acts acts"; gap: 6px 8px; }
+.probehead.many .probename { grid-area: name; }
+.probehead.many .probex { grid-area: x; }
+.probehead.many .probeacts { grid-area: acts; }
 
 /* Where to go: one row per place, lowest chop first. */
 .gohead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; font-size: 13px; }
 .gohead span { font-size: 12px; color: var(--ink2); }
 .golist { display: grid; margin-top: 4px; }
+.goitem { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; border-top: 1px solid var(--hair); }
+.goitem .gorow { border-top: 0; }
+.goroute { height: 36px; padding: 0 10px; font-size: 12.5px; }
 .gorow {
   display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 10px;
   height: 44px; padding: 0 2px; border: 0; border-top: 1px solid var(--hair); border-radius: 0; background: none; box-shadow: none;
@@ -426,6 +442,14 @@ button:disabled:active { transform: none; }
 .badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; font-family: var(--mono); font-size: 11.5px; font-weight: 700; }
 .badge.mark { background: var(--ink); color: var(--chassis); }
 .badge.sugg { border: 1.5px dashed var(--ink2); color: var(--ink); }
+/* The route on the map: a dark line with each stretch's level color on top, and A and B at its ends.
+   The lines keep one width on screen at any zoom. Nothing in the layer takes a tap. */
+#ovRoute, #ovEnds { pointer-events: none; }
+.m-route-under { fill: none; stroke: var(--ink); stroke-width: 7px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.m-route { fill: none; stroke-width: 4px; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.lv0 { stroke: var(--wind-0); } .lv1 { stroke: var(--wind-1); } .lv2 { stroke: var(--wind-2); } .lv3 { stroke: var(--wind-3); } .lv4 { stroke: var(--wind-4); } .lvx { stroke: var(--hair); }
+.m-end circle { fill: var(--chassis); stroke: var(--ink); stroke-width: 1.4; }
+.m-end text { font-family: var(--mono); font-size: 7.5px; font-weight: 700; fill: var(--ink); }
 .m-reach { fill: none; stroke: var(--ink2); stroke-width: 1px; stroke-dasharray: 5 4; opacity: .75; vector-effect: non-scaling-stroke; }
 
 /* Saved places on the map: numbered discs for marks, a square H for home. Amber rings the selected one. */
@@ -451,6 +475,49 @@ button:disabled:active { transform: none; }
 .probegrid dd .sw { width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
 #probe .small { margin-top: 4px; }
 .strip { display: block; width: 100%; max-width: 420px; height: auto; margin-top: 4px; overflow: visible; }
+
+/* The route panel: A, Swap and B; the totals; the stretches. The level colors are the Week wind ramp's first five stops. */
+.routeunit { grid-area: route; display: flex; flex-direction: column; min-width: 0; }
+.routeunit[hidden] { display: none; }
+.routepanel { min-width: 0; }
+.rt-ends { display: flex; align-items: center; gap: 8px; }
+.rt-end { flex: 1; min-width: 0; height: 44px; display: flex; align-items: center; gap: 9px; padding: 0 10px; border: 1px solid var(--btn-edge); border-radius: 4px; background: var(--sky-day); }
+.rt-badge { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 1.5px solid var(--ink); border-radius: 50%; font-family: var(--mono); font-size: 11.5px; font-weight: 700; }
+.rt-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rt-ends > button { flex: none; width: 64px; padding: 0; }
+.rt-totals { margin: 10px 0 0; }
+.rt-totals div { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-top: 1px solid var(--hair); font-size: 13.5px; }
+.rt-totals dt { color: var(--ink2); }
+.rt-totals dd { margin: 0; font-family: var(--mono); font-size: 12.5px; text-align: right; }
+.rt-warn { display: flex; align-items: baseline; gap: 8px; margin-top: 6px; font-size: 13px; }
+.rt-warn .pip { position: relative; top: -1px; }
+.rt-list { margin-top: 10px; }
+.rt-row { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto 44px; align-items: center; gap: 10px; padding: 5px 0; border-top: 1px solid var(--hair); font-size: 13px; }
+.rt-row > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rt-row .mono { font-size: 12px; }
+.rt-kn { text-align: right; }
+.lvb { display: inline-block; width: 12px; height: 12px; }
+.lvb0 { background: var(--wind-0); } .lvb1 { background: var(--wind-1); } .lvb2 { background: var(--wind-2); } .lvb3 { background: var(--wind-3); } .lvb4 { background: var(--wind-4); }
+.lvbx { background: var(--hair); box-shadow: inset 0 0 0 1px var(--ink2); }
+.routepanel .small { margin-top: 6px; }
+.routepanel .probehint { margin-top: 8px; }
+.routepanel .small button { height: 36px; margin-left: 6px; font-size: 12.5px; }
+
+/* With a route open, the day display collapses to one Week row, and the route panel takes the space under it. */
+.daylane { margin-top: 10px; }
+.daylane[hidden] { display: none; }
+.daylane .wk-lane { height: 56px; }
+.wk-pin { top: 0; bottom: 0; width: 1.6px; margin-left: -.8px; background: var(--ink); pointer-events: none; }
+.dayview.compact { grid-template-areas: "day" "route" "bar" "map"; }
+.dayview.compact .well, .dayview.compact .daylegend, .dayview.compact .nowline, .dayview.compact .winline { display: none; }
+.dayview.compact .readout .rd-sun, .dayview.compact .readout .rd-moon, .dayview.compact .readout .rd-sol { display: none; }
+/* The place and date shrink to one line, and the date buttons to 36 px, so the route panel gets the height. */
+.dayview.compact .placetext { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; }
+.dayview.compact .place h2 { font-size: 17px; }
+.dayview.compact #placeSub { display: none; }
+.dayview.compact .place .sub { margin-top: 0; }
+.dayview.compact .datenav button, .dayview.compact .datenav input { height: 36px; }
+.dayview.compact .datenav button.step { width: 36px; }
 
 /* The time bar. */
 .timebar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 10px 14px; }
@@ -829,6 +896,17 @@ table { border-collapse: collapse; width: 100%; }
   .dayside .winline { margin-top: 2px; }
   .dayside .well { margin-top: 8px; }
   .timebar { flex-wrap: nowrap; padding: 6px 14px; }
+  /* With a route open, the map takes the width the day display gave up. The route panel scrolls in its part. */
+  .dayview.compact { grid-template-columns: minmax(0, 1fr) minmax(360px, 38%); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "map day" "map route" "bar bar"; }
+  .routeunit { min-height: 0; }
+  .routepanel { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  /* The wide map puts its buttons in rows: views along the top, layers and zoom along the bottom. */
+  .dayview.compact .mapbtns { flex-direction: row; }
+  .dayview.compact .mb-views button { width: auto; min-width: 76px; }
+  .dayview.compact .mb-layers button { width: 84px; }
+  .dayview.compact .mb-zoom { flex-direction: row-reverse; }
+  /* Under the wide map, four buttons fit beside the name. */
+  .dayview.compact .probehead.many { display: flex; }
 
   /* Week fills the frame: the rows share the height, and the best windows scroll in their column. */
   #screen-week:not([hidden]) { display: flex; flex-direction: column; height: 100%; }
