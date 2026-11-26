@@ -12,125 +12,148 @@
 </style>
 </head>
 <body>
-<div class="bench">
+<div class="app">
 
-  <div class="unit">
-    <header class="mast">
-      <div>
-        <h1>Hauraki Gulf Almanac</h1>
-        <p class="mast-sub">Tīkapa Moana. Tides, sun, moon, solunar periods and weather for one spot and one day.</p>
-        <ul class="status" aria-label="Data status">
-          <li><span class="pip on" aria-hidden="true"></span>Tides computed</li>
-          <li><span class="pip on" aria-hidden="true"></span>Sun and moon computed</li>
-          <li><span class="pip" id="pipWx" aria-hidden="true"></span><span id="pipWxText">Forecast</span></li>
-        </ul>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Gulf Almanac</h1>
+      <p class="wxstatus"><span class="pip" id="wxLamp" aria-hidden="true"></span><span id="wxText">Forecast</span></p>
+    </div>
+    <nav class="screens" id="screens" aria-label="Screens">
+      <button type="button" data-screen="week" aria-pressed="false">Week</button>
+      <button type="button" data-screen="day" aria-pressed="true">Day</button>
+      <button type="button" data-screen="now" aria-pressed="false">Now</button>
+    </nav>
+    <div class="tools">
+      <button type="button" id="sync">Sync</button>
+      <select id="spot" aria-label="Spot"></select>
+      <button type="button" id="tablesOpen" aria-haspopup="dialog">Tables</button>
+    </div>
+  </header>
+
+  <main class="stack">
+
+    <section class="screen" id="screen-week" data-screen="week" aria-label="Week" hidden>
+      <div class="unit">
+        <h2 class="stage"><span class="idx">01</span>Week</h2>
+        <p class="later">The Week screen comes in a later step. It will show the next seven days from first light to last light, and mark the hours when the wind stays inside your limits.</p>
       </div>
-      <div class="controls">
-        <label class="field">Spot
-          <select id="spot"></select>
-        </label>
-        <div class="field">
-          <label for="date">Day</label>
-          <div class="datenav">
-            <button class="step" id="prev" type="button" aria-label="Previous day">&#8249;</button>
-            <input type="date" id="date">
-            <button class="step" id="next" type="button" aria-label="Next day">&#8250;</button>
-            <button id="today" type="button">Today</button>
+    </section>
+
+    <section class="screen" id="screen-day" data-screen="day" aria-label="Day">
+      <div class="unit dayside">
+        <h2 class="stage"><span class="idx">01</span>Day</h2>
+        <div class="place">
+          <div>
+            <h2 id="placeName"></h2>
+            <p class="sub" id="placeSub"></p>
+          </div>
+          <div class="dayctl">
+            <div class="datenav">
+              <button class="step" id="prev" type="button" aria-label="Previous day">&#8249;</button>
+              <input type="date" id="date" aria-label="Day">
+              <button class="step" id="next" type="button" aria-label="Next day">&#8250;</button>
+              <button id="today" type="button">Today</button>
+            </div>
+            <p class="date" id="placeDate"></p>
           </div>
         </div>
-      </div>
-    </header>
-
-    <main class="dayside">
-      <h2 class="stage"><span class="idx">01</span>Day</h2>
-      <div class="place">
-        <div>
-          <h2 id="placeName"></h2>
-          <p class="sub" id="placeSub"></p>
+        <p class="nowline" id="nowLine"></p>
+        <div class="pinrow">
+          <span class="pip on" id="pinLamp" aria-hidden="true"></span><span id="pinText">Following now.</span>
+          <button type="button" id="unpin" disabled>Return to now</button>
         </div>
-        <p class="date" id="placeDate"></p>
-      </div>
-      <p class="nowline" id="nowLine"></p>
-      <div class="pinrow">
-        <span class="pip on" id="pinLamp" aria-hidden="true"></span><span id="pinText">Following now.</span>
-        <button type="button" id="unpin" disabled>Return to now</button>
-      </div>
 
-      <div class="readout" id="readout"></div>
-      <div class="well">
-        <div class="chartbox" id="chart" tabindex="0" role="img"
-             aria-label="Display of the day: solunar activity, sun and moon altitude, and tide height against time. Arrow keys move the reading by ten minutes. Enter pins the time. Escape returns to now."></div>
-      </div>
-      <div class="daylegend" id="dayLegend" hidden>
-        <span><i class="lk lk-sol"></i>Solunar</span><span><i class="lk lk-sun"></i>Sun</span><span><i class="lk lk-moon"></i>Moon</span><span><i class="lk lk-tide"></i>Tide</span>
-      </div>
-      <p class="cap">The ground is darker at night. Green bands mark solunar periods, and the green fish above each band rate that period from one to four. The red needle marks now. With a forecast loaded, a wind lane shows wind and gusts in knots. Select a time on the display to pin it. The map follows the pinned time.</p>
-    </main>
-  </div>
-
-  <section class="unit" id="gulf">
-    <h2 class="stage"><span class="idx">02</span>Gulf: wind, flow and chop</h2>
-    <div class="gulfgrid">
-      <div class="mapcol">
-        <div id="map"></div>
-        <p class="cap">Each lamp is a tide spot. Select a lamp to load that spot. Select any other point on the water to place the probe.</p>
-      </div>
-      <div class="probecol">
-        <p class="maptime" id="mapTime"></p>
-        <div class="layers" id="layers">
-          <button type="button" class="toggle" data-layer="wind" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Wind</button>
-          <button type="button" class="toggle" data-layer="flow" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Flow</button>
-          <button type="button" class="toggle" data-layer="chop" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Chop</button>
+        <div class="readout" id="readout"></div>
+        <div class="well">
+          <div class="chartbox" id="chart" tabindex="0" role="img"
+               aria-label="Display of the day: solunar activity, sun and moon altitude, and tide height against time. Arrow keys move the reading by ten minutes. Enter pins the time. Escape returns to now."></div>
         </div>
-        <div id="probe"></div>
-        <div class="chopkey" aria-label="Chop scale by estimated wave height">
-          <span><i class="sw sw0"></i>Smooth<em>under 0.15 m</em></span>
-          <span><i class="sw sw1"></i>Light<em>from 0.15 m</em></span>
-          <span><i class="sw sw2"></i>Moderate<em>from 0.3 m</em></span>
-          <span><i class="sw sw3"></i>Rough<em>from 0.5 m</em></span>
-          <span><i class="sw sw4"></i>Very rough<em>from 0.8 m</em></span>
+        <div class="daylegend" id="dayLegend" hidden>
+          <span><i class="lk lk-sol"></i>Solunar</span><span><i class="lk lk-sun"></i>Sun</span><span><i class="lk lk-moon"></i>Moon</span><span><i class="lk lk-tide"></i>Tide</span>
         </div>
-        <p class="cap">Solid arrows show wind and point downwind. Line arrows show flow and point downstream. A longer arrow means more wind or more flow. Dashed line arrows lie within 4 km of land, where the 8 km current model is unreliable. Chop is an estimate from wind, fetch and flow.</p>
-        <div class="grille" aria-hidden="true"></div>
+        <p class="cap">The ground is darker at night. Green bands mark solunar periods, and the green fish above each band rate that period from one to four. The red needle marks now. With a forecast loaded, a wind lane shows wind and gusts in knots. Select a time on the display to pin it. The map follows the pinned time.</p>
       </div>
-    </div>
-  </section>
 
-  <div class="unit almanac">
-    <section id="cardTides"></section>
-    <section id="cardSolunar"></section>
-    <section id="cardSun"></section>
-    <section id="cardMoon"></section>
-  </div>
+    <section class="unit" id="gulf">
+      <h2 class="stage"><span class="idx">02</span>Gulf: wind, flow and chop</h2>
+      <div class="gulfgrid">
+        <div class="mapcol">
+          <div id="map"></div>
+          <p class="cap">Each lamp is a tide spot. Select a lamp to load that spot. Select any other point on the water to place the probe.</p>
+        </div>
+        <div class="probecol">
+          <p class="maptime" id="mapTime"></p>
+          <div class="layers" id="layers">
+            <button type="button" class="toggle" data-layer="wind" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Wind</button>
+            <button type="button" class="toggle" data-layer="flow" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Flow</button>
+            <button type="button" class="toggle" data-layer="chop" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Chop</button>
+          </div>
+          <div id="probe"></div>
+          <div class="chopkey" aria-label="Chop scale by estimated wave height">
+            <span><i class="sw sw0"></i>Smooth<em>under 0.15 m</em></span>
+            <span><i class="sw sw1"></i>Light<em>from 0.15 m</em></span>
+            <span><i class="sw sw2"></i>Moderate<em>from 0.3 m</em></span>
+            <span><i class="sw sw3"></i>Rough<em>from 0.5 m</em></span>
+            <span><i class="sw sw4"></i>Very rough<em>from 0.8 m</em></span>
+          </div>
+          <p class="cap">Solid arrows show wind and point downwind. Line arrows show flow and point downstream. A longer arrow means more wind or more flow. Dashed line arrows lie within 4 km of land, where the 8 km current model is unreliable. Chop is an estimate from wind, fetch and flow.</p>
+          <div class="grille" aria-hidden="true"></div>
+        </div>
+      </div>
+    </section>
+    </section>
 
-  <section class="unit" id="weather"></section>
-  <section class="unit" id="ahead"></section>
+    <section class="screen" id="screen-now" data-screen="now" aria-label="Now" hidden>
+      <div class="unit">
+        <h2 class="stage"><span class="idx">01</span>Now</h2>
+        <p class="later">The Now screen comes in a later step. It will show the tide, bite, wind and chop at the iPad's position, the places to go from there, and when to leave for home.</p>
+      </div>
+    </section>
 
-  <footer class="foot">
-    <div>
-      <h4>Tides</h4>
-      <p>The page computes Auckland tides from 43 harmonic constants (TICON-4, by way of the Neaps tide database) and adds the LINZ mean sea level of 1.94&nbsp;m, so heights are above chart datum. For the other spots it applies the time differences and range ratios in the Secondary Ports Table of the New Zealand Nautical Almanac 2026–27.</p>
-      <p>Checked against 146 high and low waters in the LINZ table for Auckland in 2028: half the times agree within 3 minutes, nine in ten within 7 minutes, the largest gap is 9 minutes, and the heights agree within about 0.1&nbsp;m. Weather moves the real water level. <a href="https://www.linz.govt.nz/sea/tides/tide-predictions" target="_blank" rel="noopener">LINZ publishes the official tables</a>.</p>
-    </div>
-    <div>
-      <h4>Sun, moon and solunar periods</h4>
-      <p>Sun and moon positions come from Astronomy Engine. A major period lasts two hours, centered on the moon passing overhead or underfoot. A minor period lasts one hour, centered on moonrise or moonset.</p>
-      <p>The day rating is a rule of thumb, not a measurement. Four fifths of the score comes from the moon phase, highest at new and full moon. One fifth comes from periods that fall on sunrise or sunset.</p>
-      <p>The activity index adds a rise for each period and for sunrise and sunset, scaled by the moon phase. The fish rate each period by the highest value of that index inside the period.</p>
-    </div>
-    <div>
-      <h4>Weather and coastline</h4>
-      <p>Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>, CC BY 4.0. Wave figures come from open-water models and do not describe sheltered bays.</p>
-      <p>Fish icon from Font Awesome Free, CC BY 4.0. Coastline from GSHHG. TICON-4: Hart-Davis, Dettmering and Seitz (2025), <a href="https://doi.org/10.17882/109129" target="_blank" rel="noopener">doi.org/10.17882/109129</a>, CC BY 4.0.</p>
-    </div>
-    <div>
-      <h4>Wind, flow and chop on the map</h4>
-      <p>Wind and current come from Open-Meteo at grid points 0.1° apart. The current model has cells of about 8 km. It does not resolve the channels and is unreliable near land.</p>
-      <p>Chop is an estimate. The page measures the open water upwind of a point, takes wave height and period from the JONSWAP growth curves, and assumes the wind has blown long enough. It then raises the waves where the current runs against them and lowers them where it runs with them. Swell is not included.</p>
-      <p><strong>Not for navigation.</strong> Read the marine forecast before you go out.</p>
-    </div>
-  </footer>
+  </main>
 </div>
+
+<dialog class="sheet" id="tables" aria-labelledby="tablesTitle">
+  <div class="sheet-head">
+    <h2 id="tablesTitle">Tables for <span id="tablesFor"></span></h2>
+    <button type="button" id="tablesClose">Close</button>
+  </div>
+  <div class="sheet-body">
+    <div class="unit almanac">
+      <section id="cardTides"></section>
+      <section id="cardSolunar"></section>
+      <section id="cardSun"></section>
+      <section id="cardMoon"></section>
+    </div>
+    <section class="unit" id="weather"></section>
+    <section class="unit" id="ahead"></section>
+    <footer class="foot">
+      <div>
+        <h4>Tides</h4>
+        <p>The page computes Auckland tides from 43 harmonic constants (TICON-4, by way of the Neaps tide database) and adds the LINZ mean sea level of 1.94&nbsp;m, so heights are above chart datum. For the other spots it applies the time differences and range ratios in the Secondary Ports Table of the New Zealand Nautical Almanac 2026–27.</p>
+        <p>Checked against 146 high and low waters in the LINZ table for Auckland in 2028: half the times agree within 3 minutes, nine in ten within 7 minutes, the largest gap is 9 minutes, and the heights agree within about 0.1&nbsp;m. Weather moves the real water level. <a href="https://www.linz.govt.nz/sea/tides/tide-predictions" target="_blank" rel="noopener">LINZ publishes the official tables</a>.</p>
+      </div>
+      <div>
+        <h4>Sun, moon and solunar periods</h4>
+        <p>Sun and moon positions come from Astronomy Engine. A major period lasts two hours, centered on the moon passing overhead or underfoot. A minor period lasts one hour, centered on moonrise or moonset.</p>
+        <p>The day rating is a rule of thumb, not a measurement. Four fifths of the score comes from the moon phase, highest at new and full moon. One fifth comes from periods that fall on sunrise or sunset.</p>
+        <p>The activity index adds a rise for each period and for sunrise and sunset, scaled by the moon phase. The fish rate each period by the highest value of that index inside the period.</p>
+      </div>
+      <div>
+        <h4>Weather and coastline</h4>
+        <p>Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>, CC BY 4.0. Wave figures come from open-water models and do not describe sheltered bays.</p>
+        <p>Fish icon from Font Awesome Free, CC BY 4.0. Coastline from GSHHG. TICON-4: Hart-Davis, Dettmering and Seitz (2025), <a href="https://doi.org/10.17882/109129" target="_blank" rel="noopener">doi.org/10.17882/109129</a>, CC BY 4.0.</p>
+      </div>
+      <div>
+        <h4>Wind, flow and chop on the map</h4>
+        <p>Wind and current come from Open-Meteo at grid points 0.1° apart. The current model has cells of about 8 km. It does not resolve the channels and is unreliable near land.</p>
+        <p>Chop is an estimate. The page measures the open water upwind of a point, takes wave height and period from the JONSWAP growth curves, and assumes the wind has blown long enough. It then raises the waves where the current runs against them and lowers them where it runs with them. Swell is not included.</p>
+        <p><strong>Not for navigation.</strong> Read the marine forecast before you go out.</p>
+      </div>
+    </footer>
+  </div>
+</dialog>
 
 <noscript><p style="padding:20px">This page needs JavaScript to compute the tides.</p></noscript>
 

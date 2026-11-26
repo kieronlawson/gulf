@@ -5,8 +5,15 @@ Needs: pip install playwright, then: playwright install chromium
 
 Environment variables:
   MODE    wx (mock forecast, default) or nowx (forecast requests fail)
-  W, VH   viewport width and height (default 1360 by 900)
+  DEVICE  a screen size in points, landscape unless noted:
+            ipad (1180 by 820, default), ipad-9 (1080 by 810), ipad-mini (1133 by 744),
+            ipad-pro-13 (1376 by 1032), ipad-portrait (820 by 1180), phone (390 by 844)
+  W, VH   viewport width and height. Either one overrides the DEVICE value.
+  SCALE   device pixel ratio (default 1). Use 2 for a screenshot a person will look at.
+  SCREEN  week, day (default) or now: the screen the page opens on
+  LAT, LON  position the page receives from the browser. Without them, the page gets no position.
   SCHEME  light (default) or dark
+  FULL    1 (default) captures the whole page, 0 only the viewport
   SEL     CSS selector to capture instead of the whole page
   OUT     output file (default shot.png)
 Arguments: JavaScript snippets to run in the page before the capture.
@@ -14,8 +21,13 @@ Arguments: JavaScript snippets to run in the page before the capture.
 import json, math, os, sys, pathlib
 from playwright.sync_api import sync_playwright
 
-mode = os.environ.get('MODE', 'wx'); width = int(os.environ.get('W', '1360')); vh = int(os.environ.get('VH', '900'))
-scheme = os.environ.get('SCHEME', 'light'); sel = os.environ.get('SEL'); out = os.environ.get('OUT', 'shot.png')
+DEVICES = {'ipad': (1180, 820), 'ipad-9': (1080, 810), 'ipad-mini': (1133, 744), 'ipad-pro-13': (1376, 1032),
+           'ipad-portrait': (820, 1180), 'phone': (390, 844)}
+env = os.environ.get
+mode = env('MODE', 'wx'); dev_w, dev_h = DEVICES[env('DEVICE', 'ipad')]
+width = int(env('W', dev_w)); vh = int(env('VH', dev_h)); scale = float(env('SCALE', '1'))
+screen = env('SCREEN', 'day'); lat = env('LAT'); lon = env('LON'); full = env('FULL', '1') != '0'
+scheme = env('SCHEME', 'light'); sel = env('SEL'); out = env('OUT', 'shot.png')
 page_url = (pathlib.Path(__file__).resolve().parent.parent / 'dist' / 'index.html').as_uri()
 
 def fake(kind, n_loc):
@@ -47,7 +59,11 @@ def fake(kind, n_loc):
 
 with sync_playwright() as p:
     browser = p.chromium.launch()
-    ctx = browser.new_context(viewport={'width': width, 'height': vh}, color_scheme=scheme, timezone_id='Asia/Singapore')
+    opts = dict(viewport={'width': width, 'height': vh}, device_scale_factor=scale, color_scheme=scheme,
+                timezone_id='Asia/Singapore', has_touch=width <= 1400)
+    if lat and lon: opts.update(geolocation={'latitude': float(lat), 'longitude': float(lon)}, permissions=['geolocation'])
+    ctx = browser.new_context(**opts)
+    ctx.add_init_script('try { localStorage.setItem("gulf-almanac-screen", %s); } catch (e) {}' % json.dumps(screen))
     page = ctx.new_page(); logs = []
     page.on('console', lambda m: logs.append(m.type + ': ' + m.text))
     page.on('pageerror', lambda e: logs.append('PAGE ERROR: ' + str(e)))
@@ -65,7 +81,7 @@ with sync_playwright() as p:
     for snippet in sys.argv[1:]:
         page.evaluate(snippet); page.wait_for_timeout(400)
     if sel: page.locator(sel).screenshot(path=out)
-    else: page.screenshot(path=out, full_page=True)
+    else: page.screenshot(path=out, full_page=full)
     errors = [l for l in logs if l.startswith('PAGE ERROR')]
     print('saved', out, '| page errors:', errors or 'none')
     browser.close()

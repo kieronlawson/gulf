@@ -151,7 +151,12 @@ h1, h2, h3, h4, p, ul { margin: 0; }
 .muted { color: var(--ink2); }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
-.bench { max-width: 1280px; margin: 0 auto; padding: 22px clamp(10px, 2.6vw, 32px) 40px; display: grid; gap: 12px; }
+/* The frame: a top bar over the screen area. Wide screens fit the frame to the window (see the end of this file). */
+.app { max-width: 1440px; margin: 0 auto; padding: 14px clamp(10px, 1.4vw, 14px) 32px; display: flex; flex-direction: column; gap: 12px; }
+.stack { min-width: 0; }
+.screen { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.screen[hidden] { display: none; }
+.later { max-width: 70ch; color: var(--ink2); font-size: 14.5px; }
 
 /* One chassis module. */
 .unit {
@@ -179,22 +184,29 @@ h1, h2, h3, h4, p, ul { margin: 0; }
 /* Perforated grille. */
 .grille { background-image: radial-gradient(var(--grille) 1.25px, transparent 1.25px); background-size: 6px 6px; }
 
-/* ---------- Masthead ---------- */
+/* ---------- Top bar ---------- */
 
-.mast { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 28px; padding-bottom: 16px; }
-.mast h1 { font-size: clamp(24px, 3vw, 32px); font-weight: 700; letter-spacing: -0.015em; line-height: 1.05; }
-.mast-sub { margin-top: 5px; color: var(--ink2); font-size: 13.5px; }
-.status { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 11px; font-size: 12px; color: var(--ink2); }
-.status li { display: inline-flex; align-items: center; gap: 7px; }
+.topbar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px;
+  min-height: 60px; padding: 7px 12px 7px 14px;
+  background: var(--chassis); border: 1px solid var(--edge); border-radius: 6px; box-shadow: inset 0 1px 0 var(--bevel);
+}
+.brand { min-width: 0; flex: 1 1 150px; }
+.brand h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.015em; line-height: 1.2; white-space: nowrap; }
+.wxstatus { display: flex; align-items: center; gap: 7px; margin-top: 2px; font-size: 12.5px; color: var(--ink2); white-space: nowrap; }
+.wxstatus span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.screens { display: flex; gap: 6px; }
+.screens button { width: 108px; font-size: 14px; }
+.screens button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--chassis); box-shadow: none; }
+.tools { display: flex; flex: 1 1 auto; justify-content: flex-end; gap: 8px; }
+.tools select { min-width: 0; width: 196px; }
 
-.controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; }
-.field { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--ink2); }
 .datenav { display: flex; gap: 6px; }
 
 /* Pushbuttons. */
 select, button, input[type="date"] {
   font: inherit; font-size: 13.5px; color: var(--ink);
-  height: 36px; padding: 0 11px; border: 1px solid var(--btn-edge); border-radius: 4px;
+  height: 44px; padding: 0 14px; border: 1px solid var(--btn-edge); border-radius: 4px;
   background: linear-gradient(var(--btn-a), var(--btn-b));
   box-shadow: inset 0 1px 0 var(--bevel);
   transition: transform 160ms var(--ease), border-color 160ms var(--ease);
@@ -202,7 +214,7 @@ select, button, input[type="date"] {
 select { min-width: 210px; max-width: 100%; padding-right: 6px; }
 input[type="date"] { font-family: var(--mono); font-size: 13px; }
 button { cursor: pointer; font-weight: 600; }
-button.step { width: 36px; padding: 0; font-size: 17px; line-height: 1; }
+button.step { width: 44px; padding: 0; font-size: 19px; line-height: 1; }
 button:hover, select:hover { border-color: var(--ink2); }
 button:active { transform: translateY(1px); box-shadow: none; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
@@ -211,8 +223,8 @@ button:active { transform: translateY(1px); box-shadow: none; }
 
 .dayside { min-width: 0; }
 .cap { font-size: 12px; color: var(--ink2); margin-top: 9px; max-width: 96ch; }
-.pinrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 9px; margin-top: 8px; font-size: 12.5px; color: var(--ink2); min-height: 28px; }
-.pinrow button { height: 28px; font-size: 12px; margin-left: 6px; }
+.pinrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 9px; margin-top: 8px; font-size: 12.5px; color: var(--ink2); min-height: 44px; }
+.pinrow button { font-size: 12.5px; margin-left: 6px; }
 button:disabled { opacity: .45; cursor: default; }
 button:disabled:hover { border-color: var(--btn-edge); }
 button:disabled:active { transform: none; }
@@ -226,7 +238,7 @@ button:disabled:active { transform: none; }
 .maptime { font-size: 13px; color: var(--ink2); }
 .maptime b { font-family: var(--mono); font-weight: 500; color: var(--ink); }
 .layers { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
-.toggle { display: inline-flex; align-items: center; gap: 8px; height: 32px; font-size: 12.5px; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
 .probehint { font-size: 13.5px; padding: 12px 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); max-width: 60ch; }
 #probe { min-height: 150px; max-width: 560px; }
 #probe .kv { border-top: 1px solid var(--hair); }
@@ -276,6 +288,7 @@ button:disabled:active { transform: none; }
 .place { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 20px; }
 .place h2 { font-size: clamp(21px, 2.4vw, 27px); font-weight: 700; letter-spacing: -0.015em; line-height: 1.1; }
 .place .sub { color: var(--ink2); font-size: 14px; margin-top: 2px; }
+.dayctl { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .place .date { font-family: var(--mono); font-size: 13px; text-align: right; }
 .nowline { margin-top: 7px; font-size: 14.5px; min-height: 1.45em; }
 
@@ -396,7 +409,7 @@ table { border-collapse: collapse; width: 100%; }
 /* ---------- Weather and days ahead ---------- */
 
 .meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 18px; margin-bottom: 12px; font-size: 12.5px; color: var(--ink2); }
-.meta button { height: 30px; font-size: 12.5px; }
+.meta button { font-size: 13px; }
 
 .scrollx { overflow-x: auto; border: 1px solid var(--hair); border-radius: 3px; }
 .grid th, .grid td { padding: 6px 9px; border-bottom: 1px solid var(--hair); text-align: center; white-space: nowrap; font-weight: 400; }
@@ -418,7 +431,7 @@ table { border-collapse: collapse; width: 100%; }
 .notice p + p { margin-top: 8px; }
 .notice button { margin-top: 12px; }
 
-.ahead th, .ahead td { padding: 7px 9px; border-bottom: 1px solid var(--hair); text-align: left; white-space: nowrap; font-weight: 400; vertical-align: middle; }
+.ahead th, .ahead td { padding: 12px 9px; border-bottom: 1px solid var(--hair); text-align: left; white-space: nowrap; font-weight: 400; vertical-align: middle; }
 .ahead td { font-family: var(--mono); font-size: 12.5px; }
 .ahead td.txt { font-family: var(--sans); font-size: 13px; }
 .ahead thead th { font-size: 11.5px; font-weight: 500; color: var(--ink2); border-bottom: 1px solid var(--edge); }
@@ -433,6 +446,22 @@ table { border-collapse: collapse; width: 100%; }
 .pips i.on { background: var(--green); }
 .bar { display: inline-block; width: 58px; height: 4px; background: var(--hair); vertical-align: middle; margin-right: 9px; position: relative; }
 .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ink); }
+
+/* ---------- Tables sheet ---------- */
+
+.sheet {
+  width: min(1412px, calc(100vw - 28px)); max-width: none; height: calc(100vh - 28px); height: calc(100dvh - 28px); max-height: none;
+  margin: 14px auto; padding: 0; border: 1px solid var(--edge); border-radius: 6px; background: var(--bench); color: var(--ink);
+}
+.sheet[open] { display: flex; flex-direction: column; animation: sheet-in 200ms var(--ease); }
+.sheet::backdrop { background: rgba(12, 13, 12, .38); }
+@keyframes sheet-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.sheet-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none;
+  min-height: 60px; padding: 7px 12px 7px 14px; background: var(--chassis); border-bottom: 1px solid var(--edge);
+}
+.sheet-head h2 { font-size: 17px; font-weight: 700; letter-spacing: -0.015em; }
+.sheet-body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 12px 28px; display: grid; gap: 12px; align-content: start; }
 
 /* ---------- Footer ---------- */
 
@@ -451,13 +480,22 @@ table { border-collapse: collapse; width: 100%; }
   .mapcol { max-width: 470px; }
   .probecol .grille { flex: none; height: 30px; }
 }
+@media (max-width: 760px) {
+  .brand { flex-basis: 100%; }
+  .screens { flex: 1 1 100%; }
+  .screens button { flex: 1; width: auto; }
+  .tools { flex-basis: 100%; }
+  .tools select { flex: 1; width: auto; }
+}
 @media (max-width: 600px) {
   body { font-size: 14px; }
+  .app { padding: 10px 10px 28px; gap: 10px; }
   .unit { padding: 15px 14px 16px; }
   .almanac { grid-template-columns: minmax(0, 1fr); }
-  .controls, .field, select { width: 100%; }
+  .dayctl { align-items: stretch; width: 100%; }
   .datenav input[type="date"] { flex: 1; min-width: 0; }
   .place .date { text-align: left; }
+  .sheet { width: 100vw; height: 100vh; height: 100dvh; margin: 0; border: 0; border-radius: 0; }
   .readout { grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 0; }
   .readout > div { border-bottom: 1px solid var(--hair); padding-left: 0; }
   .readout > div:nth-child(2n) { border-right: 0; padding-left: 12px; }
@@ -466,6 +504,19 @@ table { border-collapse: collapse; width: 100%; }
   .chopkey { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+/* ---------- Wide screens: an iPad in landscape, or larger ----------
+   The frame fills the window and the page itself does not scroll. Until a screen is laid out
+   to fit, the screen area scrolls inside the frame. Shorter windows fall back to a scrolling page. */
+@media (min-width: 1000px) and (min-height: 640px) {
+  .app {
+    height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    padding-bottom: 14px;
+  }
+  .topbar { flex-wrap: nowrap; }
+  .stack { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; border-radius: 6px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
+  * { transition: none !important; animation: none !important; }
 }
