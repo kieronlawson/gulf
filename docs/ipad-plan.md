@@ -24,7 +24,7 @@ Wireframes: https://claude.ai/artifact/LZJbcXCBTyxqeHZdmehFqo
 9. **Stored data.** The page shows the last loaded forecast from the device, with its age.
 10. **Loading.** The page loads on open, on return to the foreground, on a timer while open, and from a Sync button. Safari on iPad cannot load data while the page is closed.
 11. **Tables** for tides, moon, weather and the days ahead move behind a Tables button.
-12. **Hosting.** GitHub Pages serves the page. `.github/workflows/pages.yml` runs the tests, builds the page and publishes `dist/` on every push to `main`. Position and a service worker both need the https address that Pages gives. The repository and the site are both public. Saved marks and home stay on the device and never reach the site.
+12. **Hosting.** GitHub Pages serves the page. `.github/workflows/pages.yml` runs the tests, builds the page and publishes `dist/` on every push to `main`. A pull request runs the tests and the build without publishing. Position and a service worker both need the https address that Pages gives. The repository and the site are both public. Saved marks and home stay on the device and never reach the site.
 13. **Screen sizes.** The page serves every iPad sold since late 2021, in landscape. The smallest are the iPad (9th generation) at 1080 × 810 points and the iPad mini at 1133 × 744. The largest is the 13-inch iPad Pro at 1376 × 1032. The layout fits the smallest sizes with no scrolling, after Safari's bars take their share of the height.
 14. **Narrow screens.** On a phone, an iPad in portrait, or a narrow Split View window, the parts of each screen stack and the page scrolls.
 15. **Home** is where the boat goes into and comes out of the water: a ramp, a marina or a dry stack. The owner sets it on the map, and it starts unset. Day measures distance from home, the run home ends there, and a map preset centers on it. The wireframes call it the ramp.
@@ -59,7 +59,7 @@ Each step ends with a working page that the owner can try on the iPad. Logic tha
 
 | Step | Work | State |
 |---|---|---|
-| 0 | Publish the current page to GitHub Pages. | Workflow written. Waiting for the owner to turn on Pages. |
+| 0 | Publish the current page to GitHub Pages. | Done. The page is at https://kieronlawson.github.io/gulf/. |
 | 1 | Screen frame: Week, Day and Now buttons, spot, Limits, Tables, Sync and forecast age in the top bar. Tables behind a button. Load on return to the foreground. Split `src/ui.js` into shared code and one file per screen. Screenshot tool gets iPad sizes, a screen choice and a mocked position. | |
 | 2 | Windows in `engine.js`, with Node tests. Limits editor. | |
 | 3 | Week screen. | |

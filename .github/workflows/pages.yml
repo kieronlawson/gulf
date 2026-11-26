@@ -1,11 +1,13 @@
 # Builds the page and publishes dist/ to GitHub Pages.
-# It runs on every push to main, and on demand from the Actions tab.
+# A push to main, or a run started from the Actions tab, tests, builds and publishes.
+# A pull request tests and builds, but does not publish.
 # The tests run first. A failing test stops the publish.
 name: Publish to GitHub Pages
 
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -13,29 +15,32 @@ permissions:
   pages: write
   id-token: write
 
-# One publish at a time. A newer push waits for the running publish to finish.
+# One run at a time for each branch. On main, a newer push waits for the running publish to finish.
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      # .nvmrc names the Node version. The npm cache is off: npm ci takes about a second,
+      # and setup-node advises against caching in a workflow that can write to Pages.
+      - uses: actions/setup-node@v7
         with:
-          node-version: 22
-          cache: npm
+          node-version-file: .nvmrc
+          package-manager-cache: false
       - run: npm ci
       - run: npm test
       - run: npm run build
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -43,4 +48,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
