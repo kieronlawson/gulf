@@ -200,22 +200,22 @@
     $('sync').addEventListener('click', sync);
 
     /* Week: a click or tap on a lane, inside a window or not, opens its day with the time under the pointer
-       pinned. A mouse or a finger presses the lane just before its click. A click with no such press has no
-       real pointer position: it comes from a key, VoiceOver or Switch Control. On a window button, such a
-       click pins the window's start. A day name opens its day with no new pin. */
-    var pressed = null;   /* the lane a pointer last pressed, and when */
-    $('wkRows').addEventListener('pointerdown', function (e) {
+       pinned. A mouse or a finger is released on the lane just before its click, however long it was held.
+       A click with no such release, as from a key, has no real pointer position: on a window button it pins
+       the window's start. A day name opens its day with no new pin. */
+    var released = null;   /* the lane a pointer was last released on, and when */
+    $('wkRows').addEventListener('pointerup', function (e) {
       var lane = e.target.closest ? e.target.closest('.wk-lane') : null;
-      pressed = lane ? { lane: lane, at: e.timeStamp } : null;
+      released = lane ? { lane: lane, at: e.timeStamp } : null;
     });
-    $('wkRows').addEventListener('pointercancel', function () { pressed = null; });
+    $('wkRows').addEventListener('pointercancel', function () { released = null; });
     $('wkRows').addEventListener('click', function (e) {
-      var el = e.target.closest ? e.target.closest('.wk-win, .wk-day, .wk-lane') : null, press = pressed;
-      pressed = null;
+      var el = e.target.closest ? e.target.closest('.wk-win, .wk-day, .wk-lane') : null, up = released;
+      released = null;
       if (!el) return;
       var d0 = +el.getAttribute('data-d0'), lane = el.closest('.wk-lane');
       if (el.classList.contains('wk-day')) { openDay(d0, null); return; }
-      var pointed = e.detail > 0 && press && press.lane === lane && e.timeStamp - press.at < 5000;
+      var pointed = e.detail > 0 && up && up.lane === lane && e.timeStamp - up.at < 1000;
       if (el.classList.contains('wk-win') && !pointed) { openDay(d0, +el.getAttribute('data-t')); return; }
       openDay(d0, laneTimeAt(lane, e.clientX));
     });
