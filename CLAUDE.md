@@ -9,7 +9,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 | `npm install` | Installs the build dependencies. Use the Node version in `.nvmrc`; the publish workflow uses it too. |
 | `npm run build` | Writes `dist/index.html`, one self-contained file. |
 | `npm test` | Checks tide predictions against the LINZ 2028 table for Auckland, and one day of sun, moon and solunar values against recorded results. |
-| `python3 tools/screenshot.py` | Renders the built page with a mocked forecast. Needs Python Playwright. Read the header of the file for options. |
+| `python3 tools/screenshot.py` | Renders the built page with a mocked forecast, at an iPad size or a phone size, on any of the three screens. Needs Python Playwright. Read the header of the file for options. |
 
 ## Layout
 
@@ -35,7 +35,7 @@ The page scripts are plain globals, loaded in this order: `Astronomy`, `Neaps`, 
 4. Use US English spelling. Proper names keep theirs: "Waitematā Harbour".
 5. Write interface text plainly: name the actor, make one claim per sentence, use no idiom.
 6. The map uses no third-party component. It is SVG drawn from `data/coast.json`.
-7. Check both themes and a 390 px wide screen after any layout change.
+7. Check both themes after any layout change, at the iPad sizes in `tools/screenshot.py` and on a 390 px wide screen.
 8. Open a pull request when a task is complete.
 
 ## Design
@@ -68,7 +68,7 @@ The look follows Braun products of the 1960s. Tokens are in `src/style.css`.
 
 **Solunar.** A major period is two hours centered on the moon's upper or lower transit. A minor period is one hour centered on moonrise or moonset. The day rating, the activity index and the fish levels are rules of thumb defined in `engine.js`. They are not measurements.
 
-**Weather.** The browser fetches Open-Meteo. Each spot gets a forecast and marine data. The map gets a grid of 83 water points: wind from the forecast service, current from the marine service. The page keeps the last loaded data in `localStorage` under keys that start with `gulf-almanac-`.
+**Weather.** The browser fetches Open-Meteo. Each spot gets a forecast and marine data. The map gets a grid of 83 water points: wind from the forecast service, current from the marine service. The page keeps the last loaded data in `localStorage` under keys that start with `gulf-almanac-`. A load runs when the page opens, once a minute if the data is over an hour old, when the page returns to the foreground, and when the owner presses Sync. After a failed load, automatic loads wait 10 minutes. Sync, a return to the page and a restored connection try at once.
 
 **Flow.** The current model has cells of about 8 km. It does not resolve the channels. `loadFlowField` in `src/ui/map.js` is the only code that knows the source, so a better source can replace it there.
 

@@ -14,7 +14,7 @@
     function row(k, v, note) { return '<tr><th scope="row">' + k + (note ? ' <span class="note">' + note + '</span>' : '') + '</th><td>' + v + '</td></tr>'; }
 
     /* Tides */
-    html = head('03', 'Tides') + '<table class="kv"><tbody>';
+    html = head('01', 'Tides') + '<table class="kv"><tbody>';
     d.extremes.forEach(function (e) {
       html += row(e.hi ? 'High water' : 'Low water', '<span class="strong">' + E.fmtTime(e.t) + '</span>&ensp;' + meters(e.h));
     });
@@ -37,7 +37,7 @@
 
     /* Solunar */
     var sol = d.solunar, fromScore = state.prevScore == null ? sol.score : state.prevScore;
-    html = head('04', 'Solunar') + '<div class="gauge">' + gauge(sol.score, fromScore) + '<div><b>' + sol.label + '</b><span>' + sol.score + ' / 100</span></div></div><table class="kv"><tbody>';
+    html = head('02', 'Solunar') + '<div class="gauge">' + gauge(sol.score, fromScore) + '<div><b>' + sol.label + '</b><span>' + sol.score + ' / 100</span></div></div><table class="kv"><tbody>';
     sol.periods.filter(function (p) { return p.inDay; }).forEach(function (p) {
       var live = isToday && now >= p.start && now <= p.end;
       html += '<tr><th scope="row"><i class="pip' + (live ? ' on' : '') + '" aria-hidden="true"></i><span class="strong">' + (p.major ? 'Major' : 'Minor') + '</span> <span class="note">' +
@@ -49,7 +49,7 @@
     state.prevScore = sol.score;
 
     /* Sun */
-    html = head('05', 'Sun') + '<table class="kv"><tbody>' +
+    html = head('03', 'Sun') + '<table class="kv"><tbody>' +
       row('First light', E.fmtTime(sun.dawn), 'sun 6° below') +
       row('Sunrise', '<span class="strong">' + E.fmtTime(sun.rise) + '</span>') +
       row('Solar noon', E.fmtTime(sun.noon), Math.round(sun.noonAlt) + '° up') +
@@ -62,7 +62,7 @@
     /* Moon */
     function times(list) { return list.length ? list.map(function (x) { return E.fmtTime(x.t != null ? x.t : x); }).join(', ') : 'None this day'; }
     var phases = E.nextPhases(d.d0, 3), aps = E.nextApsides(d.d0);
-    html = head('06', 'Moon') + '<div class="moonhead">' + moonSvg(moon.fraction, moon.limb, 56) +
+    html = head('04', 'Moon') + '<div class="moonhead">' + moonSvg(moon.fraction, moon.limb, 56) +
       '<div><b>' + moon.name + '</b><span>' + Math.round(moon.fraction * 100) + '% lit, ' + Math.round(moon.distanceKm / 1000) + ',000 km</span></div></div><table class="kv"><tbody>' +
       row('Moonrise', times(moon.rises)) + row('Moonset', times(moon.sets)) +
       row('Overhead', times(moon.upper), moon.upper.length ? Math.round(moon.upper[0].alt) + '° up' : '') +
@@ -74,33 +74,21 @@
 
   /* ---------- Weather block ---------- */
 
-  function setWxLamp(cls, text) {
-    var lamp = $('pipWx'), label = $('pipWxText');
-    if (lamp) lamp.className = 'pip' + (cls ? ' ' + cls : '');
-    if (label) label.textContent = text;
-  }
-
   function renderWeather() {
     var el = $('weather'), wx = state.wx[state.spot.id], d = E.day(state.spot, state.d0), sp = state.spot;
-    var title = '<h3 class="stage"><span class="idx">07</span>Weather</h3>';
+    var title = '<h3 class="stage"><span class="idx">05</span>Weather</h3>';
     if (!wx || (wx.status === 'loading' && !wx.recs)) {
-      setWxLamp('busy', 'Forecast loading');
       el.innerHTML = title + '<div class="meta"><span>Loading the forecast from Open-Meteo.</span></div>';
       return;
     }
     if (wx.status === 'failed' && !wx.recs) {
-      setWxLamp('alert', 'Forecast not loaded');
       el.innerHTML = title + '<div class="notice"><div class="grille" aria-hidden="true"></div><div class="notice-body">' +
         '<b><span class="pip alert" aria-hidden="true"></span>The forecast did not load.</b>' +
-        '<p>This page gets its weather from Open-Meteo over the internet. A page published inside Claude is not allowed to make that connection, so there the weather stays empty. Tides, sun, moon and solunar periods are computed in the page and are not affected.</p>' +
-        '<p>Open the downloaded file in a browser and the forecast loads. If you are already using the downloaded file, check your connection, then load the forecast again.</p>' +
-        '<button type="button" data-act="reload">Load the forecast again</button></div></div>';
+        '<p>This page gets its weather from Open-Meteo over the internet, and that request failed. The page tries again every 10 minutes, and when you return to it. Sync tries at once.</p>' +
+        '<p>Tides, sun, moon and solunar periods are computed in the page. They do not need the forecast.</p>' +
+        '<button type="button" data-act="reload">Load the forecast now</button></div></div>';
       return;
     }
-    if (wx.status === 'ok') setWxLamp('on', 'Forecast loaded');
-    else if (wx.status === 'loading') setWxLamp('busy', 'Forecast loading');
-    else setWxLamp('alert', 'Forecast out of date');
-
     var hrs = dayRecs(d.d0, d.d1), span = wxSpan();
     var meta = 'Forecast for ' + Math.abs(sp.lat).toFixed(2) + '°S ' + sp.lon.toFixed(2) + '°E, loaded ' + E.fmtDay(wx.at) + ' at ' + E.fmtTime(wx.at) + '.';
     if (wx.status === 'failed') meta += ' A newer forecast did not load.';
@@ -155,7 +143,7 @@
     var inWindow = state.d0 >= today && state.d0 < E.addDays(today, 14);
     var start = inWindow ? today : state.d0;
     var wx = state.wx[state.spot.id], hasWx = !!(wx && wx.recs);
-    var h = '<h3 class="stage"><span class="idx">08</span>14 days from ' + E.fmtDay(start + 12 * HOUR) + '</h3>' +
+    var h = '<h3 class="stage"><span class="idx">06</span>14 days from ' + E.fmtDay(start + 12 * HOUR) + '</h3>' +
       '<div class="meta"><span>Select a row to open that day.</span></div>' +
       '<div class="scrollx"><table class="ahead"><thead><tr><th scope="col">Day</th><th scope="col">Moon</th><th scope="col">High water, m</th><th scope="col">Range, m</th>' +
       '<th scope="col">Solunar</th><th scope="col">Major periods</th>' +

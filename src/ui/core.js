@@ -21,14 +21,17 @@
   var spots = DATA.spots, byId = {};
   spots.forEach(function (s) { byId[s.id] = s; });
 
+  var SCREENS = ['week', 'day', 'now'];
+
   var state = {
+    screen: SCREENS.indexOf(store.get('gulf-almanac-screen')) >= 0 ? store.get('gulf-almanac-screen') : 'day',
     spot: byId[store.get('gulf-almanac-spot')] || spots[0],
     d0: E.dayStart(Date.now()),
     followToday: true,
     cursor: null,
     geom: null,
     wx: {},
-    wxBlocked: false,
+    wxFailedAt: 0,
     pin: null,
     probe: null,
     probeMiss: false,
@@ -97,6 +100,10 @@
   /* ---------- Weather: Open-Meteo, fetched by the reader's browser ---------- */
 
   var WX_TTL = 60 * 60 * 1000;
+  /* After a failed load, automatic loads wait this long before they try again.
+     Sync, a return to the page and a restored connection try at once. */
+  var RETRY_MS = 10 * 60 * 1000;
+  function recentlyFailed(at) { return at > 0 && Date.now() - at < RETRY_MS; }
 
   function getJSON(url, ms) {
     var ctl = new AbortController();
@@ -148,14 +155,16 @@
     if (cur && cur.status === 'loading') return;
     if (!force && cur && cur.status === 'ok' && Date.now() - cur.at < WX_TTL) return;
     var old = (cur && cur.recs) ? cur : readCachedWx(id);
-    if (!force && state.wxBlocked) {
-      state.wx[id] = { status: 'failed', at: old ? old.at : 0, recs: old ? old.recs : null };
-      weatherChanged(id);
-      return;
-    }
     if (!force && old && Date.now() - old.at < WX_TTL) {
       state.wx[id] = { status: 'ok', at: old.at, recs: old.recs };
       weatherChanged(id);
+      return;
+    }
+    if (!force && recentlyFailed(state.wxFailedAt)) {
+      if (!cur || cur.status !== 'failed') {
+        state.wx[id] = { status: 'failed', at: old ? old.at : 0, recs: old ? old.recs : null };
+        weatherChanged(id);
+      }
       return;
     }
     state.wx[id] = { status: 'loading', at: old ? old.at : 0, recs: old ? old.recs : null };
@@ -172,18 +181,40 @@
       var recs = buildRecs(res[0], res[1]);
       if (!Object.keys(recs).length) throw new Error('empty forecast');
       state.wx[id] = { status: 'ok', at: Date.now(), recs: recs };
-      state.wxBlocked = false;
+      state.wxFailedAt = 0;
       store.set('gulf-almanac-wx-' + id, JSON.stringify({ at: state.wx[id].at, recs: recs }));
     }).catch(function () {
       state.wx[id] = { status: 'failed', at: old ? old.at : 0, recs: old ? old.recs : null };
-      state.wxBlocked = true;
+      state.wxFailedAt = Date.now();
     }).then(function () { weatherChanged(id); });
   }
 
   function weatherChanged(id) {
     syncField(false);
     if (state.spot.id !== id) return;
-    renderChart(); renderReadout(); renderWeather(); renderAhead();
+    renderStatus(); renderChart(); renderReadout(); renderWeather(); renderAhead();
+  }
+
+  /* The lamp and line under the title: whether a forecast is loaded for the spot, and how old it is. */
+  function ageWords(at) {
+    var mins = Math.floor((Date.now() - at) / MIN);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + ' min ago';
+    if (mins < 48 * 60) return Math.floor(mins / 60) + ' h ' + E.pad2(mins % 60) + ' min ago';
+    return Math.floor(mins / (24 * 60)) + ' days ago';
+  }
+  function renderStatus() {
+    var wx = state.wx[state.spot.id], lamp = 'busy', text = 'Loading the forecast';
+    if (wx && wx.recs) {
+      var age = ageWords(wx.at);
+      if (wx.status === 'ok') { lamp = 'on'; text = 'Forecast loaded ' + age; }
+      else if (wx.status === 'loading') { lamp = 'busy'; text = 'Updating. Forecast loaded ' + age; }
+      else { lamp = 'alert'; text = 'Update failed. Forecast loaded ' + age; }
+    } else if (wx && wx.status === 'failed') {
+      lamp = 'alert'; text = 'No forecast. The last load failed.';
+    }
+    $('wxLamp').className = 'pip ' + lamp;
+    $('wxText').textContent = text;
   }
 
   function dayRecs(a, b) {

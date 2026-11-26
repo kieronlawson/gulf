@@ -114,7 +114,7 @@
   /* ---------- Wind and flow over the Gulf ---------- */
 
   var gridPts = [], cells = [], windSites = [], flowSites = [];
-  var field = { status: 'idle', at: 0, wind: null, flow: null };
+  var field = { status: 'idle', at: 0, failedAt: 0, wind: null, flow: null };
 
   /* The four nearest grid points, with inverse-distance weights. */
   function nearest(x, y) {
@@ -199,10 +199,10 @@
     field.status = 'loading';
     renderGulf();
     Promise.all([loadWindField(gridPts), loadFlowField(gridPts).catch(function () { return null; })]).then(function (res) {
-      field.wind = res[0]; field.flow = res[1]; field.at = Date.now(); field.status = 'ok';
+      field.wind = res[0]; field.flow = res[1]; field.at = Date.now(); field.status = 'ok'; field.failedAt = 0;
       store.set('gulf-almanac-field', JSON.stringify({ at: field.at, npts: gridPts.length, wind: field.wind, flow: field.flow }));
     }).catch(function () {
-      field.status = 'failed';
+      field.status = 'failed'; field.failedAt = Date.now();
     }).then(renderGulf);
   }
 
@@ -214,15 +214,12 @@
     } catch (e) { /* no usable cache */ }
   }
 
-  /* Loads the Gulf field when it is missing or older than an hour. */
+  /* Loads the Gulf field when it is missing or older than an hour.
+     After a failed load, automatic loads wait RETRY_MS before they try again. */
   function syncField(force) {
     if (field.status === 'loading' || !gridPts.length) return;
-    if (!force && state.wxBlocked) {
-      if (!field.wind) field.status = 'failed';
-      renderGulf();
-      return;
-    }
     if (!force && field.wind && Date.now() - field.at < WX_TTL) return;
+    if (!force && recentlyFailed(field.failedAt)) return;
     loadField();
   }
 
@@ -376,8 +373,8 @@
       if (field.status === 'failed') {
         el.innerHTML = '<div class="notice"><div class="grille" aria-hidden="true"></div><div class="notice-body">' +
           '<b><span class="pip alert" aria-hidden="true"></span>Wind, flow and chop did not load.</b>' +
-          '<p>The map gets them from Open-Meteo over the internet, as the weather table does. A page published inside Claude is not allowed to make that connection. Open the downloaded file in a browser and they load.</p>' +
-          '<button type="button" data-act="reload">Load the forecast again</button></div></div>';
+          '<p>The map gets them from Open-Meteo over the internet, and that request failed. The page tries again every 10 minutes, and when you return to it. Sync tries at once.</p>' +
+          '<button type="button" data-act="reload">Load the forecast now</button></div></div>';
       } else {
         el.innerHTML = '<p class="probehint">Loading wind and flow for the Gulf from Open-Meteo.</p>';
       }

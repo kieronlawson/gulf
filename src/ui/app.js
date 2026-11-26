@@ -12,7 +12,8 @@
   function renderAll() {
     $('spot').value = state.spot.id;
     $('date').value = E.isoDate(state.d0 + 12 * HOUR);
-    renderPlace(); renderPin(); renderChart(); renderReadout(); renderCards(); renderWeather(); renderAhead(); markMap(); renderGulf();
+    $('tablesFor').textContent = state.spot.name + ', ' + E.fmtDay(state.d0 + 12 * HOUR);
+    renderStatus(); renderPlace(); renderPin(); renderChart(); renderReadout(); renderCards(); renderWeather(); renderAhead(); markMap(); renderGulf();
   }
 
   function setSpot(sp) {
@@ -46,7 +47,49 @@
 
   function toTop() {
     var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    window.scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' });
+    var how = { top: 0, behavior: calm ? 'auto' : 'smooth' };
+    window.scrollTo(how);
+    var stack = document.querySelector('.stack');
+    if (stack && stack.scrollTo) stack.scrollTo(how);
+  }
+
+  /* The three screens share the spot, the day and the pinned time. Switching only changes what is shown. */
+  function setScreen(name) {
+    if (SCREENS.indexOf(name) < 0) return;
+    state.screen = name;
+    store.set('gulf-almanac-screen', name);
+    SCREENS.forEach(function (n) { $('screen-' + n).hidden = n !== name; });
+    var bs = $('screens').querySelectorAll('button[data-screen]');
+    for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-screen') === name ? 'true' : 'false');
+  }
+
+  function openTables() {
+    var d = $('tables');
+    if (d.open) return;
+    if (d.showModal) d.showModal(); else d.setAttribute('open', '');
+  }
+  function closeTables() {
+    var d = $('tables');
+    if (d.close) d.close(); else d.removeAttribute('open');
+  }
+
+  /* Sync loads the spot forecast and the map data now, whatever their age. */
+  function sync() { loadWeather(true); syncField(true); }
+
+  /* Once a minute, and when the page comes back to the foreground: move the now needle, roll over
+     to the new day at midnight, update the forecast age, and load forecasts that are out of date. */
+  function tick() {
+    var today = E.dayStart(Date.now());
+    if (state.followToday && state.d0 !== today) {
+      setDay(today);
+    } else {
+      renderNow();
+      if (state.d0 === today) { renderChart(); renderCards(); if (state.cursor == null) renderReadout(); }
+      if (state.pin == null) renderGulf();
+      renderStatus();
+    }
+    loadWeather(false);
+    syncField(false);
   }
 
   /* ---------- Wiring ---------- */
@@ -69,6 +112,16 @@
       if (m && +m[1] >= 1900 && +m[1] <= 2200) setDay(E.midnight(+m[1], +m[2], +m[3]));
     });
     $('unpin').addEventListener('click', unpin);
+
+    $('screens').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-screen]') : null;
+      if (b) setScreen(b.getAttribute('data-screen'));
+    });
+    $('sync').addEventListener('click', sync);
+    $('tablesOpen').addEventListener('click', openTables);
+    $('tablesClose').addEventListener('click', closeTables);
+    /* A tap outside the sheet lands on the dialog element itself, so it closes the sheet. */
+    $('tables').addEventListener('click', function (e) { if (e.target === this) closeTables(); });
 
     /* Map: a lamp selects a spot, any other point on the water places the probe. */
     $('map').addEventListener('click', function (e) {
@@ -96,15 +149,18 @@
     $('probe').addEventListener('click', function (e) {
       var tAttr = e.target.getAttribute ? e.target.getAttribute('data-t') : null;
       if (tAttr) { pinTime(+tAttr); return; }
-      if (e.target.getAttribute && e.target.getAttribute('data-act') === 'reload') { loadWeather(true); syncField(true); }
+      if (e.target.getAttribute && e.target.getAttribute('data-act') === 'reload') sync();
     });
 
+    /* A row in the days ahead opens that day on the Day screen. */
     $('ahead').addEventListener('click', function (e) {
       var tr = e.target.closest ? e.target.closest('tr[data-d0]') : null;
-      if (tr) { setDay(+tr.getAttribute('data-d0')); toTop(); }
+      if (!tr) return;
+      setDay(+tr.getAttribute('data-d0'));
+      closeTables(); setScreen('day'); toTop();
     });
     $('weather').addEventListener('click', function (e) {
-      if (e.target.getAttribute && e.target.getAttribute('data-act') === 'reload') { loadWeather(true); syncField(true); }
+      if (e.target.getAttribute && e.target.getAttribute('data-act') === 'reload') sync();
     });
 
     /* Day display: moving reads a time, selecting pins it. */
@@ -158,16 +214,21 @@
     if (window.ResizeObserver) { new ResizeObserver(onResize).observe(host); }
     window.addEventListener('resize', onResize);
 
-    /* Once a minute: move the now needle, refresh stale forecasts, and roll over to the new day at midnight. */
-    setInterval(function () {
-      var today = E.dayStart(Date.now());
-      if (state.followToday && state.d0 !== today) { setDay(today); return; }
-      renderNow();
-      if (state.d0 === today) { renderChart(); renderCards(); if (state.cursor == null) renderReadout(); }
-      if (state.pin == null) renderGulf();
-      loadWeather(false);
-    }, 60000);
+    setInterval(tick, 60000);
 
+    /* Safari on iPad pauses a page in the background. On return, or when the connection comes back,
+       a load that failed earlier may try again at once. */
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState !== 'visible') return;
+      state.wxFailedAt = 0; field.failedAt = 0;
+      tick();
+    });
+    window.addEventListener('online', function () {
+      state.wxFailedAt = 0; field.failedAt = 0;
+      loadWeather(false); syncField(false);
+    });
+
+    setScreen(state.screen);
     buildMask();
     buildSites();
     readCachedField();

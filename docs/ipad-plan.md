@@ -60,8 +60,8 @@ Each step ends with a working page that the owner can try on the iPad. Logic tha
 | Step | Work | State |
 |---|---|---|
 | 0 | Publish the current page to GitHub Pages. | Done. The page is at https://kieronlawson.github.io/gulf/. |
-| 1 | Screen frame: Week, Day and Now buttons, spot, Limits, Tables, Sync and forecast age in the top bar. Tables behind a button. Load on return to the foreground. Split `src/ui.js` into shared code and one file per screen. Screenshot tool gets iPad sizes, a screen choice and a mocked position. | |
-| 2 | Windows in `engine.js`, with Node tests. Limits editor. | |
+| 1 | Screen frame: Week, Day and Now buttons, spot, Tables, Sync and forecast age in the top bar. Tables behind a button. Load on return to the foreground, and try again 10 minutes after a failed load. Split `src/ui.js` into shared code and one file per part. Screenshot tool gets iPad sizes, a screen choice and a mocked position. | Done. Until step 5, the Day screen scrolls inside the frame. Week and Now say which step brings them. |
+| 2 | Windows in `engine.js`, with Node tests. Limits button in the top bar, and its editor. | |
 | 3 | Week screen. | |
 | 4 | Map zoom: presets, pinch, plus and minus. | |
 | 5 | Day screen: map beside the day display, time bar with −30 min, +30 min and Play. | |
