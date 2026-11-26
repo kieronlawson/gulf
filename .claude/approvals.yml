@@ -5,10 +5,9 @@
 # The author of a pull request fills one seat without approving. What this policy enforces
 # is Claude's Code Review: a change merges only after the review passes.
 #
-# The policy starts in observe mode: the check reports what it would decide and blocks nothing.
-# To enforce it, delete the mode line, then require the Claude Approvals check on main in GitHub.
+# The policy is enforced: with no mode line, the mode is enforce. Claude posts an approving review
+# once the Code Review passes. The check blocks a merge only where GitHub requires it on main.
 version: 1
-mode: observe
 rules:
   - purpose: "A change merges once Claude's Code Review passes. The author fills the one seat, and Claude approves."
     paths: ["**"]

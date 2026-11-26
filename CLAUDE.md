@@ -24,7 +24,7 @@ A personal fishing almanac for the Hauraki Gulf. The product is one static page:
 | `tools/` | The scripts that produced the data, and the screenshot tool. |
 | `docs/ipad-plan.md` | The agreed next step. |
 | `.github/workflows/pages.yml` | Tests, builds and publishes `dist/` to GitHub Pages on every push to `main`. Tests and builds each pull request without publishing. |
-| `.claude/approvals.yml` | The Claude Approvals policy. A change merges once Claude's Code Review passes. It is in observe mode. |
+| `.claude/approvals.yml` | The Claude Approvals policy. A change merges once Claude's Code Review passes, and Claude then approves it. The policy is enforced. |
 
 The page scripts are plain globals, loaded in this order: `Astronomy`, `Neaps`, `DATA`, `Engine`, then the UI. The build inlines `astronomy-engine` and a bundle of `@neaps/tide-predictor`.
 
