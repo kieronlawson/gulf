@@ -1,4 +1,4 @@
-/* Gulf Almanac service worker. It keeps the page and its fonts on the device, so the page opens without a
+/* Gulf service worker. It keeps the page and its fonts on the device, so the page opens without a
    connection, as on the boat.
 
    The page comes from the network first, so a new version shows as soon as there is a connection. The

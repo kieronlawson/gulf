@@ -1,4 +1,4 @@
-# Gulf Almanac
+# Gulf
 
 A personal fishing almanac for the Hauraki Gulf. The product is one static page: tides, sun, moon, solunar periods, weather, and a map of wind, flow and chop.
 

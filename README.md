@@ -1,4 +1,4 @@
-# Gulf Almanac
+# Gulf
 
 A fishing almanac for the Hauraki Gulf, built as one static web page.
 

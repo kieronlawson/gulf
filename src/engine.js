@@ -1,4 +1,4 @@
-/* Hauraki Gulf Almanac engine.
+/* Gulf engine.
    Time handling, tides, sun, moon and solunar periods, windows, and comfort on a route.
    Needs the globals Astronomy (astronomy-engine), Neaps (tide predictor) and DATA. */
 var Engine = (function () {
