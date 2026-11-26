@@ -25,9 +25,10 @@
     geo.pos = { lat: c.latitude, lon: c.longitude, acc: c.accuracy, at: p.timestamp || Date.now(),
       inMap: x >= 0 && y >= 0 && x <= MAP.w && y <= MAP.h };
     geo.err = null;
-    /* A small move redraws only the position on the map. A move of a tenth of a mile or more, or a minute
-       since the last full redraw, redraws the whole screen. */
-    var last = geo.drawn, moved = !last || Math.hypot(x - last.x, y - last.y) / NM >= 0.1;
+    /* A small move redraws only the position on the map. The whole screen redraws after a move of a tenth
+       of a mile or more, a minute after the last full redraw, or when the screen switches between the
+       selected spot and the iPad's position. */
+    var last = geo.drawn, moved = !last || last.you !== geo.pos.inMap || Math.hypot(x - last.x, y - last.y) / NM >= 0.1;
     if (moved || Date.now() - geo.drawnAt > MIN) nowPositionChanged();
     else { renderReach(); renderPosLine(); }
   }
@@ -102,7 +103,7 @@
   function renderNowSide() {
     if (state.screen !== 'now' || !$('mapSvg')) return;
     var h = here();
-    geo.drawn = { x: h.x, y: h.y }; geo.drawnAt = Date.now();
+    geo.drawn = { x: h.x, y: h.y, you: h.you }; geo.drawnAt = Date.now();
     $('nowMapTitle').textContent = h.you ? 'Gulf around you' : 'Gulf around ' + h.name;
     $('hereTitle').textContent = h.you ? 'Here, now' : h.name + ', now';
     $('next6Title').textContent = 'Next 6 hours ' + h.at;
@@ -275,20 +276,63 @@
     el.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(label) + '">' + s.join('') + '</svg>';
   }
 
-  /* ---------- Run home ---------- */
+  /* ---------- Run home ----------
+     The leave-by time is last light, less the straight-line run at the owner's speed, less the owner's margin.
+     Chop on the way is the roughest water on that line, at the time the run would start. */
+
+  /* Points every quarter mile along the straight line. The ends often sit on land, at a marina or a ramp;
+     land between two stretches of water means the line crosses land. */
+  function chopOnTheWay(a, b, t) {
+    var n = Math.max(2, Math.ceil(distNm(a, b) / 0.25)), pts = [], worst = null, firstW = -1, lastW = -1, i;
+    for (i = 0; i <= n; i++) {
+      var x = a.x + (b.x - a.x) * i / n, y = a.y + (b.y - a.y) * i / n, water = isWater(x, y);
+      pts.push(water);
+      if (!water) continue;
+      if (firstW < 0) firstW = i;
+      lastW = i;
+      var c = condAt(x, y, nearest(x, y), t);
+      if (c && (!worst || c.chop.h > worst.chop.h)) worst = c;
+    }
+    var crosses = false;
+    for (i = firstW + 1; i < lastW; i++) if (!pts[i]) crosses = true;
+    return { worst: worst, water: firstW >= 0, crosses: crosses };
+  }
 
   function renderRunHome(h) {
-    var el = $('runHome'), t = Date.now(), sp = nearestSpot(h.x, h.y), sun = E.day(sp, E.dayStart(t)).sun, rows = [];
-    function row(k, v) { return '<div><dt>' + k + '</dt><dd>' + v + '</dd></div>'; }
-    if (state.home) {
-      var hx = { x: mapX(state.home.lon), y: mapY(state.home.lat) };
-      rows.push(row('Home', distNm(h, hx).toFixed(1) + ' nm ' + compass(bearingFrom(h, hx))));
-    } else rows.push(row('Home', 'Not set'));
-    rows.push(row('Sunset', E.fmtTime(sun.set)), row('Last light', E.fmtTime(sun.dusk)), row('Leave by', 'Not yet'));
-    el.innerHTML = '<dl class="runrows">' + rows.join('') + '</dl><p class="small">' +
-      (state.home ? 'The distance is a straight line. The map cannot route around land. ' :
-        'To set home, tap the map where the boat comes out of the water, then select Set home. ') +
-      'The next step adds a leave-by time, from your boat speed and margin.</p>';
+    var el = $('runHome'), t = Date.now(), sp = nearestSpot(h.x, h.y), sun = E.day(sp, E.dayStart(t)).sun, L = state.limits;
+    var home = state.home ? { x: mapX(state.home.lon), y: mapY(state.home.lat) } : null;
+    var nm = home ? distNm(h, home) : null, lv = home ? E.leaveBy(sun.dusk, nm, L.speed, L.margin) : null;
+    var rows = [], notes = [];
+    function row(k, v, cls) { return '<div' + (cls ? ' class="' + cls + '"' : '') + '><dt>' + k + '</dt><dd>' + v + '</dd></div>'; }
+
+    if (!home) {
+      rows.push(row('Leave by', 'No home set', 'lead'));
+      notes.push('To set home, tap the map where the boat comes out of the water, then select Set home.');
+    } else if (!lv) {
+      rows.push(row('Leave by', 'Not set', 'lead'));
+      notes.push('Set your boat speed and margin under Limits. <button type="button" data-act="limits">Limits</button>');
+    } else {
+      var late = lv.at <= t;
+      rows.push(row('Leave by', E.fmtTime(lv.at) + '<span>' + (late ? E.fmtDuration(t - lv.at) + ' ago' : 'in ' + E.fmtDuration(lv.at - t)) + '</span>', 'lead' + (late ? ' alert' : '')));
+      if (late) notes.push('The leave-by time has passed. At ' + L.speed + ' kn you reach home ' + E.fmtDuration(Math.abs(t + lv.run - sun.dusk)) + (t + lv.run > sun.dusk ? ' after' : ' before') + ' last light.');
+    }
+    rows.push(row('Home', home ? nm.toFixed(1) + ' nm ' + compass(bearingFrom(h, home)) : 'Not set'));
+    rows.push(L.speed == null ? row('Run', home ? 'No speed set' : '–') : row('Run at ' + L.speed + ' kn', home ? E.fmtDuration(nm / L.speed * HOUR) : '–'));
+    rows.push(row('Sunset', E.fmtTime(sun.set)), row('Last light', E.fmtTime(sun.dusk)));
+
+    if (home) {
+      /* The chop at the start of the run: the leave-by time while it is ahead, and now once it has passed. */
+      var tc = lv && lv.at > t ? lv.at : t, way = field.wind && fieldIndex(field.wind, tc) != null ? chopOnTheWay(h, home, tc) : null;
+      var when = tc === t ? 'now' : 'at ' + E.fmtTime(tc), chopTxt;
+      if (!way) chopTxt = 'No forecast';
+      else if (!way.worst) chopTxt = way.water ? 'No forecast' : 'No water on the line';
+      else chopTxt = '<i class="sw sw' + way.worst.chop.level + '" aria-hidden="true"></i>' + CHOP_SHORT[way.worst.chop.level] + ' at worst' +
+        (way.worst.chop.h >= 0.05 ? ', ' + way.worst.chop.h.toFixed(1) + ' m' : '');
+      rows.push(row('Chop on the way ' + when, chopTxt, 'wide'));
+      notes.push(way && way.crosses ? 'The straight line crosses land, so the real run is longer than this.' :
+        'The run is a straight line. The map cannot route around land.');
+    }
+    el.innerHTML = '<dl class="runrows">' + rows.join('') + '</dl>' + notes.map(function (n) { return '<p class="small">' + n + '</p>'; }).join('');
   }
 
   /* ---------- Wiring ---------- */
@@ -297,6 +341,10 @@
     $('nowSteps').addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('button[data-step]') : null;
       if (b) setNowStep(+b.getAttribute('data-step'));
+    });
+    $('runHome').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-act="limits"]') : null;
+      if (b) { renderLimits(); openSheet('limits'); }
     });
     $('posLine').addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('[data-act="retrypos"]') : null;

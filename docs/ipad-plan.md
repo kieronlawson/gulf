@@ -46,7 +46,7 @@ Wireframes: https://claude.ai/artifact/LZJbcXCBTyxqeHZdmehFqo
   - MetService Point Forecast API: 5 km model, needs a key, browser access unconfirmed.
   - NIWA: its tide model computes currents, but no public download was found.
 - Great Barrier and Port Jackson spots. LINZ refers them to Marsden Point, not Auckland.
-- The "run home" estimate. The map cannot route around land.
+- The "run home" estimate. The map cannot route around land, so the run is a straight line, and the page says when that line crosses land.
 - Type and contrast that read in sunlight. Step 11 checks them on the boat.
 
 ## Storage on the iPad
@@ -67,7 +67,7 @@ Each step ends with a working page that the owner can try on the iPad. Logic tha
 | 5 | Day screen: map beside the day display, time bar with −30 min, +30 min and Play. | Done. The wide layout needs 700 px of height. An iPad mini fits from the Home Screen; in Safari its page scrolls. |
 | 6 | Saved marks and home: place, name, move, delete. | Done. A tap on the map places the probe, and the probe reading saves it as a mark or as home. |
 | 7 | Where to go: marks and suggested water, lowest chop first, for Day and Now. | Done for Day. The list sits under the map, where there is room. Now uses it in step 8. |
-| 8 | Now screen, with the iPad's position. | Done. The map moves between Day and Now, and each keeps its own view. Without a position, Now measures from the selected spot. Run home shows the distance, sunset and last light; step 9 adds the leave-by time. |
-| 9 | Run home and leave-by. | |
+| 8 | Now screen, with the iPad's position. | Done. The map moves between Day and Now, and each keeps its own view. Without a position, Now measures from the selected spot. Run home shows the distance, sunset and last light. |
+| 9 | Run home and leave-by. | Done. Boat speed and margin sit under Limits and start unset. The run is a straight line to home, drawn on the Now map, and Run home says when that line crosses land. |
 | 10 | Service worker, stored fonts, and Home Screen tags. | |
 | 11 | Check on the boat: sunlight, touch size, chop steps. | |

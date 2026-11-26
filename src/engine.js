@@ -387,9 +387,22 @@ var Engine = (function () {
     return windows(hours, { from: d.sun.dawn, to: d.sun.dusk }, limits || LIMITS);
   }
 
+  /* ---------- Run home ---------- */
+
+  /* The latest time to leave for home: last light, less the run at the owner's speed, less the owner's margin.
+     nm is the straight-line distance, so the real run is at least this long. The time is rounded down to the
+     whole minute, so the page never shows a time later than the arithmetic gives. Returns null when any
+     value is missing: the page does not guess a speed or a margin. */
+  function leaveBy(lastLight, nm, speedKn, marginMin) {
+    function num(v) { return typeof v === 'number' && isFinite(v); }
+    if (!num(lastLight) || !num(nm) || nm < 0 || !num(speedKn) || speedKn <= 0 || !num(marginMin) || marginMin < 0) return null;
+    var run = nm / speedKn * HOUR;
+    return { run: run, at: Math.floor((lastLight - run - marginMin * MIN) / MIN) * MIN };
+  }
+
   return {
     MIN: MIN, HOUR: HOUR, DAY: DAY,
-    LIMITS: LIMITS, windows: windows, rankWindows: rankWindows, dayWindows: dayWindows,
+    LIMITS: LIMITS, windows: windows, rankWindows: rankWindows, dayWindows: dayWindows, leaveBy: leaveBy,
     parts: parts, midnight: midnight, dayStart: dayStart, addDays: addDays,
     fmtTime: fmtTime, fmtDay: fmtDay, fmtDayLong: fmtDayLong, fmtDuration: fmtDuration, isoDate: isoDate, pad2: pad2,
     spotExtremes: spotExtremes, spotCurve: spotCurve, interp: interp,

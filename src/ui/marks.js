@@ -19,9 +19,12 @@
     } catch (e) { /* start with no saved places */ }
     state.marks = marks; state.home = home;
   }
+  /* Every change to a saved place passes through here. The Now screen measures the run home from home,
+     so it redraws too; off the Now screen that call does nothing. */
   function savePlaces() {
     store.set('gulf-almanac-marks', JSON.stringify(state.marks));
     store.set('gulf-almanac-home', JSON.stringify(state.home));
+    renderNowSide();
   }
   function markByN(n) {
     for (var i = 0; i < state.marks.length; i++) if (state.marks[i].n === n) return state.marks[i];
@@ -76,8 +79,8 @@
 
   /* The layers that follow the starting point, none of which takes a tap: the reach of Where to go, a dashed
      ring around its starting point; and on the Now screen the iPad's position, an ink dot, with a ring for
-     its accuracy once that is over 50 m. A new position redraws only these. They take no taps, so they can
-     redraw whenever the starting point may have moved. */
+     its accuracy once that is over 50 m, and the line of the run home. A new position redraws only these.
+     They take no taps, so they can redraw whenever the starting point may have moved. */
   function renderReach() {
     var svg = $('mapSvg');
     if (!svg) return;
@@ -86,6 +89,10 @@
       you = '<g class="you" data-at="' + x + ' ' + y + '" transform="translate(' + x + ' ' + y + ') scale(' + glyph().toFixed(4) + ')">' +
         '<circle class="dot" r="4.4"/><text x="7.5" y="2.6">You</text></g>';
       if (geo.pos.acc > 50) ring = '<circle class="m-acc" cx="' + x + '" cy="' + y + '" r="' + (geo.pos.acc / 1852 * NM).toFixed(2) + '"/>';
+    }
+    /* On the Now screen, the run home: a straight line from the starting point to home. */
+    if (state.mapScreen === 'now' && state.home) {
+      ring += '<line class="m-run" x1="' + x + '" y1="' + y + '" x2="' + mapX(state.home.lon).toFixed(2) + '" y2="' + mapY(state.home.lat).toFixed(2) + '"/>';
     }
     svg.querySelector('#ovReach').innerHTML = ring + '<circle class="m-reach" cx="' + x + '" cy="' + y + '" r="' + (REACH_NM * NM).toFixed(2) + '"/>';
     svg.querySelector('#ovYou').innerHTML = you;
