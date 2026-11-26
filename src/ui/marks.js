@@ -74,13 +74,21 @@
     renderReach();
   }
 
-  /* The reach of Where to go: a dashed ring around its starting point. Its layer takes no taps, so it can
+  /* The layers that follow the starting point, none of which takes a tap: the reach of Where to go, a dashed
+     ring around its starting point; and on the Now screen the iPad's position, an ink dot, with a ring for
+     its accuracy once that is over 50 m. A new position redraws only these. They take no taps, so they can
      redraw whenever the starting point may have moved. */
   function renderReach() {
     var svg = $('mapSvg');
     if (!svg) return;
-    var o = goOrigin();
-    svg.querySelector('#ovReach').innerHTML = '<circle class="m-reach" cx="' + o.x.toFixed(2) + '" cy="' + o.y.toFixed(2) + '" r="' + (REACH_NM * NM).toFixed(2) + '"/>';
+    var o = goOrigin(), ring = '', you = '', x = o.x.toFixed(2), y = o.y.toFixed(2);
+    if (o.you) {
+      you = '<g class="you" data-at="' + x + ' ' + y + '" transform="translate(' + x + ' ' + y + ') scale(' + glyph().toFixed(4) + ')">' +
+        '<circle class="dot" r="4.4"/><text x="7.5" y="2.6">You</text></g>';
+      if (geo.pos.acc > 50) ring = '<circle class="m-acc" cx="' + x + '" cy="' + y + '" r="' + (geo.pos.acc / 1852 * NM).toFixed(2) + '"/>';
+    }
+    svg.querySelector('#ovReach').innerHTML = ring + '<circle class="m-reach" cx="' + x + '" cy="' + y + '" r="' + (REACH_NM * NM).toFixed(2) + '"/>';
+    svg.querySelector('#ovYou').innerHTML = you;
   }
 
   /* The suggestions, redrawn only when the set changes. */

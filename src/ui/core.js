@@ -52,6 +52,8 @@
     marks: [],          /* saved marks, read from storage at start */
     home: null,         /* the saved home, or null */
     moving: null,       /* the key of a saved place that the next map tap moves */
+    mapScreen: 'day',   /* the screen that holds the map: day or now */
+    nowStep: 0,         /* hours ahead that the map shows on the Now screen: 0 to 3 */
     layers: { wind: true, flow: true, chop: true }
   };
 

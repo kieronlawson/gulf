@@ -67,7 +67,7 @@ Each step ends with a working page that the owner can try on the iPad. Logic tha
 | 5 | Day screen: map beside the day display, time bar with −30 min, +30 min and Play. | Done. The wide layout needs 700 px of height. An iPad mini fits from the Home Screen; in Safari its page scrolls. |
 | 6 | Saved marks and home: place, name, move, delete. | Done. A tap on the map places the probe, and the probe reading saves it as a mark or as home. |
 | 7 | Where to go: marks and suggested water, lowest chop first, for Day and Now. | Done for Day. The list sits under the map, where there is room. Now uses it in step 8. |
-| 8 | Now screen, with the iPad's position. | |
+| 8 | Now screen, with the iPad's position. | Done. The map moves between Day and Now, and each keeps its own view. Without a position, Now measures from the selected spot. Run home shows the distance, sunset and last light; step 9 adds the leave-by time. |
 | 9 | Run home and leave-by. | |
 | 10 | Service worker, stored fonts, and Home Screen tags. | |
 | 11 | Check on the boat: sunlight, touch size, chop steps. | |

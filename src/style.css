@@ -165,7 +165,6 @@ h1, h2, h3, h4, p, ul { margin: 0; }
 .stack { min-width: 0; }
 .screen { display: grid; gap: 12px; align-content: start; min-width: 0; }
 .screen[hidden] { display: none; }
-.later { max-width: 70ch; color: var(--ink2); font-size: 14.5px; }
 
 /* One chassis module. */
 .unit {
@@ -253,7 +252,7 @@ button:disabled:active { transform: none; }
 #map svg { display: block; cursor: crosshair; }
 /* The layers that redraw during a gesture take no pointer input, so a touch never starts on an element
    that a redraw then removes. */
-#ovTint, #ovReach, #ovArrows, #ovProbe { pointer-events: none; }
+#ovTint, #ovReach, #ovArrows, #ovProbe, #ovYou { pointer-events: none; }
 .m-land { fill: url(#landDots); stroke: var(--land-edge); stroke-width: .9px; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .mapnorth path { fill: var(--ink2); }
 .mapnorth line { stroke: var(--ink2); stroke-width: 1.2; }
@@ -473,6 +472,59 @@ button:disabled:active { transform: none; }
 .placetext { min-width: 0; }
 .place .sub .date { margin-left: 8px; font-family: var(--mono); font-size: 12.5px; color: var(--ink2); }
 
+/* ---------- Now screen ----------
+   Narrow screens stack the parts, with here and now first and the map last. The wide layout, at the end
+   of this file, puts the map on the left.
+   A map slot holds the shared map or its reading, and adds no box of its own. */
+
+.mapslot { display: contents; }
+.nowview { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "side" "map"; gap: 12px; }
+.nowmap { grid-area: map; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.nowmap .stage { margin-bottom: 0; }
+#nowMapTime, #hereTime { font-family: var(--mono); font-size: 12px; }
+.nowsteps { display: flex; gap: 6px; }
+.nowsteps button { flex: 1; min-width: 0; padding: 0 6px; font-family: var(--mono); font-size: 13px; }
+.nowsteps button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--chassis); }
+.nowside { grid-area: side; display: flex; flex-direction: column; min-width: 0; }
+.nowside .stage { margin-bottom: 8px; }
+.posline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 10px; font-size: 13px; color: var(--ink2); }
+.posline span:nth-child(2) { flex: 1 1 200px; }
+.posline button { height: 44px; font-size: 13px; }
+.herecards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.hcard { display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 8px 11px 9px; border: 1px solid var(--hair); border-radius: 3px; }
+.hk, .hs { font-size: 12px; color: var(--ink2); }
+.hv { font-family: var(--mono); font-size: 23px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hv .sw { width: 15px; height: 15px; margin-right: 9px; vertical-align: 0; }
+.hcard.alert .hv { color: var(--red); }
+.next6 { min-width: 0; height: 136px; margin-bottom: 14px; }
+.next6 svg { display: block; }
+.n6-day { fill: var(--sky-day); stroke: var(--edge); }
+.n6-night { fill: var(--sky-night); }
+.n6-major { fill: var(--c-sol); opacity: .24; }
+.n6-minor { fill: var(--c-sol); opacity: .12; }
+.n6-sol { font-size: 11px; font-weight: 600; fill: var(--c-sol); }
+.n6-wind, .n6-hour, text.n6-tide, text.n6-light { font-family: var(--mono); font-size: 11px; }
+.n6-wind { fill: var(--p-ink); font-weight: 500; }
+.n6-wind.over { fill: var(--red); font-weight: 700; }
+.n6-hour, text.n6-light { fill: var(--ink2); }
+text.n6-tide { fill: var(--c-tide); }
+line.n6-tide { stroke: var(--c-tide); stroke-width: 1.5; stroke-dasharray: 3 2; }
+line.n6-light { stroke: var(--ink2); stroke-width: 1; stroke-dasharray: 3 2; }
+.n6-now { stroke: var(--red); stroke-width: 2; }
+.nowbottom { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.nowgo, .runhome { min-width: 0; }
+.runrows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; margin: 0; }
+.runrows div { min-width: 0; border-top: 1px solid var(--hair); padding-top: 3px; }
+.runrows dt { font-size: 11px; color: var(--ink2); }
+.runrows dd { margin: 0; font-family: var(--mono); font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.runhome .small { margin-top: 8px; }
+
+/* The iPad's position on the map, and a ring for its accuracy. */
+.you { pointer-events: none; }
+.you .dot { fill: var(--ink); stroke: var(--chassis); stroke-width: 1.6; }
+.you text { font-size: 7.5px; font-weight: 700; fill: var(--ink); paint-order: stroke; stroke: var(--chassis); stroke-width: 2px; }
+.m-acc { fill: var(--t1); stroke: var(--ink2); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+
 /* ---------- Week ---------- */
 
 .week { display: grid; grid-template-columns: minmax(0, 1fr) 318px; gap: 12px; }
@@ -677,6 +729,9 @@ table { border-collapse: collapse; width: 100%; }
 @media (max-width: 900px) {
   .week { grid-template-columns: minmax(0, 1fr); }
 }
+@media (min-width: 700px) {
+  .nowbottom { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+}
 @media (max-width: 860px) {
 }
 @media (max-width: 760px) {
@@ -742,6 +797,16 @@ table { border-collapse: collapse; width: 100%; }
   #screen-week .week { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
   .wk-rows { flex: 1; min-height: 0; grid-template-rows: repeat(7, minmax(44px, 1fr)); }
   .wk-best { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+  /* Now fills the frame: the map on the left, here and now on the right. The list of places scrolls in its part. */
+  #screen-now:not([hidden]) { display: flex; flex-direction: column; height: 100%; }
+  .nowview { flex: 1; min-height: 0; grid-template-columns: minmax(340px, 38%) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: "map side"; }
+  .nowmap, .nowside { min-height: 0; }
+  .nowmap .mapframe { flex: 1; min-height: 0; max-height: none; aspect-ratio: auto; }
+  .nowbottom { flex: 1; min-height: 0; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+  .nowgo { display: flex; flex-direction: column; min-height: 0; }
+  .runhome { min-height: 0; overflow-y: auto; }
+  .nowgo #probe { flex: 1; min-height: 0; height: auto; overflow-y: auto; overscroll-behavior: contain; }
 }
 
 @media (prefers-reduced-motion: reduce) {
