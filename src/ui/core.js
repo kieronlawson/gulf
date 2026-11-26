@@ -49,7 +49,9 @@
     wxFailedAt: 0,
     pin: null,
     probe: null,
-    probeMiss: false,
+    marks: [],          /* saved marks, read from storage at start */
+    home: null,         /* the saved home, or null */
+    moving: null,       /* the key of a saved place that the next map tap moves */
     layers: { wind: true, flow: true, chop: true }
   };
 

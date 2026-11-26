@@ -218,19 +218,32 @@
     });
 
     /* Map: a lamp selects a spot, any other point on the water places the probe. A drag or a pinch does neither. */
+    /* Map taps: while a saved place moves, a tap gives its new position. Otherwise a saved place selects it,
+       a lamp selects that tide spot, and any other point places the probe. */
     $('map').addEventListener('click', function (e) {
       if (mapGestured()) return;
+      var m = toMap(e.clientX, e.clientY);
+      if (state.moving != null) { movePlaceTo(m.x, m.y); return; }
+      var pl = e.target.closest ? e.target.closest('.place') : null;
+      if (pl) { selectPlace(pl.getAttribute('data-key')); return; }
       var g = e.target.closest ? e.target.closest('.pin') : null;
       if (g) { setSpot(byId[g.getAttribute('data-id')]); return; }
-      var m = toMap(e.clientX, e.clientY), x = m.x, y = m.y;
-      if (isWater(x, y)) { state.probe = { x: x, y: y, w: nearest(x, y), near: landWithin(x, y, NEAR_LAND_KM) }; state.probeMiss = false; }
-      else { state.probeMiss = true; }
-      renderProbeMark(); renderProbe();
+      if (m.x < 0 || m.y < 0 || m.x > MAP.w || m.y > MAP.h) return;
+      confirmKey = null;
+      probeAt(m.x, m.y, null);
+      renderPlaces(); renderProbeMark(); renderProbe();
     });
     $('map').addEventListener('keydown', function (e) {
-      var g = e.target.closest ? e.target.closest('.pin') : null;
-      if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setSpot(byId[g.getAttribute('data-id')]); }
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      var pl = e.target.closest ? e.target.closest('.place') : null, g = e.target.closest ? e.target.closest('.pin') : null;
+      if (pl) { e.preventDefault(); selectPlace(pl.getAttribute('data-key')); }
+      else if (g) { e.preventDefault(); setSpot(byId[g.getAttribute('data-id')]); }
     });
+
+    /* The naming sheet for saved places. */
+    $('placeForm').addEventListener('submit', function (e) { e.preventDefault(); savePlaceSheet(); });
+    $('placeCancel').addEventListener('click', function () { sheetFor = null; closeSheet('placeSheet'); });
+    $('placeSheet').addEventListener('click', function (e) { if (e.target === this) { sheetFor = null; closeSheet('placeSheet'); } });
     $('layers').addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('button[data-layer]') : null;
       if (!b) return;
@@ -245,7 +258,8 @@
       if (tAttr) { pinTime(+tAttr); return; }
       var act = e.target.closest ? e.target.closest('[data-act]') : null;
       if (act && act.getAttribute('data-act') === 'reload') sync();
-      if (act && act.getAttribute('data-act') === 'clearprobe') { state.probe = null; state.probeMiss = false; renderProbeMark(); renderProbe(); }
+      if (act && act.getAttribute('data-act') === 'clearprobe') { state.probe = null; confirmKey = null; renderPlaces(); renderProbeMark(); renderProbe(); }
+      else if (act) placeAction(act.getAttribute('data-act'));
     });
 
     /* A row in the days ahead opens that day on the Day screen. */
@@ -330,7 +344,9 @@
     buildMask();
     buildSites();
     readCachedField();
+    readPlaces();
     renderMap();
+    renderPlaces();
     wireMapGestures();
     renderAll();
     lastW = Math.floor(host.clientWidth);

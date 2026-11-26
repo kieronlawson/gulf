@@ -302,7 +302,7 @@
         '<circle class="hit" r="10"/><circle class="ring" r="5.2"/><circle class="dot" r="2.9"/>' +
         '<text x="' + (left ? -8 : 8) + '" y="2.6" text-anchor="' + (left ? 'end' : 'start') + '">' + esc(sp.name) + '</text></g>';
     });
-    $('map').innerHTML = s + '</svg>';
+    $('map').innerHTML = s + '<g id="ovPlaces"></g></svg>';
     applyView();
   }
 
@@ -313,7 +313,10 @@
       var on = g.getAttribute('data-id') === state.spot.id;
       g.classList.toggle('sel', on);
       g.setAttribute('aria-pressed', on ? 'true' : 'false');
-      if (on && g !== svg.lastElementChild) svg.appendChild(g);
+      /* The selected lamp rises above the other lamps, but stays below the saved places, so a place saved
+         beside it can still be tapped. */
+      var places = svg.querySelector('#ovPlaces');
+      if (on && g.nextElementSibling !== places) svg.insertBefore(g, places);
     });
   }
 
@@ -374,7 +377,7 @@
     var svg = $('mapSvg');
     if (!svg) return;
     var p = state.probe;
-    svg.querySelector('#ovProbe').innerHTML = !p ? '' :
+    svg.querySelector('#ovProbe').innerHTML = !p || p.key ? '' :
       '<g transform="translate(' + p.x.toFixed(2) + ' ' + p.y.toFixed(2) + ') scale(' + glyph().toFixed(4) + ')">' +
       '<circle class="m-probe" r="4.6"/><path class="m-probe" d="M-8 0h4.6M3.4 0h4.6M0 -8v4.6M0 3.4v4.6"/></g>';
   }
@@ -423,7 +426,8 @@
   var PRESETS = {
     whole: function () { return { cx: MAP.w / 2, cy: MAP.h / 2, z: 1 }; },
     inner: function () { return fitBox(mapX(174.70), mapY(-36.55), mapX(175.25), mapY(-36.95)); },
-    spot: function () { return around(mapX(state.spot.lon), mapY(state.spot.lat), 10); }
+    /* Near home once home is set, and near the selected spot until then. */
+    spot: function () { var c = state.home || state.spot; return around(mapX(c.lon), mapY(c.lat), 10); }
   };
   function setPreset(name) {
     var v = PRESETS[name]();
@@ -480,8 +484,9 @@
     for (var i = 0; i < bs.length; i++) bs[i].setAttribute('aria-pressed', bs[i].getAttribute('data-view') === view.preset ? 'true' : 'false');
     $('zoomOut').disabled = view.z <= 1.001;
     $('zoomIn').disabled = view.z >= ZOOM_MAX - 0.001;
-    $('viewSpot').textContent = 'Near ' + state.spot.name;
-    $('viewSpot').setAttribute('aria-label', 'Near ' + state.spot.name + ', 10 nautical miles around it');
+    var near = state.home ? 'home' : state.spot.name;
+    $('viewSpot').textContent = 'Near ' + near;
+    $('viewSpot').setAttribute('aria-label', 'Near ' + near + ', 10 nautical miles around it');
   }
 
   /* The frame's size sets the view's shape. A preset view keeps its fit when the frame changes. */
@@ -590,36 +595,43 @@
     '<i class="sw sw2"></i>Moderate<i class="sw sw3"></i>Rough<i class="sw sw4"></i>Very rough</span>';
 
   /* The probe reading under the map: the values at the probe at the map's time, and chop through the day. */
-  function renderProbe() {
-    var el = $('probe'), t = mapTime();
+  /* A line when the map has no estimates for this time, or an empty string. */
+  function fieldProblem(t) {
     if (!field.wind) {
-      if (field.status === 'failed') {
-        el.innerHTML = '<p class="probehint"><span class="pip alert" aria-hidden="true"></span>Wind, flow and chop did not load. The page tries again every 10 minutes, and when you return to it. ' +
-          '<button type="button" data-act="reload">Load now</button></p>';
-      } else {
-        el.innerHTML = '<p class="probehint">Loading wind and flow for the Gulf from Open-Meteo.</p>';
-      }
-      return;
+      return field.status === 'failed' ?
+        '<p class="probehint"><span class="pip alert" aria-hidden="true"></span>Wind, flow and chop did not load. The page tries again every 10 minutes, and when you return to it. ' +
+          '<button type="button" data-act="reload">Load now</button></p>' :
+        '<p class="probehint">Loading wind and flow for the Gulf from Open-Meteo.</p>';
     }
     if (fieldIndex(field.wind, t) == null) {
-      el.innerHTML = '<p class="probehint">The forecast does not cover this time. It runs from ' + E.fmtDay(field.wind.t0) + ' to ' +
+      return '<p class="probehint">The forecast does not cover this time. It runs from ' + E.fmtDay(field.wind.t0) + ' to ' +
         E.fmtDay(field.wind.t0 + (field.wind.n - 1) * HOUR) + '.</p>';
-      return;
     }
+    return '';
+  }
+
+  function renderProbe() {
+    var el = $('probe'), t = mapTime();
+    if (state.moving != null) { el.innerHTML = movingPanel(); return; }
+    var problem = fieldProblem(t);
     if (!state.probe) {
-      el.innerHTML = '<p class="probehint">' + (state.probeMiss ? 'That point is not on Gulf water. ' : '') + 'Tap the water to read wind, flow and chop there.</p>' + CHOP_KEY;
+      el.innerHTML = problem || '<p class="probehint">Tap the map to read wind, flow and chop there, or to save a mark.</p>' + CHOP_KEY;
       return;
     }
-    var p = state.probe, c = condAt(p.x, p.y, p.w, t);
-    if (!c) { el.innerHTML = '<p class="probehint">No forecast values at this point.</p>'; return; }
+    var p = state.probe, head = probeHead();
+    if (!p.water) {
+      el.innerHTML = head + '<p class="small">The page has no wind, flow or chop estimate here. This point is on land, or on water that the map does not join to the Gulf.</p>';
+      return;
+    }
+    if (problem) { el.innerHTML = head + problem; return; }
+    var c = condAt(p.x, p.y, p.w, t);
+    if (!c) { el.innerHTML = head + '<p class="probehint">No forecast values at this point.</p>'; return; }
     function cell(k, v) { return '<div><dt>' + k + '</dt><dd>' + v + '</dd></div>'; }
     var flowTxt = !c.flow ? 'No data' : c.flow.kn < 0.05 ? 'Slack' : c.flow.kn.toFixed(1) + ' kn ' + compass(c.flow.toward);
     var note = c.flow && p.near ? 'Flow within 4 km of land is unreliable. ' : '';
     if (c.chop.factor >= 1.15) note += 'Flow against the wind raises these waves by about ' + Math.round((c.chop.factor - 1) * 100) + '%.';
     else if (c.chop.factor <= 0.87) note += 'Flow with the wind lowers these waves by about ' + Math.round((1 - c.chop.factor) * 100) + '%.';
-    var html = '<div class="probehead"><b>Probe</b><span>' + degMin(mapLat(p.y), 'N', 'S') + ' ' + degMin(mapLon(p.x), 'E', 'W') + '</span>' +
-      '<button type="button" class="probex" data-act="clearprobe" aria-label="Remove the probe">&times;</button></div>' +
-      '<dl class="probegrid">' +
+    var html = head + '<dl class="probegrid">' +
       cell('Wind', compass(c.wind.from) + ' ' + Math.round(c.wind.kn) + ' kn' + (ok(c.wind.gust) ? ', gusts ' + Math.round(c.wind.gust) : '')) +
       cell('Flow', flowTxt) +
       cell('Fetch', c.fetch >= 100 ? 'over 100 km' : Math.round(c.fetch) + ' km') +
