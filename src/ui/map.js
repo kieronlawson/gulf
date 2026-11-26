@@ -624,7 +624,8 @@
     updateSuggestions();
     if (state.moving != null) { el.innerHTML = movingPanel(); return; }
     var problem = fieldProblem(t);
-    if (!state.probe) { renderGo(); return; }
+    /* With nothing selected, the list of places, or while a route is open, the route's strip. */
+    if (!state.probe) { if (routeShown()) renderStrip(); else renderGo(); return; }
     var p = state.probe, head = probeHead();
     if (!p.water) {
       el.innerHTML = head + '<p class="small">The page has no wind, flow or chop estimate here. This point is on land, or on water that the map does not join to the Gulf.</p>';

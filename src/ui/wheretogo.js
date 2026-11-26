@@ -76,8 +76,7 @@
     var html = '<div class="gohead"><b>' + title + '</b><span>From ' + esc(o.name) + ', lowest chop first</span></div>';
     if (!rows.length) {
       html += problem || '';
-      html += routeShown() ? '<p class="probehint">Save marks from the map to list them here. Close the route to see the calmest water within ' + REACH_NM + ' nautical miles.</p>' :
-        '<p class="probehint">Save marks from the map, and the calmest water within ' + REACH_NM + ' nautical miles shows here. Tap the map to read any point.</p>';
+      html += '<p class="probehint">Save marks from the map, and the calmest water within ' + REACH_NM + ' nautical miles shows here. Tap the map to read any point.</p>';
       el.innerHTML = html;
       return;
     }
@@ -95,8 +94,7 @@
         '<span class="gochop">' + chopCell + '</span></button>' + route + '</div>';
     }).join('') + '</div>';
     if (problem) html += problem;
-    html += routeShown() ? '<p class="small">Close the route to see the calmest water within ' + REACH_NM + ' nautical miles. Tap the map to read any point.</p>' :
-      '<p class="small">Suggestions are the calmest water within ' + REACH_NM + ' nautical miles. They say nothing about fish. Tap the map to read any point.</p>';
+    html += '<p class="small">Suggestions are the calmest water within ' + REACH_NM + ' nautical miles. They say nothing about fish. Tap the map to read any point.</p>';
     el.innerHTML = html;
   }
 
