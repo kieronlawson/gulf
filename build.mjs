@@ -24,7 +24,7 @@ const data = {
 /* The page script is split into files under src/ui/. They share one function scope, so the build
    joins them in this order inside a single function. Later files may use anything an earlier file declares. */
 const UI_FILES = ['core', 'day', 'tables', 'map', 'marks', 'wheretogo', 'week', 'route', 'now', 'app'];
-const ui = '/* Hauraki Gulf Almanac: page behavior. Needs Engine and DATA. */\n(function () {\n  \'use strict\';\n\n' +
+const ui = '/* Gulf: page behavior. Needs Engine and DATA. */\n(function () {\n  \'use strict\';\n\n' +
   UI_FILES.map((f) => read(`src/ui/${f}.js`)).join('') + '})();\n';
 
 const parts = {
@@ -58,7 +58,7 @@ writeFileSync(out('sw.js'), swSource.replace("'__VERSION__'", JSON.stringify(ver
 
 /* The manifest and icons let the page open from the Home Screen as its own app. */
 writeFileSync(out('manifest.webmanifest'), JSON.stringify({
-  name: 'Gulf Almanac', short_name: 'Gulf Almanac', start_url: './', scope: './', display: 'standalone',
+  name: 'Gulf', short_name: 'Gulf', start_url: './', scope: './', display: 'standalone',
   background_color: '#E7E6E1', theme_color: '#E7E6E1',
   icons: [{ src: 'icon-180.png', sizes: '180x180', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }],
 }, null, 2) + '\n');
