@@ -299,7 +299,7 @@
     spots.forEach(function (sp) {
       var px = mapX(sp.lon), py = mapY(sp.lat), left = px > c.w * 0.6;
       s += '<g class="pin" data-id="' + sp.id + '" data-at="' + px.toFixed(1) + ' ' + py.toFixed(1) + '" tabindex="0" role="button" aria-label="' + esc(sp.name) + '">' +
-        '<circle class="hit" r="12"/><circle class="ring" r="5.2"/><circle class="dot" r="2.9"/>' +
+        '<circle class="hit" r="13"/><circle class="ring" r="5.2"/><circle class="dot" r="2.9"/>' +
         '<text x="' + (left ? -8 : 8) + '" y="2.6" text-anchor="' + (left ? 'end' : 'start') + '">' + esc(sp.name) + '</text></g>';
     });
     $('map').innerHTML = s + '</svg>';
@@ -335,13 +335,14 @@
     svg.querySelector('#ovTint').innerHTML = tint;
   }
 
-  /* Arrows keep one size on screen at any zoom, and only those in view are drawn. */
+  /* Arrows keep their size in proportion to the spacing between them: full size on the 22-unit grid, half size
+     on the 11-unit grid. Only those in view are drawn. */
   function renderArrows() {
     var svg = $('mapSvg');
     if (!svg) return;
     var t = mapTime(), arrows = '', n1 = function (v) { return v.toFixed(1); };
     /* Arrows sit closer together once the usual 22-unit spacing would be 70 px or more on screen. */
-    var vb = viewBox(), s = (1 / view.z).toFixed(4), fine = frame.h && 22 * frame.h / vb.h >= 70, pad = 12;
+    var vb = viewBox(), fine = frame.h && 22 * frame.h / vb.h >= 70, g = fine ? 0.5 : 1, s = g.toFixed(2), pad = 12;
     function seen(q) { return q.x > vb.x - pad && q.x < vb.x + vb.w + pad && q.y > vb.y - pad && q.y < vb.y + vb.h + pad; }
     if (fieldShown()) {
       if (state.layers.wind) {
@@ -359,7 +360,7 @@
           if (!seen(q)) return;
           var f = flowAt(q.w, t);
           if (!f) return;
-          if (f.kn < 0.05) { arrows += '<circle class="m-flowdot" cx="' + q.x + '" cy="' + q.y + '" r="' + (0.9 / view.z).toFixed(3) + '"/>'; return; }
+          if (f.kn < 0.05) { arrows += '<circle class="m-flowdot" cx="' + q.x + '" cy="' + q.y + '" r="' + (0.9 * g).toFixed(3) + '"/>'; return; }
           var L = clamp(1.5 + f.kn * 9, 2.2, 8);
           arrows += '<path class="m-flow' + (q.near ? ' near' : '') + '" transform="translate(' + q.x + ' ' + q.y + ') rotate(' + f.toward.toFixed(0) + ') scale(' + s + ')" d="M0 ' + n1(L) + 'L0 ' + n1(-L) +
             'M-1.9 ' + n1(-L + 2.4) + 'L0 ' + n1(-L) + 'L1.9 ' + n1(-L + 2.4) + '"/>';
@@ -374,7 +375,7 @@
     if (!svg) return;
     var p = state.probe;
     svg.querySelector('#ovProbe').innerHTML = !p ? '' :
-      '<g transform="translate(' + p.x.toFixed(2) + ' ' + p.y.toFixed(2) + ') scale(' + (1 / view.z).toFixed(4) + ')">' +
+      '<g transform="translate(' + p.x.toFixed(2) + ' ' + p.y.toFixed(2) + ') scale(' + glyph().toFixed(4) + ')">' +
       '<circle class="m-probe" r="4.6"/><path class="m-probe" d="M-8 0h4.6M3.4 0h4.6M0 -8v4.6M0 3.4v4.6"/></g>';
   }
 
@@ -400,6 +401,12 @@
     view.cy = h >= MAP.h ? MAP.h / 2 : clamp(view.cy, h / 2, MAP.h - h / 2);
     return { x: view.cx - w / 2, y: view.cy - h / 2, w: w, h: h };
   }
+  /* The scale for things drawn at one size on screen: pins, labels, arrows, the probe and saved places.
+     They are drawn in map units for 1.7 px per unit, the scale of a 470 px wide map, and this keeps them
+     at that size whatever the frame's size and the zoom. A pin's 13-unit tap circle is then 44 px across. */
+  var GLYPH_PX = 1.7;
+  function glyph() { var vb = viewBox(); return frame.h ? GLYPH_PX * vb.h / frame.h : 1 / view.z; }
+
   /* A point on screen, as map units. */
   function toMap(clientX, clientY) {
     var svg = $('mapSvg'), r = svg.getBoundingClientRect(), vb = viewBox();
@@ -440,7 +447,7 @@
   function applyView() {
     var svg = $('mapSvg');
     if (!svg) return;
-    var vb = viewBox(), s = (1 / view.z).toFixed(4);
+    var vb = viewBox(), s = glyph().toFixed(4);
     svg.setAttribute('viewBox', vb.x.toFixed(2) + ' ' + vb.y.toFixed(2) + ' ' + vb.w.toFixed(2) + ' ' + vb.h.toFixed(2));
     /* Zoomed out, a one-finger drag scrolls the page. Zoomed in, it moves the map. */
     svg.style.touchAction = view.z > 1.01 ? 'none' : 'pan-y';

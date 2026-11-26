@@ -685,7 +685,8 @@ table { border-collapse: collapse; width: 100%; }
   .dayview { flex: 1; min-height: 0; grid-template-columns: minmax(340px, 36%) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "map day" "bar bar"; }
   .mapunit, .dayside { min-height: 0; }
   .mapunit .mapframe { flex: 1; min-height: 0; aspect-ratio: auto; }
-  #probe { flex: none; max-height: 168px; overflow-y: auto; }
+  #probe { flex: none; max-height: 200px; overflow-y: auto; }
+  #probe .strip { max-height: 30px; }
   .dayside .well { flex: 1 1 0; min-height: 0; }
   .dayside .readout { flex: none; margin-top: 8px; }
   .dayside .nowline { margin-top: 4px; }
