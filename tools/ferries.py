@@ -114,6 +114,9 @@ def main():
 
     lanes = {}
     for rid in sorted(routes):
+        if not pairs[rid]:   # a route with no trips in the feed's period, such as a seasonal service, has no lane
+            print('  skipped', routes[rid]['route_short_name'], '(no trips)')
+            continue
         name = lane_name(rid)
         lane = lanes.setdefault(name, {'name': name, 'routes': [], 'paths': []})
         lane['routes'].append(routes[rid]['route_short_name'])
