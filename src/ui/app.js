@@ -146,8 +146,8 @@
     /* Time bar. */
     $('tbNow').addEventListener('click', unpin);
     $('tbPlay').addEventListener('click', startPlay);
-    $('tbBack').addEventListener('click', function () { stopPlay(); pinTime(tbStart() - 30 * MIN); });
-    $('tbFwd').addEventListener('click', function () { stopPlay(); pinTime(tbStart() + 30 * MIN); });
+    $('tbBack').addEventListener('click', function () { stopPlay(); tbMove(-30 * MIN); });
+    $('tbFwd').addEventListener('click', function () { stopPlay(); tbMove(30 * MIN); });
     var track = $('tbTrack'), dragging = false;
     function dragTo(e) {
       var t = tbTimeAt(e.clientX);
@@ -168,9 +168,9 @@
     });
     track.addEventListener('pointercancel', function () { dragging = false; state.cursor = null; renderTimebar(); drawCursor(); renderReadout(); });
     track.addEventListener('keydown', function (e) {
-      var base = tbStart(), step = (e.shiftKey ? 60 : 10) * MIN, R = tbRange();
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); stopPlay(); pinTime(base - step); }
-      else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); stopPlay(); pinTime(base + step); }
+      var step = (e.shiftKey ? 60 : 10) * MIN, R = tbRange();
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); stopPlay(); tbMove(-step); }
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); stopPlay(); tbMove(step); }
       else if (e.key === 'Home') { e.preventDefault(); stopPlay(); pinTime(R.a); }
       else if (e.key === 'End') { e.preventDefault(); stopPlay(); pinTime(R.b); }
       else if (e.key === 'Escape') unpin();

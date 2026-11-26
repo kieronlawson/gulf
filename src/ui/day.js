@@ -315,13 +315,15 @@
     clearInterval(playTimer); playTimer = null;
     renderTimebar();
   }
-  /* The time that the bar's buttons and keys move from: the pinned time, or now while now lies on the bar of
-     the day on screen, or else the start of the bar. So the controls never move the owner off that day. */
+  /* The time that the bar's buttons and keys move from: the pinned time; or now, when the day on screen is
+     today; or else the start of the bar. */
   function tbStart() {
     if (state.pin != null) return state.pin;
-    var R = tbRange(), now = Math.round(Date.now() / (5 * MIN)) * 5 * MIN;
-    return now >= R.a && now <= R.b ? now : R.a;
+    var now = Date.now();
+    return E.dayStart(now) === state.d0 ? Math.round(now / (5 * MIN)) * 5 * MIN : tbRange().a;
   }
+  /* Moves the pinned time by a step. The result stays on the day on screen; the date buttons change the day. */
+  function tbMove(ms) { pinTime(clamp(tbStart() + ms, state.d0, E.addDays(state.d0, 1) - 5 * MIN)); }
 
   /* Play starts from the pinned time. With nothing pinned, or with the pin at the end of the bar, it starts
      from now while now lies on the bar, and from the start of the bar otherwise. */
