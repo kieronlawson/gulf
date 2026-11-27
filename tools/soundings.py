@@ -18,12 +18,13 @@ Sources:
 What the script does:
 1. It fetches every sounding inside the map's bounds from the Harbour (1:4k to 1:22k), Approach (1:22k to 1:90k)
    and Coastal (1:90k to 1:350k) layers, through WFS as GeoJSON.
-2. For each sounding it reads two depths below chart datum: the 20 m grid cell under the sounding, and the cell
-   of data/depth.png under it. The grid holds heights above LAT, and both depths take chart datum as LAT, as
-   tools/depth.py does.
+2. For each sounding it reads three depths below chart datum: the 20 m grid cell under the sounding, the same
+   cell with the drying flats raised as tools/depth.py raises them, and the cell of data/depth.png under it. The
+   grid holds heights above LAT, and every depth takes chart datum as LAT, as tools/depth.py does.
 3. It prints, for each scale, each area and the drying heights on their own: the number of soundings, the share
    within 1 m, the median difference, and the middle half of the differences. A positive difference means the
-   grid shows more water than the chart. It then lists the largest differences with their positions.
+   grid shows more water than the chart. A table by the grid's height above LAT shows the gap on the drying
+   flats that tools/depth.py corrects. The script then lists the largest differences with their positions.
 """
 import json, math, os, pathlib, sys, urllib.parse, urllib.request
 import numpy as np
@@ -132,6 +133,7 @@ def main():
     elev = np.full(len(rows), np.nan)
     elev[inside] = a[gj[inside], gi[inside]]
     grid_depth = meta['latAboveCd'] - elev                      # meters below chart datum
+    raised_depth = meta['latAboveCd'] - depth.raise_drying(elev)  # the same, with the drying flats raised
 
     R = meta['cellsPerUnit']
     ci = np.floor((lon - meta['W']) * meta['k'] * meta['scale'] * R).astype(int)
@@ -145,6 +147,7 @@ def main():
                      for lo, la in zip(lon, lat)])
     have = np.isfinite(grid_depth)
     diff = grid_depth - sounding                                 # positive: the grid shows more water
+    rdiff = raised_depth - sounding
     fdiff = file_depth - sounding
     fhave = np.isfinite(file_depth)
     classes = [('Drying heights (negative soundings)', sounding < 0)] + [
@@ -180,6 +183,12 @@ def main():
         if m.any():
             q1, med, q3 = np.percentile(-sounding[m], [25, 50, 75])
             print('%+5.2f to %+5.2f m         %6d  %+6.2f  %+6.2f to %+6.2f' % (lo, hi, m.sum(), med, q1, q3))
+
+    print()
+    print('The 20 m grid with the drying flats raised by %g m, as tools/depth.py reads it' % depth.DRY_RAISE_M)
+    print(head)
+    for name, m in [('All positions', once)] + classes:
+        print('%-38s %s' % (name, stats(rdiff[have & once & m])))
 
     print()
     print('data/depth.png. Each cell holds the shallowest water in about 93 m, so it reads shallower than the chart.')

@@ -110,6 +110,16 @@ class Shallowest(unittest.TestCase):
         self.assertEqual(r[0, 0], -5.0)
         self.assertTrue(np.isnan(r[1, 1]))
 
+    def test_drying_flats_raised(self):
+        a = np.array([-5.0, -0.5, -0.25, 0.0, 1.2, np.nan], np.float32)
+        r = D.raise_drying(a)
+        self.assertEqual(float(r[0]), -5.0, 'deeper water keeps its value')
+        self.assertAlmostEqual(float(r[1]), -0.5, places=5)
+        self.assertAlmostEqual(float(r[2]), -0.25 + D.DRY_RAISE_M / 2, places=5, msg='half way down the ramp, half the raise')
+        self.assertAlmostEqual(float(r[3]), D.DRY_RAISE_M, places=5)
+        self.assertAlmostEqual(float(r[4]), 1.2 + D.DRY_RAISE_M, places=5)
+        self.assertTrue(np.isnan(r[5]))
+
     def test_outside_the_map(self):
         a = np.arange(16, dtype=np.float32).reshape(4, 4)
         idx = np.array([-1, 0, 0, 1])         # the first row and column fall outside the map
