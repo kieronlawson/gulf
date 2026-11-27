@@ -12,10 +12,11 @@ What the script does:
    file is compressed or holds anything but 32-bit floating point values.
 2. It places each 20 m cell in the map's grid by the cell's center. The map's grid takes its bounds from
    data/coast.json and has CELLS_PER_UNIT cells per map unit, about 93 m.
-3. Each map cell keeps the highest value among the 20 m cells inside it, which is the shallowest water.
+3. It raises the drying flats, which the grid shows too low (see below).
+4. Each map cell keeps the highest value among the 20 m cells inside it, which is the shallowest water.
    A map cell therefore never shows deeper water than the shallowest 20 m cell inside it.
-4. It converts the grid's heights to depths below chart datum and writes the two files.
-5. It prints a report: the projection, the vertical datum, the cells of water the grid does not cover, and
+5. It converts the grid's heights to depths below chart datum and writes the two files.
+6. It prints a report: the projection, the vertical datum, the cells of water the grid does not cover, and
    the cells of water that dry or lie within 2 m of LAT.
 
 The vertical datum. The record states that the bathymetry is reduced to Lowest Astronomical Tide (LAT) and
@@ -23,6 +24,11 @@ that the land heights come from LiDAR in New Zealand Vertical Datum 2016 (NZVD20
 two sources meet. At Auckland the two datums are about 1.9 m apart. A check against the LINZ charts found the
 grid's 0 m line on the charts' drying line, and the grid's drying flats within 1 m of the charts' drying
 heights, so the script reads every value as a height above LAT. docs/depth-map.md records the check.
+
+The drying flats. tools/soundings.py compared the grid with the LINZ chart soundings. Below LAT the two agree.
+Where the grid reads at or above LAT, the charts' drying heights read a median 0.3 to 0.5 m higher, so the grid
+shows the flats with too much water. The script raises every 20 m value at or above LAT by DRY_RAISE_M. Between
+LAT and DRY_RAMP_M below it, the raise grows in a straight line from nothing, so the depths stay continuous.
 
 data/depth.png holds one value per cell in its red and green channels: v = red * 256 + green.
   v = 0     no data
@@ -46,6 +52,8 @@ LAT_ABOVE_CD = 0.0          # LAT above chart datum, meters. The page's tide mod
                             # 0 errs on the side of less water.
 LAND_M = 4.0                # a cell more than this above LAT is land: highest astronomical tide is about 3.6 m
 SHALLOW_M = -2.0            # the report counts water cells from this height above LAT up to LAND_M
+DRY_RAISE_M = 0.4           # the raise of heights at or above LAT: the median gap to the LINZ drying heights
+DRY_RAMP_M = 0.5            # the raise grows from nothing at this depth below LAT to DRY_RAISE_M at LAT
 OFFSET_DM = 100             # stored value of a depth of 0 m; drying heights down to 9.8 m fit
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT_PNG, OUT_JSON = ROOT / 'data' / 'depth.png', ROOT / 'data' / 'depth.json'
@@ -125,6 +133,13 @@ def mercator41_to_lonlat(x, y):
         s = np.sin(phi)
         phi = math.pi / 2 - 2 * np.arctan(t * ((1 - e * s) / (1 + e * s)) ** (e / 2))
     return lon, np.degrees(phi)
+
+
+def raise_drying(a):
+    """Heights above LAT, with the drying flats raised: DRY_RAISE_M at or above LAT, less below it, and nothing
+    from DRY_RAMP_M below LAT down. NaN stays NaN."""
+    share = np.clip((a + DRY_RAMP_M) / DRY_RAMP_M, 0.0, 1.0)
+    return (a + DRY_RAISE_M * share).astype(np.float32)
 
 
 def shallowest(a, rows, cols, ny, nx):
@@ -210,7 +225,7 @@ def main():
     cy = np.floor((coast['N'] - lat) * coast['scale'] * CELLS_PER_UNIT).astype(int)
     cx[(cx < 0) | (cx >= nx)] = -1
     cy[(cy < 0) | (cy >= ny)] = -1
-    elev = shallowest(a, cy, cx, ny, nx)          # height above LAT; the shallowest 20 m cell in each map cell
+    elev = shallowest(raise_drying(a), cy, cx, ny, nx)   # height above LAT; the shallowest 20 m cell in each map cell
 
     depth = LAT_ABOVE_CD - elev                    # meters below chart datum
     v = np.zeros((ny, nx), np.int32)
@@ -230,6 +245,8 @@ def main():
         'datum': DATUM,
         'depth': 'Meters below chart datum. Chart datum is taken as LAT (latAboveCd).',
         'latAboveCd': LAT_ABOVE_CD,
+        'drying': ('Heights at or above LAT are raised by %g m, and heights within %g m below LAT by a share of it, '
+                   'because the LINZ drying heights read higher than the grid.' % (DRY_RAISE_M, DRY_RAMP_M)),
         'reduced': 'Each cell keeps the shallowest of the %g m cells whose centers fall inside it.' % cell,
         'W': coast['W'], 'E': coast['E'], 'S': coast['S'], 'N': coast['N'], 'k': coast['k'], 'scale': coast['scale'],
         'cellsPerUnit': CELLS_PER_UNIT, 'cellM': round(cell_m, 1), 'nx': nx, 'ny': ny,
@@ -248,6 +265,7 @@ def main():
     print('Projection   EPSG:%d, WGS 84 / Mercator 41, read from the file. %g m cells.' % (epsg, cell))
     print('Datum       ', DATUM)
     print('Chart datum  Depths are below LAT, with LAT taken as chart datum (LAT_ABOVE_CD = %g m).' % LAT_ABOVE_CD)
+    print('Drying flats Heights at or above LAT raised by %g m, ramped in over the %g m below LAT.' % (DRY_RAISE_M, DRY_RAMP_M))
     print('Map grid     %d x %d cells of %.1f m, from %s.' % (nx, ny, cell_m, 'data/coast.json'))
     print('Output       %s, %d bytes%s; %s.' % (OUT_PNG.relative_to(ROOT), png_bytes,
           ' (over 1 MB)' if png_bytes > 1_000_000 else '', OUT_JSON.relative_to(ROOT)))

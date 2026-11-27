@@ -11,6 +11,7 @@ The work is licensed under the Creative Commons Attribution 4.0 International Li
 `tools/depth.py` made these changes:
 
 - It moved the values from EPSG:3994 into the map's grid of cells about 93 m across.
+- It raised every value at or above Lowest Astronomical Tide by 0.4 m, and values within 0.5 m below it by a share of that, to match the drying heights of the LINZ charts.
 - It kept, in each cell, the shallowest of the 20 m values inside it.
 - It converted heights above Lowest Astronomical Tide into depths below chart datum, in decimeters.
 - It stored a cell more than 4 m above Lowest Astronomical Tide as land.

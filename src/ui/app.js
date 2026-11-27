@@ -125,8 +125,8 @@
     setLimits(next);
   }
 
-  /* Sync loads the spot forecast and the map data now, whatever their age. */
-  function sync() { loadWeather(true); syncField(true); }
+  /* Sync loads the spot forecast and the map data now, whatever their age, and the depths if they failed. */
+  function sync() { loadWeather(true); syncField(true); loadDepth(true); }
 
   /* Once a minute, and when the page comes back to the foreground: move the now needle, roll over
      to the new day at midnight, update the forecast age, and load forecasts that are out of date. */
@@ -143,6 +143,7 @@
     }
     loadWeather(false);
     syncField(false);
+    loadDepth(false);
   }
 
   /* ---------- Wiring ---------- */
@@ -397,12 +398,12 @@
        a load that failed earlier may try again at once. */
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState !== 'visible') return;
-      state.wxFailedAt = 0; field.failedAt = 0;
+      state.wxFailedAt = 0; field.failedAt = 0; depth.failedAt = 0;
       tick();
     });
     window.addEventListener('online', function () {
-      state.wxFailedAt = 0; field.failedAt = 0;
-      loadWeather(false); syncField(false);
+      state.wxFailedAt = 0; field.failedAt = 0; depth.failedAt = 0;
+      loadWeather(false); syncField(false); loadDepth(false);
     });
 
     /* The Week rows take their wind colors from the theme, so a change of theme draws them again. */
@@ -421,6 +422,7 @@
     wireNow();
     renderAll();
     loadWeather(false);
+    loadDepth(false);
 
     /* The service worker keeps the page and its fonts on the device for use without a connection.
        Browsers allow it only on https or on this computer, so a page opened from a file runs without it. */

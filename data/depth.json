@@ -6,6 +6,7 @@
  "datum": "Bathymetry: Lowest Astronomical Tide (LAT). Land heights: New Zealand Vertical Datum 2016, from LINZ LiDAR. The record does not say where the two sources meet. A check against the LINZ charts placed the grid's 0 m line on the charts' drying line, so every value is read as a height above LAT.",
  "depth": "Meters below chart datum. Chart datum is taken as LAT (latAboveCd).",
  "latAboveCd": 0.0,
+ "drying": "Heights at or above LAT are raised by 0.4 m, and heights within 0.5 m below LAT by a share of it, because the LINZ drying heights read higher than the grid.",
  "reduced": "Each cell keeps the shallowest of the 20 m cells whose centers fall inside it.",
  "W": 174.52,
  "E": 175.66,

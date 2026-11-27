@@ -626,7 +626,7 @@
     var problem = fieldProblem(t);
     /* With nothing selected, the list of places, or while a route is open, the route's strip. */
     if (!state.probe) { if (routeShown()) renderStrip(); else renderGo(); return; }
-    var p = state.probe, head = probeHead();
+    var p = state.probe, head = probeHead() + depthRow(p.x, p.y, t);
     if (!p.water) {
       el.innerHTML = head + '<p class="small">The page has no wind, flow or chop estimate here. This point is on land, or on water that the map does not join to the Gulf.</p>';
       return;

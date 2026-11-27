@@ -17,6 +17,9 @@ Environment variables:
   FULL    1 (default) captures the whole page, 0 only the viewport
   SEL     CSS selector to capture instead of the whole page
   OUT     output file (default shot.png)
+  URL     the page's address, such as http://localhost:8000/ for dist/ served by python3 -m http.server.
+          Without it, the page opens from dist/index.html as a file, and the depths do not load, because a
+          page opened from a file cannot fetch the files beside it. The browser blocks the service worker.
 Arguments: JavaScript snippets to run in the page before the capture.
 """
 import json, math, os, sys, pathlib
@@ -29,7 +32,7 @@ mode = env('MODE', 'wx'); dev_w, dev_h = DEVICES[env('DEVICE', 'ipad')]
 width = int(env('W', dev_w)); vh = int(env('VH', dev_h)); scale = float(env('SCALE', '1'))
 screen = env('SCREEN', 'day'); lat = env('LAT'); lon = env('LON'); full = env('FULL', '1') != '0'
 scheme = env('SCHEME', 'light'); sel = env('SEL'); out = env('OUT', 'shot.png')
-page_url = (pathlib.Path(__file__).resolve().parent.parent / 'dist' / 'index.html').as_uri()
+page_url = env('URL') or (pathlib.Path(__file__).resolve().parent.parent / 'dist' / 'index.html').as_uri()
 
 def fake(kind, n_loc):
     """Made-up hourly values in the Open-Meteo response shape. For layout tests only."""
@@ -61,7 +64,7 @@ def fake(kind, n_loc):
 with sync_playwright() as p:
     browser = p.chromium.launch()
     opts = dict(viewport={'width': width, 'height': vh}, device_scale_factor=scale, color_scheme=scheme,
-                timezone_id='Asia/Singapore', has_touch=width <= 1400)
+                timezone_id='Asia/Singapore', has_touch=width <= 1400, service_workers='block')
     if lat and lon: opts.update(geolocation={'latitude': float(lat), 'longitude': float(lon)}, permissions=['geolocation'])
     ctx = browser.new_context(**opts)
     ctx.add_init_script('try { localStorage.setItem("gulf-almanac-screen", %s); } catch (e) {}' % json.dumps(screen))

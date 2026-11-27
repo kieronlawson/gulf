@@ -766,6 +766,108 @@ var Engine = (function () {
     return out;
   }
 
+  /* ---------- Depth ----------
+     The depth grid covers the map in cells of a quarter map unit, about 93 m. The page decodes data/depth.png into
+     grid = { W, N, k, scale, cellsPerUnit, nx, ny, offsetDm, v }, where v holds nx * ny stored values, row by row
+     from the north-west corner: 0 means no data, 1 means land, and any other value is the depth below chart datum
+     in decimeters plus offsetDm. A negative depth is a drying height. Each cell already holds the shallowest water
+     inside it; tools/depth.py made it so. */
+
+  var DEPTH_NO_DATA = 0, DEPTH_LAND = 1;
+
+  /* Chart depth at a point { lat, lon }: { chart } in meters below chart datum, { land: true } above any tide,
+     or null where the grid has no data or the point is off the grid. A point on the edge between cells takes
+     the shallowest of the cells it touches, so an edge never shows more water than either side. */
+  function depthAt(grid, p) {
+    if (!grid || !p || !isFinite(p.lat) || !isFinite(p.lon)) return null;
+    var fx = (p.lon - grid.W) * grid.k * grid.scale * grid.cellsPerUnit;
+    var fy = (grid.N - p.lat) * grid.scale * grid.cellsPerUnit;
+    var EDGE = 1e-6;   /* a point this close to a cell edge, in cells, is on it */
+    if (fx < -EDGE || fy < -EDGE || fx > grid.nx + EDGE || fy > grid.ny + EDGE) return null;
+    function sides(f, n) {
+      var r = Math.round(f), out = [];
+      if (Math.abs(f - r) > EDGE) return [Math.min(Math.floor(f), n - 1)];
+      if (r < n) out.push(r);
+      if (r > 0) out.push(r - 1);
+      return out;
+    }
+    var xs = sides(fx, grid.nx), ys = sides(fy, grid.ny), best = null;
+    for (var a = 0; a < ys.length; a++) for (var b = 0; b < xs.length; b++) {
+      var v = grid.v[ys[a] * grid.nx + xs[b]];
+      if (v === DEPTH_NO_DATA) continue;
+      if (v === DEPTH_LAND) return { land: true };
+      var m = (v - grid.offsetDm) / 10;
+      if (best === null || m < best) best = m;
+    }
+    return best === null ? null : { chart: best };
+  }
+
+  /* The depth grid's file, data/depth.png, read without a canvas. A canvas can change the bytes it gives back: some
+     browsers add noise to canvas reads to resist fingerprinting, and one unit of red moves a depth by 25.6 m.
+     pngChunks reads the header and joins the compressed data; the page inflates it with DecompressionStream; and
+     pngValues undoes the row filters and returns each cell's stored value, red * 256 + green. Only the form
+     tools/depth.py writes is read: 8-bit RGB, not interlaced. Anything else throws. */
+  function pngChunks(bytes) {
+    var b = bytes, sig = [137, 80, 78, 71, 13, 10, 26, 10], pos = 8, head = null, parts = [], size = 0;
+    for (var i = 0; i < 8; i++) if (b[i] !== sig[i]) throw new Error('not a PNG file');
+    function u32(o) { return ((b[o] << 24) >>> 0) + (b[o + 1] << 16) + (b[o + 2] << 8) + b[o + 3]; }
+    while (pos + 8 <= b.length) {
+      var n = u32(pos), kind = String.fromCharCode(b[pos + 4], b[pos + 5], b[pos + 6], b[pos + 7]), at = pos + 8;
+      if (at + n > b.length) throw new Error('PNG chunk runs past the file');
+      if (kind === 'IHDR') head = { width: u32(at), height: u32(at + 4), bits: b[at + 8], color: b[at + 9], interlace: b[at + 12] };
+      else if (kind === 'IDAT') { parts.push(b.subarray(at, at + n)); size += n; }
+      else if (kind === 'IEND') break;
+      pos = at + n + 4;
+    }
+    if (!head || head.bits !== 8 || head.color !== 2 || head.interlace !== 0) throw new Error('the PNG must be 8-bit RGB');
+    var data = new Uint8Array(size), off = 0;
+    parts.forEach(function (q) { data.set(q, off); off += q.length; });
+    return { width: head.width, height: head.height, data: data };
+  }
+
+  function pngValues(raw, w, h) {
+    var stride = w * 3, bpp = 3, out = new Uint16Array(w * h), prev = new Uint8Array(stride), cur = new Uint8Array(stride);
+    if (raw.length !== h * (stride + 1)) throw new Error('the PNG data has the wrong length');
+    for (var y = 0; y < h; y++) {
+      var f = raw[y * (stride + 1)], row = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
+      for (var x = 0; x < stride; x++) {
+        var a = x >= bpp ? cur[x - bpp] : 0, up = prev[x], c = x >= bpp ? prev[x - bpp] : 0, pr;
+        if (f === 0) pr = 0;
+        else if (f === 1) pr = a;
+        else if (f === 2) pr = up;
+        else if (f === 3) pr = (a + up) >> 1;
+        else if (f === 4) {
+          var p = a + up - c, pa = Math.abs(p - a), pb = Math.abs(p - up), pc = Math.abs(p - c);
+          pr = pa <= pb && pa <= pc ? a : pb <= pc ? up : c;
+        } else throw new Error('unknown PNG row filter ' + f);
+        cur[x] = (row[x] + pr) & 255;
+      }
+      for (var i = 0; i < w; i++) out[y * w + i] = cur[i * 3] * 256 + cur[i * 3 + 1];
+      var t = prev; prev = cur; cur = t;
+    }
+    return out;
+  }
+
+  /* The tide spot nearest a point { lat, lon }, by distance on the ground. */
+  function nearestSpot(p) {
+    var k = Math.cos(p.lat * Math.PI / 180), best = null, bd = Infinity;
+    DATA.spots.forEach(function (s) {
+      var dx = (s.lon - p.lon) * k, dy = s.lat - p.lat, d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = s; }
+    });
+    return best;
+  }
+
+  /* Depth at a point at time t: chart depth plus the tide height at the nearest tide spot.
+     Returns { depth, chart, tide, spot }, { land: true, tide, spot }, or null where depthAt has nothing. */
+  function depthAtTime(grid, p, t) {
+    var d = depthAt(grid, p);
+    if (!d) return null;
+    var spot = nearestSpot(p), h = tideNow(spot, t).h, tide = h == null ? null : h;
+    if (d.land) return { land: true, tide: tide, spot: spot };
+    return { depth: tide == null ? null : d.chart + tide, chart: d.chart, tide: tide, spot: spot };
+  }
+
   /* ---------- Run home ---------- */
 
   /* The latest time to leave for home: last light, less the run, less the owner's margin. run is the trip time
@@ -784,6 +886,7 @@ var Engine = (function () {
     rampColor: rampColor, windColor: windColor, laneTime: laneTime,
     COMFORT: COMFORT, seaAngle: seaAngle, scoreLeg: scoreLeg, findPath: findPath, routeLegs: routeLegs,
     scoreRoute: scoreRoute, joinStretches: joinStretches, worstStretch: worstStretch, laneCrossings: laneCrossings,
+    depthAt: depthAt, depthAtTime: depthAtTime, nearestSpot: nearestSpot, pngChunks: pngChunks, pngValues: pngValues,
     parts: parts, midnight: midnight, dayStart: dayStart, addDays: addDays,
     fmtTime: fmtTime, fmtDay: fmtDay, fmtDayLong: fmtDayLong, fmtDuration: fmtDuration, isoDate: isoDate, pad2: pad2,
     spotExtremes: spotExtremes, spotCurve: spotCurve, interp: interp,
