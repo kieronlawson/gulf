@@ -645,13 +645,99 @@ var Engine = (function () {
 
   /* A path over open water from a to b, both in cells. An end on land, or on a closed cell, starts from the
      nearest open cell; from.moved and to.moved say how far that is. found is false when no open water joins
-     the two ends, which a grid with a seed avoids. There is then no path, and no straight line stands in for one. */
-  function findPath(grid, a, b) {
+     the two ends, which a grid with a seed avoids. There is then no path, and no straight line stands in for one.
+     reachA and reachB, when given, are the farthest each end may move, in cells. An end that would move farther
+     gives no path, and cut names it, 'a' or 'b'. */
+  function findPath(grid, a, b, reachA, reachB) {
     var s = nearestOpen(grid, a), g = nearestOpen(grid, b);
     if (!s || !g) return { found: false, from: s, to: g, points: [] };
+    var cut = reachA != null && s.moved > reachA ? 'a' : reachB != null && g.moved > reachB ? 'b' : null;
+    if (cut) return { found: false, from: s, to: g, points: [], cut: cut };
     var cells = searchCells(grid, s.i, g.i);
     if (!cells) return { found: false, from: s, to: g, points: [] };
     return { found: true, from: s, to: g, points: straighten(grid, cells) };
+  }
+
+  /* ---------- Depth in the path search ----------
+     The path grid has R cells per map unit and the depth grid cellsPerUnit, four times as many at R = 2: so a grid
+     cell, centered on a whole multiple of 1 / R, holds a block of depth cells two by two. Both grids start at the
+     map's north-west corner. A grid cell's chart depth is the shallowest of its depth cells, land in the depth grid
+     counts as -Infinity, and a cell whose depth cells all lack data has none (NaN). */
+
+  /* The chart depth of each grid cell, and the index into DATA.spots of the tide spot nearest each water cell. */
+  function cellDepths(depthGrid, grid) {
+    var w = grid.w, h = grid.h, f = depthGrid.cellsPerUnit / grid.R, chart = new Float32Array(w * h), spot = new Uint8Array(w * h);
+    var spots = DATA.spots, kx = depthGrid.k * depthGrid.scale * grid.R, ky = depthGrid.scale * grid.R;
+    for (var y = 0; y < h; y++) {
+      var r0 = Math.round(y * f - f / 2), lat = depthGrid.N - y / ky, cl = Math.cos(lat * RAD);
+      for (var x = 0; x < w; x++) {
+        var i = x + y * w, c0 = Math.round(x * f - f / 2), best = NaN;
+        for (var r = r0; r < r0 + f; r++) {
+          if (r < 0 || r >= depthGrid.ny) continue;
+          for (var c = c0; c < c0 + f; c++) {
+            if (c < 0 || c >= depthGrid.nx) continue;
+            var v = depthGrid.v[r * depthGrid.nx + c];
+            if (v === DEPTH_NO_DATA) continue;
+            var m = v === DEPTH_LAND ? -Infinity : (v - depthGrid.offsetDm) / 10;
+            if (!(best <= m)) best = m;
+          }
+        }
+        chart[i] = best;
+        if (!grid.water[i]) continue;
+        var lon = depthGrid.W + x / kx, bd = Infinity;
+        for (var s = 0; s < spots.length; s++) {
+          var dx = (spots[s].lon - lon) * cl, dy = spots[s].lat - lat, d = dx * dx + dy * dy;
+          if (d < bd) { bd = d; spot[i] = s; }
+        }
+      }
+    }
+    return { chart: chart, spot: spot };
+  }
+
+  /* The lowest tide at each tide spot between t0 and t1, from heights every 10 minutes and at both ends; in the
+     order of DATA.spots. */
+  function lowestTides(t0, t1) {
+    return DATA.spots.map(function (sp) {
+      var low = null;
+      for (var t = t0; ; t = Math.min(t + 10 * MIN, t1)) {
+        var hgt = tideNow(sp, t).h;
+        if (hgt != null && (low == null || hgt < low)) low = hgt;
+        if (t >= t1) break;
+      }
+      return low;
+    });
+  }
+
+  /* The path grid with the cells shallower than safe also closed: a cell is shallow when its chart depth plus the
+     lowest tide at its nearest spot is under safe. A cell with no depth data stays open. As in openCells, only
+     the open cells joined to the seed count. lowTide comes from lowestTides. */
+  function shoalGrid(grid, cd, safe, lowTide) {
+    var base = openCells(grid), w = grid.w, h = grid.h, open = new Uint8Array(w * h);
+    for (var i = 0; i < w * h; i++) {
+      if (!base[i]) continue;
+      var c = cd.chart[i], t = lowTide[cd.spot[i]] || 0;
+      open[i] = c !== c || c + t >= safe ? 1 : 0;
+    }
+    return { R: grid.R, w: w, h: h, water: grid.water, land: grid.land, seed: grid.seed,
+      open: grid.seed != null && open[grid.seed] ? joinedTo(open, w, h, grid.seed) : open };
+  }
+
+  /* The least depth along a path, given in grid cells, at the lowest tides lowTide: { depth, x, y } in grid
+     cells, or null where the path crosses no cell with depth data. The path is sampled every quarter cell. */
+  function leastDepth(grid, cd, lowTide, points) {
+    var out = null;
+    for (var k = 1; k < points.length; k++) {
+      var p = points[k - 1], q = points[k], n = Math.max(1, Math.ceil(Math.hypot(q.x - p.x, q.y - p.y) * 4));
+      for (var j = 0; j <= n; j++) {
+        var x = Math.round(p.x + (q.x - p.x) * j / n), y = Math.round(p.y + (q.y - p.y) * j / n);
+        if (x < 0 || y < 0 || x >= grid.w || y >= grid.h) continue;
+        var i = x + y * grid.w, c = cd.chart[i];
+        if (c !== c || c === -Infinity) continue;
+        var d = c + (lowTide[cd.spot[i]] || 0);
+        if (!out || d < out.depth) out = { depth: d, x: x, y: y };
+      }
+    }
+    return out;
   }
 
   /* ---------- Legs, the clock and stretches ---------- */
@@ -887,6 +973,7 @@ var Engine = (function () {
     COMFORT: COMFORT, seaAngle: seaAngle, scoreLeg: scoreLeg, findPath: findPath, routeLegs: routeLegs,
     scoreRoute: scoreRoute, joinStretches: joinStretches, worstStretch: worstStretch, laneCrossings: laneCrossings,
     depthAt: depthAt, depthAtTime: depthAtTime, nearestSpot: nearestSpot, pngChunks: pngChunks, pngValues: pngValues,
+    cellDepths: cellDepths, lowestTides: lowestTides, shoalGrid: shoalGrid, leastDepth: leastDepth,
     parts: parts, midnight: midnight, dayStart: dayStart, addDays: addDays,
     fmtTime: fmtTime, fmtDay: fmtDay, fmtDayLong: fmtDayLong, fmtDuration: fmtDuration, isoDate: isoDate, pad2: pad2,
     spotExtremes: spotExtremes, spotCurve: spotCurve, interp: interp,
