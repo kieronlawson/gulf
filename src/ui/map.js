@@ -108,8 +108,30 @@
       }
     }
     out.h = out.base * out.factor;
-    out.level = out.h >= 0.8 ? 4 : out.h >= 0.5 ? 3 : out.h >= 0.3 ? 2 : out.h >= 0.15 ? 1 : 0;
+    out.level = chopLevel(out.h);
     return out;
+  }
+  function chopLevel(h) { return h >= 0.8 ? 4 : h >= 0.5 ? 3 : h >= 0.3 ? 2 : h >= 0.15 ? 1 : 0; }
+
+  /* Step 3: waves over shallows. Once the depths load, the chop is capped by the depth at the time, and marked
+     where it likely breaks: Engine.shallowWaves holds the rule. The tide of each spot comes from spotTide in
+     depth.js, worked out once for each time. Land gives 0, and a point with no depth or no tide keeps its chop. */
+  /* The chart depth that stands for each chop cell, worked out once the depths load: the median of its water, from
+     Engine.medianDepth. The tint and the breaking outline cap a cell's chop with it, so an outline marks a cell where
+     waves likely break over at least half its water. A point, as the probe reads it, keeps its own depth. */
+  var cellCharts = null;
+  function chopCellDepth(i, q, t) {
+    if (depth.status !== 'ok') return null;
+    if (!cellCharts) cellCharts = cells.map(function (c) { return E.medianDepth(depth.grid, c.x - 2.5, c.y - 2.5, c.x + 2.5, c.y + 2.5); });
+    var m = cellCharts[i];
+    if (m == null) return null;
+    var h = spotTide(E.nearestSpot({ lat: mapLat(q.y), lon: mapLon(q.x) }), t);
+    return h == null ? null : m + h;
+  }
+  function waterDepth(x, y, t) {
+    var d = depthAtTimeMemo({ lat: mapLat(y), lon: mapLon(x) }, t);
+    if (!d) return null;
+    return d.land ? 0 : d.depth;
   }
 
   /* ---------- Wind and flow over the Gulf ---------- */
@@ -262,11 +284,15 @@
     return { kn: Math.sqrt(u * u + v * v), toward: (Math.atan2(u, v) / RAD + 360) % 360 };
   }
   /* Wind, flow, fetch and chop at one point and time. */
-  function condAt(x, y, w, t) {
+  /* dep, when given, is the depth that caps the chop; without it, the depth at the point. */
+  function condAt(x, y, w, t, dep) {
     var wi = windAt(w, t);
     if (!wi) return null;
-    var fl = flowAt(w, t), f = fetchKm(x, y, wi.from);
-    return { wind: wi, flow: fl, fetch: f, chop: chop(wi.kn, wi.from, f, fl ? fl.kn : null, fl ? fl.toward : null) };
+    var fl = flowAt(w, t), f = fetchKm(x, y, wi.from), ch = chop(wi.kn, wi.from, f, fl ? fl.kn : null, fl ? fl.toward : null);
+    if (dep === undefined) dep = waterDepth(x, y, t);
+    var sw = E.shallowWaves(ch.h, dep);
+    ch.deep = ch.h; ch.depth = dep; ch.h = sw.h; ch.breaking = sw.breaking; ch.level = chopLevel(ch.h);
+    return { wind: wi, flow: fl, fetch: f, chop: ch };
   }
 
   /* ---------- Map drawing ---------- */
@@ -342,9 +368,11 @@
     if (!svg) return;
     var t = mapTime(), tint = '';
     if (fieldShown() && state.layers.chop) {
-      cells.forEach(function (q) {
-        var c = condAt(q.x, q.y, q.w, t);
+      cells.forEach(function (q, i) {
+        var c = condAt(q.x, q.y, q.w, t, chopCellDepth(i, q, t));
         if (c && c.chop.level) tint += '<rect class="m-c' + c.chop.level + '" x="' + (q.x - 2.5) + '" y="' + (q.y - 2.5) + '" width="5.15" height="5.15"/>';
+        /* A cell where waves likely break over shallows carries a vermilion outline: an alert. */
+        if (c && c.chop.breaking) tint += '<rect class="m-break" x="' + (q.x - 2.3) + '" y="' + (q.y - 2.3) + '" width="4.6" height="4.6"/>';
       });
     }
     svg.querySelector('#ovTint').innerHTML = tint;
@@ -651,13 +679,16 @@
     var note = c.flow && p.near ? 'Flow within 4 km of land is unreliable. ' : '';
     if (c.chop.factor >= 1.15) note += 'Flow against the wind raises these waves by about ' + Math.round((c.chop.factor - 1) * 100) + '%.';
     else if (c.chop.factor <= 0.87) note += 'Flow with the wind lowers these waves by about ' + Math.round((1 - c.chop.factor) * 100) + '%.';
+    if (c.chop.depth != null && c.chop.depth <= 0) note += ' The ground here is dry at this time, so it carries no waves.';
+    else if (c.chop.h < c.chop.deep - 0.005) note += ' In ' + c.chop.depth.toFixed(1) + ' m of water the waves are held to ' + c.chop.h.toFixed(1) + ' m, from ' + c.chop.deep.toFixed(1) + ' m in open water.';
+    var breakLine = c.chop.breaking ? '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>Breaking likely. The waves in open water would be over half the depth here.</span></p>' : '';
     var html = head + '<dl class="probegrid">' +
       cell('Wind', compass(c.wind.from) + ' ' + Math.round(c.wind.kn) + ' kn' + (ok(c.wind.gust) ? ', gusts ' + Math.round(c.wind.gust) : '')) +
       cell('Flow', flowTxt) +
       cell('Fetch', c.fetch >= 100 ? 'over 100 km' : Math.round(c.fetch) + ' km') +
       cell('Waves', c.chop.h < 0.05 ? 'None' : c.chop.h.toFixed(1) + ' m, ' + c.chop.t.toFixed(1) + ' s') +
       cell('Chop', '<i class="sw sw' + c.chop.level + '"></i>' + CHOP_NAMES[c.chop.level]) +
-      '</dl>' + (note ? '<p class="small">' + note + '</p>' : '');
+      '</dl>' + breakLine + (note ? '<p class="small">' + note.trim() + '</p>' : '');
 
     /* Chop at this point for each hour of the day. Selecting a bar pins that hour, so only the Day screen has it. */
     if (state.mapScreen === 'now') { el.innerHTML = html; return; }

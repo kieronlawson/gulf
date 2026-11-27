@@ -116,7 +116,7 @@
   /* The chop height and the direction the wind comes from at a point and time, for the engine's clock. */
   function routeCond(x, y, t) {
     var c = condAt(x, y, nearest(x, y), t);
-    return c ? { h: c.chop.h, from: c.wind.from } : null;
+    return c ? { h: c.chop.h, from: c.wind.from, breaking: c.chop.breaking, dry: c.chop.depth != null && c.chop.depth <= 0 } : null;
   }
 
   /* A route for a leave time: its path and legs, and, once the owner has set a boat speed, the scored legs,
@@ -324,7 +324,9 @@
 
   /* The cause and height of a stretch, as the panel writes them. */
   function causeWords(s) {
-    return s.cause === 'sheltered' ? 'sheltered' : s.cause + ', ' + s.h.toFixed(1) + ' m';
+    /* Sheltered water, breaking waves and dry ground carry no height worth naming: the cap over shallows can bring
+       it to 0.0 m. */
+    return s.cause === 'sheltered' || s.cause === 'breaking waves' || s.cause === 'dry ground' ? s.cause : s.cause + ', ' + s.h.toFixed(1) + ' m';
   }
 
   /* Why the safe depth leaves a trip with no path, as text: the window, the end too far from water deep enough,

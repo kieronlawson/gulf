@@ -166,7 +166,7 @@ Each step is one pull request, merged before the next starts.
 | 4 | `tools/chartmarks.py` and the Marks layer. | Done. `data/marks.json` is 94 KB. |
 | 5 | Depth in the route. | Done. |
 | 6 | Full-screen map. | Done. |
-| 7 | Waves over shallows. | |
+| 7 | Waves over shallows. | Done. |
 
 ## Decisions made in the build
 
@@ -210,6 +210,9 @@ Each step is one pull request, merged before the next starts.
 - **The Route layer** belongs to the full-screen map, so it hides the route's line only there. Back on the normal map, the line shows.
 - **Smaller screens.** Under 800 px of height, as on an iPad mini, the layer buttons take two columns, so the key fits above the bottom panel. Up to 760 px wide, the card spans the width above the bottom panel and the view buttons stand in a column at the right; on a phone, while the card shows, it takes the place of the layer buttons, the key and the strip, and Close brings them back. In full screen a one-finger drag moves the map even at zoom 1, because no page scrolls under it.
 - **Suggestions and depth.** Once the depths show, Where to go could suggest "Calmest water" on a cell the depth grid puts on land or dry, because sheltered water lies close to shore. A suggestion now needs water at the map's time, and, once a safe depth is set, at least that much.
+- **Waves over shallows.** `Engine.shallowWaves` takes the chop height in open water and the depth at the time, from the depth grid and the nearest spot's tide. It caps the height at `COMFORT.capShare`, 0.6 of the depth, and marks breaking likely where the height before the cap is over `COMFORT.breakShare`, half the depth. Ground that is dry at the time carries no waves. A point with no depth keeps its chop. The cap applies everywhere the page uses chop: the tint, the probe reading, Where to go, the Now screen and the route.
+- **Breaking on the map.** A chop cell where waves likely break carries a dashed vermilion outline, because the page's vermilion marks alerts. A chop cell is about a nautical mile across, and near a steep shore the depth at its center can be a shallow edge of deep water. So the tint and the outline cap a cell's chop with the median chart depth of its water, from `Engine.medianDepth`, plus the tide at the cell's nearest spot. Waves then break at the median depth, so at least half of an outlined cell's water is that shallow or dry. The probe reading, Where to go and the route read the depth at their own point. The probe reading says "Breaking likely", and when the cap lowers the waves it gives the depth and both heights. A route's leg through breaking water is Very rough, with the cause "breaking waves".
+- **Dry ground in the route.** Ground dry at the time carries no waves, so its chop is 0 and its score alone would read as Easy. A route's leg over ground dry at the time the boat reaches it is Very rough, with the cause "dry ground". With a safe depth set, the path keeps off such ground, so this applies to a route without one. The panel names breaking waves and dry ground without a height.
 - **The probe row.** The row reads "Depth at 14:05" and the depth at the map's time. The line under it gives the chart depth, the tide and the tide spot, and ends "Not for navigation." A drying cell covered by the tide says how much the ground dries. A drying cell above the tide says "Dry". A land cell says the grid puts it above high water. The row shows on a point the coastline puts on land, such as a marina, because the grid often has a value there. In Where to go, each row gives the depth after the distance, before the wind, because a long line loses its end.
 
 ## The datum check

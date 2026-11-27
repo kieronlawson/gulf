@@ -444,8 +444,19 @@ var Engine = (function () {
     sheltered: 0.15,                     /* under this chop height, the cause is "sheltered" */
     head: 50,                            /* a head sea up to this angle */
     beam: 130,                           /* a beam sea up to this angle, and a following sea above it */
-    stretchNm: 0.5                       /* the route panel leaves out stretches shorter than this */
+    stretchNm: 0.5,                      /* the route panel leaves out stretches shorter than this */
+    capShare: 0.6,                       /* over shallows, chop is at most this share of the depth */
+    breakShare: 0.5                      /* chop over this share of the depth, before the cap, likely breaks */
   };
+
+  /* Waves over shallow water. h is the chop height in deep water, depth the water's depth at the time, in
+     meters, or null where it is not known. The height is capped at COMFORT.capShare of the depth, and breaking
+     is likely where h is over COMFORT.breakShare of it. Ground that is dry at the time carries no waves. */
+  function shallowWaves(h, depth) {
+    if (depth == null || !(h > 0)) return { h: h, breaking: false };
+    if (depth <= 0) return { h: 0, breaking: false };
+    return { h: Math.min(h, COMFORT.capShare * depth), breaking: h > COMFORT.breakShare * depth };
+  }
 
   /* The angle between the boat's course and the direction the wind comes from, 0 to 180 degrees.
      0 is a head sea and 180 a following sea. */
@@ -761,9 +772,11 @@ var Engine = (function () {
   }
 
   /* Scores the legs in order, each at the time the boat reaches it. The clock starts at t0. cond(x, y, t)
-     gives the chop height h and the direction the wind comes from at a leg's middle, or null where the
-     forecast does not cover it. Each leg adds its time at its comfortable speed to the clock. A leg without
-     a forecast gets no score, and the clock crosses it at cruising speed. */
+     gives the chop height h, the direction the wind comes from, breaking, true where waves likely break over
+     shallows, and dry, true where the ground is dry at that time, at a leg's middle, or null where the forecast does
+     not cover it. Each leg adds its time at its
+     comfortable speed to the clock. A leg without a forecast gets no score, and the clock crosses it at
+     cruising speed. */
   function scoreRoute(legs, t0, cruise, cond) {
     var t = t0, nm = 0, missing = 0, out = legs.map(function (L) {
       var r = {}, k;
@@ -773,6 +786,10 @@ var Engine = (function () {
       if (c) {
         var a = seaAngle(L.course, c.from), s = scoreLeg(c.h, a, cruise);
         r.h = c.h; r.a = a; r.score = s.score; r.level = s.level; r.cause = s.cause; r.v = s.v;
+        /* Where the ground is dry, or waves likely break over shallows, the leg is Very rough, whatever its score:
+           dry ground carries no waves, so its score alone would read as calm. */
+        if (c.dry) { r.level = COMFORT.names.length - 1; r.cause = 'dry ground'; r.dry = true; }
+        else if (c.breaking) { r.level = COMFORT.names.length - 1; r.cause = 'breaking waves'; r.breaking = true; }
       } else {
         r.level = null; r.v = null;
         missing += L.nm;
@@ -946,6 +963,24 @@ var Engine = (function () {
 
   /* Depth at a point at time t: chart depth plus the tide height at the nearest tide spot.
      Returns { depth, chart, tide, spot }, { land: true, tide, spot }, or null where depthAt has nothing. */
+  /* The median chart depth of the water in a box of the map, from x0 to x1 and y0 to y1 in map units, with sides on
+     the edges of depth cells. Land and cells with no data are left out. With an even count, the shallower of the two
+     middle values stands. null where the box holds no water with a depth. */
+  function medianDepth(grid, x0, y0, x1, y1) {
+    var f = grid.cellsPerUnit, vals = [];
+    var c0 = Math.max(0, Math.round(x0 * f)), c1 = Math.min(grid.nx, Math.round(x1 * f));
+    var r0 = Math.max(0, Math.round(y0 * f)), r1 = Math.min(grid.ny, Math.round(y1 * f));
+    for (var r = r0; r < r1; r++) {
+      for (var c = c0; c < c1; c++) {
+        var v = grid.v[r * grid.nx + c];
+        if (v !== DEPTH_NO_DATA && v !== DEPTH_LAND) vals.push((v - grid.offsetDm) / 10);
+      }
+    }
+    if (!vals.length) return null;
+    vals.sort(function (a, b) { return a - b; });
+    return vals[(vals.length - 1) >> 1];
+  }
+
   function depthAtTime(grid, p, t) {
     var d = depthAt(grid, p);
     if (!d) return null;
@@ -970,9 +1005,9 @@ var Engine = (function () {
     MIN: MIN, HOUR: HOUR, DAY: DAY,
     LIMITS: LIMITS, windows: windows, rankWindows: rankWindows, dayWindows: dayWindows, leaveBy: leaveBy,
     rampColor: rampColor, windColor: windColor, laneTime: laneTime,
-    COMFORT: COMFORT, seaAngle: seaAngle, scoreLeg: scoreLeg, findPath: findPath, routeLegs: routeLegs,
+    COMFORT: COMFORT, shallowWaves: shallowWaves, seaAngle: seaAngle, scoreLeg: scoreLeg, findPath: findPath, routeLegs: routeLegs,
     scoreRoute: scoreRoute, joinStretches: joinStretches, worstStretch: worstStretch, laneCrossings: laneCrossings,
-    depthAt: depthAt, depthAtTime: depthAtTime, nearestSpot: nearestSpot, pngChunks: pngChunks, pngValues: pngValues,
+    depthAt: depthAt, depthAtTime: depthAtTime, medianDepth: medianDepth, nearestSpot: nearestSpot, pngChunks: pngChunks, pngValues: pngValues,
     cellDepths: cellDepths, lowestTides: lowestTides, shoalGrid: shoalGrid, leastDepth: leastDepth,
     parts: parts, midnight: midnight, dayStart: dayStart, addDays: addDays,
     fmtTime: fmtTime, fmtDay: fmtDay, fmtDayLong: fmtDayLong, fmtDuration: fmtDuration, isoDate: isoDate, pad2: pad2,

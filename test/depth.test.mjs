@@ -69,3 +69,12 @@ test('depthAtTime on land and where there is no data', () => {
 test('nearestSpot picks the closest tide spot on the ground', () => {
   for (const s of DATA.spots) assert.equal(Engine.nearestSpot({ lat: s.lat + 0.001, lon: s.lon - 0.001 }).id, s.id);
 });
+
+test('the median depth of a box leaves out land and cells with no data', () => {
+  // The whole grid, a box 1 unit wide and 0.75 tall: 4 by 3 cells. Its water holds nine depths.
+  assert.equal(Engine.medianDepth(grid, 0, 0, 1, 0.75), 8.1);
+  // The top row alone: 15.7 and 4.0 are water, so the shallower middle value stands.
+  assert.equal(Engine.medianDepth(grid, 0, 0, 1, 0.25), 4);
+  // One land cell and one with no data hold no water.
+  assert.equal(Engine.medianDepth(grid, 0.5, 0, 1, 0.25), null);
+});
