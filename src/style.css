@@ -280,6 +280,9 @@ button:disabled:active { transform: none; }
 .m-landbg { fill: var(--land); }
 .m-landdot { fill: var(--grille); }
 .m-c1 { fill: var(--c1); } .m-c2 { fill: var(--c2); } .m-c3 { fill: var(--c3); } .m-c4 { fill: var(--c4); }
+.m-break { fill: none; stroke: var(--red); stroke-width: 1.2px; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
+.s-break { fill: none; stroke: var(--red); stroke-width: 1.2px; stroke-dasharray: 3 2; }
+.gobreak { color: var(--red); }
 /* Depths: the tint image, contours with labels in meters, and hatching over water under the safe depth. The lines
    keep one width on screen at any zoom. Over the chop tint, the contours take a stronger blue. */
 #ovDepthTint, #ovHatch, #ovContours { pointer-events: none; }

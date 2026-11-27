@@ -32,7 +32,9 @@
       var dd = depthAtTimeMemo({ lat: mapLat(q.y), lon: mapLon(q.x) }, t), safe = state.limits.safe;
       if (dd && (dd.land || (dd.depth != null && (dd.depth <= 0 || (safe != null && dd.depth < safe))))) return;
       var c = condAt(q.x, q.y, q.w, t);
-      if (c) cand.push({ x: q.x, y: q.y, w: q.w, c: c, d: d });
+      /* Over shallows the cap lowers the chop, so water where waves likely break would rank as calm. It is no
+         suggestion. */
+      if (c && !c.chop.breaking) cand.push({ x: q.x, y: q.y, w: q.w, c: c, d: d });
     });
     cand.sort(function (a, b) { return a.c.chop.h - b.c.chop.h || a.d - b.d; });
     var marksXY = state.marks.map(function (m) { return { x: mapX(m.lon), y: mapY(m.lat) }; });
@@ -60,7 +62,9 @@
   }
 
   var CHOP_SHORT = ['Smooth', 'Light', 'Moderate', 'Rough', 'Very rough'];
-  function chopText(c) { return CHOP_NAMES[c.chop.level] + (c.chop.h >= 0.05 ? ', ' + c.chop.h.toFixed(1) + ' m' : ''); }
+  function chopText(c) {
+    return c.chop.dry ? 'dry ground' : c.chop.breaking ? 'breaking likely' : CHOP_NAMES[c.chop.level] + (c.chop.h >= 0.05 ? ', ' + c.chop.h.toFixed(1) + ' m' : '');
+  }
 
   /* The list under the map, shown while no point is selected. */
   function renderGo() {
@@ -72,7 +76,9 @@
     suggestions.forEach(function (s) {
       rows.push({ key: s.key, badge: s.label, kind: 'sugg', name: 'Calmest water' + (s.near ? ' near ' + s.near : ''), x: s.x, y: s.y, c: s.c, water: true });
     });
-    rows.sort(function (a, b) { return (a.c ? a.c.chop.h : 99) - (b.c ? b.c.chop.h : 99); });
+    /* A mark where waves likely break, or on ground dry at the time, goes after the others, whatever its chop. */
+    function rank(r) { return !r.c ? 99 : r.c.chop.dry ? 60 : r.c.chop.breaking ? 50 + r.c.chop.h : r.c.chop.h; }
+    rows.sort(function (a, b) { return rank(a) - rank(b); });
 
     /* The Now screen's heading already says where to go from, so its line gives only the time. */
     var title = state.mapScreen === 'now' ? (state.nowStep ? 'In ' + state.nowStep + ' h, at ' + E.fmtTime(t) : 'Now') :
@@ -87,7 +93,9 @@
     html += '<div class="golist">' + rows.map(function (r) {
       var d = distNm(o, r), dir = compass(bearingFrom(o, r)), deep = depthShort(r.x, r.y, t);
       var wind = r.c ? compass(r.c.wind.from) + ' ' + Math.round(r.c.wind.kn) + ' kn' : '';
-      var chopCell = r.c ? '<b><i class="sw sw' + r.c.chop.level + '"></i>' + CHOP_SHORT[r.c.chop.level] + '</b><span>' + (r.c.chop.h >= 0.05 ? r.c.chop.h.toFixed(1) + ' m' : 'under 0.1 m') + '</span>' :
+      var chopCell = r.c && r.c.chop.dry ? '<b class="gobreak"><span class="pip alert" aria-hidden="true"></span>Dry</b><span>at this time</span>' :
+        r.c && r.c.chop.breaking ? '<b class="gobreak"><span class="pip alert" aria-hidden="true"></span>Breaking</b><span>likely</span>' :
+        r.c ? '<b><i class="sw sw' + r.c.chop.level + '"></i>' + CHOP_SHORT[r.c.chop.level] + '</b><span>' + (r.c.chop.h >= 0.05 ? r.c.chop.h.toFixed(1) + ' m' : 'under 0.1 m') + '</span>' :
         '<b>' + (r.water ? 'No forecast' : 'No estimate') + '</b>';
       var label = r.name + ', ' + d.toFixed(1) + ' nautical miles ' + dir + ' of ' + o.name + (deep ? ', ' + deep : '') + (r.c ? ', wind ' + wind + ', ' + chopText(r.c) : '');
       /* Each row has a Route button: a route from the starting point to the place. */

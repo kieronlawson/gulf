@@ -313,7 +313,7 @@
       <div>
         <h4>Wind, flow and chop on the map</h4>
         <p>Wind and current come from Open-Meteo at grid points 0.1° apart. The current model has cells of about 8 km. It does not resolve the channels and is unreliable near land.</p>
-        <p>Chop is an estimate. The page measures the open water upwind of a point, takes wave height and period from the JONSWAP growth curves, and assumes the wind has blown long enough. It then raises the waves where the current runs against them and lowers them where it runs with them. Swell is not included.</p>
+        <p>Chop is an estimate. The page measures the open water upwind of a point, takes wave height and period from the JONSWAP growth curves, and assumes the wind has blown long enough. It then raises the waves where the current runs against them and lowers them where it runs with them. Over shallow water, once the depths load, it holds the waves to six tenths of the depth at the time. Where the waves in open water would be over half the depth, they likely break: the map outlines that water with a red dashed line, and the route rates it Very rough. Swell is not included.</p>
         <p>The depth at a point is its chart depth plus the tide at the nearest tide spot, at the map's time. The chart depth comes from a grid of cells about 93&nbsp;m across. Each cell holds the shallowest water the 20&nbsp;m source grid shows inside it, so a cell can read shallower than the water at the point itself. A negative chart depth is a drying height.</p>
         <p><strong>Not for navigation.</strong> Read the marine forecast before you go out.</p>
       </div>

@@ -53,7 +53,7 @@
       depth.status = 'ok'; depth.failedAt = 0;
     }).catch(function () {
       depth.status = 'failed'; depth.failedAt = Date.now();
-    }).then(function () { renderProbe(); renderDepthLayers(); renderRoute(); renderNowSide(); });
+    }).then(function () { renderProbe(); renderOverlay(); renderRoute(); renderNowSide(); });   /* the chop tint caps waves by depth */
   }
 
   /* status: idle, loading, ok or failed. data holds { depths, paths, labels } from data/contours.json. */

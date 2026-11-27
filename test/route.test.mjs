@@ -264,3 +264,42 @@ test('neighboring legs of one level join into one stretch', () => {
   assert.equal(s[3].v, null);
   assert.equal(Engine.worstStretch(s), s[1]);
 });
+
+test('over shallows chop is capped at 0.6 of the depth, and breaks where it is over half the depth', () => {
+  const { capShare, breakShare } = COMFORT;
+  assert.equal(capShare, 0.6);
+  assert.equal(breakShare, 0.5);
+  assert.deepEqual(plain(Engine.shallowWaves(0.4, 10)), { h: 0.4, breaking: false }, 'deep water keeps its chop');
+  assert.deepEqual(plain(Engine.shallowWaves(0.4, 0.9)), { h: 0.4, breaking: false }, '0.4 m is under half of 0.9 m');
+  const s = Engine.shallowWaves(0.6, 1.0);
+  assert.equal(s.breaking, true);
+  assert.ok(Math.abs(s.h - 0.6) < 1e-9, 'the cap is 0.6 m at 1.0 m of depth');
+  const t = Engine.shallowWaves(0.8, 1.0);
+  assert.ok(Math.abs(t.h - 0.6) < 1e-9, '0.8 m caps to 0.6 m');
+  assert.deepEqual(plain(Engine.shallowWaves(0.5, -0.2)), { h: 0, breaking: false }, 'dry ground carries no waves');
+  assert.deepEqual(plain(Engine.shallowWaves(0.5, null)), { h: 0.5, breaking: false }, 'no depth, no change');
+});
+
+test('a leg where waves likely break scores Very rough', () => {
+  const legs = Engine.routeLegs([{ x: 0, y: 0 }, { x: 0, y: -10 }], 10);   // 1 nm north, in legs of 0.3 nm
+  const calm = Engine.scoreRoute(legs, 0, 20, () => ({ h: 0.1, from: 0 }));
+  assert.ok(calm.legs.every((L) => name(L.level) === 'Easy'));
+  const breaking = Engine.scoreRoute(legs, 0, 20, (x, y) => ({ h: 0.1, from: 0, breaking: y < -5 }));
+  const levels = breaking.legs.map((L) => name(L.level));
+  assert.ok(levels.includes('Very rough'));
+  assert.equal(breaking.legs.find((L) => L.breaking).cause, 'breaking waves');
+  assert.equal(levels[0], 'Easy');
+});
+
+test('a leg over ground dry at its time scores Very rough, not calm', () => {
+  const legs = Engine.routeLegs([{ x: 0, y: 0 }, { x: 0, y: -10 }], 10);
+  // Dry ground carries no waves, so h is 0 there, which alone would score Easy.
+  const r = Engine.scoreRoute(legs, 0, 20, (x, y) => ({ h: y < -5 ? 0 : 0.1, from: 0, breaking: false, dry: y < -5 }));
+  const dry = r.legs.filter((L) => L.dry);
+  assert.ok(dry.length > 0);
+  assert.ok(dry.every((L) => name(L.level) === 'Very rough' && L.cause === 'dry ground'));
+  assert.equal(name(r.legs[0].level), 'Easy');
+  // The clock crosses a forced Very rough leg at the lowest comfortable speed, not at cruising speed.
+  assert.ok(dry.every((L) => L.v === Engine.COMFORT.minKn && L.score >= Engine.COMFORT.levels.at(-1)));
+  assert.equal(r.legs[0].v, 20);
+});

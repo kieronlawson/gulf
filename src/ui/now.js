@@ -203,6 +203,9 @@
     return [
       { k: wk, v: compass(c.wind.from) + ' ' + kn + ' kn', alert: over,
         s: (ok(c.wind.gust) ? 'Gusts ' + Math.round(c.wind.gust) + ' kn. ' : '') + (over ? 'Over' : 'Within') + ' your ' + lim + ' kn limit.' },
+      c.chop.dry ? { k: ck, v: 'Dry', alert: true, s: 'The ground here is dry at this time' + (c.chop.depth <= -0.05 ? ', ' + (-c.chop.depth).toFixed(1) + ' m above the water.' : '.') } :
+      c.chop.breaking ? { k: ck, v: 'Breaking likely', alert: true,
+        s: 'The waves in open water, ' + c.chop.deep.toFixed(1) + ' m, would be over half the depth of ' + c.chop.depth.toFixed(1) + ' m here.' + flow } :
       { k: ck, v: '<i class="sw sw' + c.chop.level + '" aria-hidden="true"></i>' + CHOP_SHORT[c.chop.level],
         s: (c.chop.h < 0.05 ? 'Waves under 0.1 m.' : 'Waves ' + c.chop.h.toFixed(1) + ' m, ' + c.chop.t.toFixed(1) + ' s.') + flow }
     ];
@@ -251,8 +254,11 @@
     var lim = state.limits.wind, hours = [];
     for (var i = 0; i < 7; i++) {
       var th = h0 + i * HOUR, cx = x(th), c = w ? condAt(w.x, w.y, w.w, th) : null, lv = c ? c.chop.level : -1;
-      var bh = lv < 0 ? 3 : 6 + lv * 9, bw = Math.min(26, W / 7 * 0.5);
-      s.push('<rect class="s-c' + (lv < 0 ? 'x' : lv) + '" x="' + n(cx - bw / 2) + '" y="' + (BASE - bh) + '" width="' + n(bw) + '" height="' + bh + '"/>');
+      /* An hour when waves likely break, or the ground is dry, gets the tallest bar, in the alert color, with a
+         dashed outline. */
+      var brk = !!(c && (c.chop.breaking || c.chop.dry)), bh = brk ? 6 + 4 * 9 : lv < 0 ? 3 : 6 + lv * 9, bw = Math.min(26, W / 7 * 0.5);
+      s.push('<rect class="s-c' + (brk ? 4 : lv < 0 ? 'x' : lv) + '" x="' + n(cx - bw / 2) + '" y="' + (BASE - bh) + '" width="' + n(bw) + '" height="' + bh + '"/>');
+      if (brk) s.push('<rect class="s-break" x="' + n(cx - bw / 2 - 2) + '" y="' + (BASE - bh - 2) + '" width="' + n(bw + 4) + '" height="' + (bh + 2) + '"/>');
       /* The wind: an arrow that points the way the wind blows, as on the map, and the speed in knots. */
       var kn = c ? Math.round(c.wind.kn) : null, cls = 'n6-wind' + (kn != null && kn > lim ? ' over' : '');
       if (c) {
@@ -260,7 +266,7 @@
         s.push('<text class="' + cls + '" x="' + n(cx - 1) + '" y="' + (TOP + 16) + '">' + kn + '</text>');
       } else s.push('<text class="n6-wind" x="' + n(cx) + '" y="' + (TOP + 16) + '" text-anchor="middle">–</text>');
       s.push('<text class="n6-hour" x="' + n(cx) + '" y="' + (BASE + 14) + '" text-anchor="middle">' + E.fmtTime(th) + '</text>');
-      hours.push(E.fmtTime(th) + (c ? ', wind ' + compass(c.wind.from) + ' ' + kn + ' knots, ' + CHOP_NAMES[lv].toLowerCase() : ', no forecast'));
+      hours.push(E.fmtTime(th) + (c ? ', wind ' + compass(c.wind.from) + ' ' + kn + ' knots, ' + (c.chop.dry ? 'dry ground' : brk ? 'breaking likely' : CHOP_NAMES[lv].toLowerCase()) : ', no forecast'));
     }
 
     /* Events along the bottom: the turns of the tide, and last light. A label that would run into the one
