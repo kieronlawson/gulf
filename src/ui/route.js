@@ -26,10 +26,14 @@
 
   /* ---------- Depth in the route ----------
      With a safe depth and a boat speed set, and the depth grid loaded, the path keeps to water whose depth at the
-     lowest tide of the trip is at least the safe depth. The trip runs from the leave time to the arrival at
-     cruising speed along the open-water path, plus DEPTH_MARGIN_MS. A grid cell's depth is the shallowest of its
-     four depth cells, with the tide of its nearest spot. */
-  var DEPTH_MARGIN_MS = 30 * MIN;
+     lowest tide of the trip is at least the safe depth. The window of the lowest tide first runs from the leave
+     time to the arrival at cruising speed along the open-water path, plus DEPTH_MARGIN_MS. A grid cell's depth is
+     the shallowest of its four depth cells, with the tide of its nearest spot. An end in shallow water starts
+     from the nearest cell deep enough, up to SHALLOW_END_NM farther than it moves to reach open water. */
+  var DEPTH_MARGIN_MS = 30 * MIN, SHALLOW_END_NM = 0.5;
+  /* Comfortable speeds and a longer path can bring the arrival past the window. The window then grows to the
+     scored arrival plus DEPTH_MARGIN_MS, and the path is found again, up to DEPTH_TRIES times in all. */
+  var DEPTH_TRIES = 3;
   var cellDepthCache = null, depthPaths = [];
   function routeCellDepths() {
     if (!MASK || depth.status !== 'ok') return null;
@@ -41,21 +45,35 @@
     for (var i = 1; i < points.length; i++) nm += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y) / NM;
     return nm;
   }
-  /* The depth rule for a trip that leaves at t0 along the open-water path p, or null when it does not apply. */
-  function depthRule(p, t0) {
+  /* The depth rule for a trip that leaves at t0 along the open-water path p, or null when it does not apply. Its
+     window ends at t1, or, without t1, at the arrival at cruising speed along p plus DEPTH_MARGIN_MS. */
+  function depthRule(p, t0, t1) {
     var safe = state.limits.safe, cruise = state.limits.speed, cd = routeCellDepths();
     if (safe == null || cruise == null || !cd || !p || !p.found) return null;
-    var t1 = t0 + pathNm(p.points) / cruise * HOUR + DEPTH_MARGIN_MS;
+    if (t1 == null) t1 = t0 + pathNm(p.points) / cruise * HOUR + DEPTH_MARGIN_MS;
     return { safe: safe, t0: t0, t1: t1, low: E.lowestTides(t0, t1), cd: cd };
   }
-  /* The path between two points that keeps the safe depth, in the shape routePath gives. Without one, found is
-     false, and blocked gives the least depth on the open-water path at the lowest tides, the depth that blocks it.
-     The last four are kept, by their ends, the safe depth and the lowest tides. */
-  function depthPath(a, b, rule) {
+  /* Why a safe depth the owner has set does not shape the trip's path: no boat speed, or depths still loading or
+     not loaded. Empty when the rule applies, when no safe depth is set, or when there is no path at all. */
+  function depthSkipWords(tr) {
+    if (tr.depth || state.limits.safe == null || !tr.path || !tr.path.found) return '';
+    if (state.limits.speed == null) return 'The path does not keep to the safe depth until you set a boat speed under Limits.';
+    if (depth.status === 'failed') return 'The depths did not load, so the path does not keep to the safe depth. The page tries again every 10 minutes, and when you return to it.';
+    if (depth.status !== 'ok') return 'The depths are still loading, so the path does not keep to the safe depth yet.';
+    return '';
+  }
+  /* The path between two points that keeps the safe depth, in the shape routePath gives, from the open-water
+     path plain between them. Each end may move SHALLOW_END_NM farther than it moves on plain. Without a path,
+     found is false; cut names an end that is farther than that from water deep enough, and cutNm gives how far;
+     and blocked gives the least depth on the open-water path at the lowest tides. The last four are kept, by
+     their ends, the safe depth and the lowest tides. */
+  function depthPath(a, b, plain, rule) {
     var R = MASK.R, key = [a.x, a.y, b.x, b.y].map(function (v) { return Math.round(v * R); }).join(' ') + '|' + rule.safe + '|' +
       rule.low.map(function (h) { return h == null ? 'x' : h.toFixed(2); }).join(',');
     for (var i = 0; i < depthPaths.length; i++) if (depthPaths[i].key === key) return depthPaths[i].res;
-    var g = E.shoalGrid(MASK, rule.cd, rule.safe, rule.low), r = E.findPath(g, { x: a.x * R, y: a.y * R }, { x: b.x * R, y: b.y * R });
+    var g = E.shoalGrid(MASK, rule.cd, rule.safe, rule.low),
+      r = E.findPath(g, { x: a.x * R, y: a.y * R }, { x: b.x * R, y: b.y * R },
+        ((plain.fromNm || 0) + SHALLOW_END_NM) * NM * R, ((plain.toNm || 0) + SHALLOW_END_NM) * NM * R);
     var res = {
       found: r.found,
       points: r.points.map(function (q) { return { x: q.x / R, y: q.y / R }; }),
@@ -63,8 +81,8 @@
       toNm: r.to ? r.to.moved / R / NM : null
     };
     if (!r.found) {
-      var plain = routePath(a, b), least = plain && plain.found ?
-        E.leastDepth(MASK, rule.cd, rule.low, plain.points.map(function (q) { return { x: q.x * R, y: q.y * R }; })) : null;
+      if (r.cut) { res.cut = r.cut; res.cutNm = r.cut === 'a' ? res.fromNm : res.toNm; }
+      var least = E.leastDepth(MASK, rule.cd, rule.low, plain.points.map(function (q) { return { x: q.x * R, y: q.y * R }; }));
       res.blocked = least ? least.depth : null;
     }
     depthPaths.unshift({ key: key, res: res });
@@ -102,10 +120,22 @@
   }
 
   /* A route for a leave time: its path and legs, and, once the owner has set a boat speed, the scored legs,
-     the stretches and the worst stretch. The page does not guess a speed. */
+     the stretches and the worst stretch. The page does not guess a speed. With the depth rule, the window of the
+     lowest tide grows until it covers the scored arrival, including the water between the path's ends and the
+     places at cruising speed, plus DEPTH_MARGIN_MS. */
   function scoreTrip(a, b, t0) {
-    var p = routePath(a, b), out = { path: p, t0: t0 }, rule = depthRule(p, t0);
-    if (rule) { out.depth = rule; out.path = p = depthPath(a, b, rule); }
+    var plain = routePath(a, b), rule = depthRule(plain, t0), out;
+    for (var k = 1; ; k++) {
+      out = scorePath(a, b, t0, plain, rule);
+      if (!rule || !out.score) return out;
+      var ends = ((out.path.fromNm || 0) + (out.path.toNm || 0)) / out.cruise * HOUR, need = t0 + out.score.ms + ends + DEPTH_MARGIN_MS;
+      if (need <= rule.t1 || k >= DEPTH_TRIES) return out;
+      rule = depthRule(plain, t0, need);
+    }
+  }
+  function scorePath(a, b, t0, plain, rule) {
+    var p = plain, out = { path: p, plain: plain, t0: t0 };
+    if (rule) { out.depth = rule; out.path = p = depthPath(a, b, plain, rule); }
     if (!p || !p.found) return out;
     out.legs = E.routeLegs(p.points, NM);
     out.nm = out.legs.reduce(function (s, L) { return s + L.nm; }, 0);
@@ -208,8 +238,10 @@
   function routeBox() {
     var r = curRoute();
     if (!r) return PRESETS.whole();
-    /* The view fits the path the map draws: with a safe depth, the one that keeps it. */
-    var a = endAt(r.a), b = endAt(r.b), p = trip && trip.path && trip.path.found ? trip.path : routePath(a, b), pts = p && p.found ? p.points : [a, b];
+    /* The view fits the path the map draws: with a safe depth, the one that keeps it. trip can still hold the
+       other screen's route while the map moves between screens, so it serves only when its ends are this route's. */
+    var a = endAt(r.a), b = endAt(r.b), same = function (q, e) { return q && q.x === e.x && q.y === e.y; };
+    var tr = trip && same(trip.a, a) && same(trip.b, b) ? trip : scoreTrip(a, b, routeLeave()), p = tr.path, pts = p && p.found ? p.points : [a, b];
     var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     pts.forEach(function (q) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); });
     var fw = frame.w || 400, fh = frame.h || 400;
@@ -219,6 +251,10 @@
   }
 
   /* ---------- Drawing ---------- */
+
+  /* The leave time of the route on the screen that holds the map: the time on the bar on the Day screen, and now,
+     to the minute, on the Now screen. */
+  function routeLeave() { return state.mapScreen === 'day' ? mapTime() : Math.floor(Date.now() / MIN) * MIN; }
 
   /* Everything a route changes: the Day screen's layout, the view buttons, the path on the map, the panels and
      the one-row day. The Day screen's route leaves at the time on the bar; the Now screen's leaves now. */
@@ -234,7 +270,7 @@
     $('viewSpot').hidden = !!r;
     if (r) {
       var a = endAt(r.a), b = endAt(r.b);
-      trip = scoreTrip(a, b, onDay ? mapTime() : Math.floor(Date.now() / MIN) * MIN);
+      trip = scoreTrip(a, b, routeLeave());
       trip.a = a; trip.b = b;
     } else trip = null;
     drawRouteMap();
@@ -282,15 +318,25 @@
     return s.cause === 'sheltered' ? 'sheltered' : s.cause + ', ' + s.h.toFixed(1) + ' m';
   }
 
+  /* Why the safe depth leaves a trip with no path, as text: the window, the end too far from water deep enough,
+     and the least depth on the open-water path. aName and bName name the ends. The route panel, the strip and
+     the run home say it. */
+  function depthBlockWords(tr, aName, bName) {
+    var p = tr.path, d = tr.depth, s = 'No path keeps ' + d.safe.toFixed(1) + ' m of water under the boat at the lowest tide between ' +
+      E.fmtTime(d.t0) + ' and ' + E.fmtTime(d.t1) + '.';
+    if (p.cut) s += ' The nearest water that deep, joined to the open Gulf, is ' + p.cutNm.toFixed(1) + ' nm from ' + esc(p.cut === 'a' ? aName : bName) + '.';
+    if (p.blocked != null) s += ' The open-water path crosses ' + Math.max(0, p.blocked).toFixed(1) + ' m' + (p.blocked <= 0 ? ', which is dry' : '') + ' at that tide.';
+    return s + ' Not for navigation.';
+  }
+  function warnHtml(words) {
+    return '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>' + words + '</span></p>';
+  }
+
   /* Why a route has no path to draw. The panel and the strip both say it. */
   function noPathWords(tr) {
     var p = tr.path;
     if (!p) return '<p class="probehint">The map has no coastline to search, so the page cannot find a path.</p>';
-    if (!p.found && tr.depth) {
-      return '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>No path keeps ' + tr.depth.safe.toFixed(1) + ' m of water under the boat at the lowest tide between ' +
-        E.fmtTime(tr.depth.t0) + ' and ' + E.fmtTime(tr.depth.t1) + '. ' + (p.blocked != null ? 'The open-water path crosses ' + Math.max(0, p.blocked).toFixed(1) + ' m' + (p.blocked <= 0 ? ', which is dry' : '') + ' at that tide.' :
-        'The page found no path over open water from A to B either.') + ' Not for navigation.</span></p>';
-    }
+    if (!p.found && tr.depth) return warnHtml(depthBlockWords(tr, tr.a ? tr.a.name : 'A', tr.b ? tr.b.name : 'B'));
     if (!p.found) return '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>The page found no path over open water from A to B. ' +
       'It keeps a path about 200 m off land, so a narrow entrance can close it.</span></p>';
     return '<p class="probehint">A and B are at the same point of open water.</p>';
@@ -339,6 +385,19 @@
       html += '<dl class="rt-totals">' + rows.join('') + '</dl>';
       if (lanesCrossed.length) notes.push('Ferry lanes crossed, from A: ' + lanesCrossed.map(esc).join(', ') + '. The lanes are Auckland Transport’s ferry routes. The page has no timetable.');
       html += missingWords(tr);
+      if (tr.depth && tr.least && tr.least.depth < tr.depth.safe) {
+        html += warnHtml('At the times the boat reaches it, the path crosses ' + Math.max(0, tr.least.depth).toFixed(1) + ' m at ' + E.fmtTime(tr.score.legs[tr.least.leg].t) +
+          ', under the safe depth of ' + tr.depth.safe.toFixed(1) + ' m. Not for navigation.');
+      }
+      var skip = depthSkipWords(tr);
+      if (skip) html += warnHtml(skip);
+      /* An end moved farther than the open-water path moves it is in water under the safe depth. */
+      [['fromNm', r.a.name, 'starts'], ['toNm', r.b.name, 'ends']].forEach(function (q) {
+        var moved = p[q[0]], shallow = tr.depth && moved > (tr.plain[q[0]] || 0) + 0.05;
+        if (shallow) html += warnHtml('The line ' + q[2] + ' ' + moved.toFixed(1) + ' nm from ' + esc(q[1]) + ', at the nearest water ' + tr.depth.safe.toFixed(1) +
+          ' m deep at the lowest tide. The water between is shallower than that. Not for navigation.');
+        else if (moved >= 0.2) notes.push('The line ' + q[2] + ' ' + moved.toFixed(1) + ' nm from ' + esc(q[1]) + ', at the nearest open water.');
+      });
       if (tr.stretches) {
         var listed = tr.stretches.filter(function (s) { return s.nm >= E.COMFORT.stretchNm; });
         html += '<div class="rt-list">' + listed.map(function (s) {
@@ -348,11 +407,8 @@
         }).join('') + '</div>';
         if (listed.length < tr.stretches.length) notes.push('Stretches under ' + E.COMFORT.stretchNm + ' nm are left out of this list.');
       }
-      [['fromNm', r.a.name, 'starts'], ['toNm', r.b.name, 'ends']].forEach(function (q) {
-        if (p[q[0]] >= 0.2) notes.push('The line ' + q[2] + ' ' + p[q[0]].toFixed(1) + ' nm from ' + esc(q[1]) + ', at the nearest open water' + (tr.depth ? ' with the safe depth' : '') + '.');
-      });
       if (tr.depth) notes.push('The path keeps ' + tr.depth.safe.toFixed(1) + ' m of water under the boat at the lowest tide between ' + E.fmtTime(tr.depth.t0) + ' and ' + E.fmtTime(tr.depth.t1) +
-        ', the arrival at cruising speed plus 30 minutes. Depths are not for navigation.');
+        ', 30 minutes or more after the boat arrives. Depths are not for navigation.');
       else if (state.limits.safe == null) notes.push('Set a safe depth under Limits, and the path keeps out of shallow water.');
     }
     notes.push('A line for scoring. Not a route to steer.');

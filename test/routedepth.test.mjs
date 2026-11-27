@@ -4,13 +4,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Engine, DATA, spot } from './engine.mjs';
 
+const plain = (v) => JSON.parse(JSON.stringify(v));
+
 const C = DATA.coast, OFF = 100, R = 2, F = 4;   // path grid cells and depth cells per map unit
 
 // A path grid of w by h cells, all water, laid over the map's north-west corner, and a depth grid under it with
 // F / R depth cells to each grid cell side. depthOf(x, y) gives the chart depth, in meters, of the grid cell (x, y).
 function grids(w, h, depthOf) {
   const water = new Uint8Array(w * h).fill(1), land = new Uint8Array(w * h);
-  const grid = { R, w, h, water, land, seed: Math.floor(w / 2) };
+  // The seed is the north-west cell, in deep water in every grid here, as the page's seed is in the open Gulf.
+  const grid = { R, w, h, water, land, seed: 0 };
   const f = F / R, nx = w * f, ny = h * f, v = new Uint16Array(nx * ny);
   for (let r = 0; r < ny; r++) for (let c = 0; c < nx; c++) {
     // Depth cells r and c belong to grid cell round((r + 1) / f - 0.5) ... the cell whose block holds them.
@@ -74,12 +77,29 @@ test('a path avoids a made-up shoal at low tide and crosses it at high tide', ()
   assert.equal(Engine.leastDepth(grid, cd, high, atHigh.points).depth.toFixed(1), '4.0');
 });
 
-test('with the bar closed everywhere, there is no path, and the least depth names what blocks it', () => {
+// The bar closes the whole middle column. Every cell east of it is cut off from the seed, so B, on the far side,
+// is 5 cells from the nearest cell deep enough and joined to the seed.
+test('an end in shallow water starts from the nearest cell deep enough while that is within its reach', () => {
   const { grid, depth } = grids(W, H, (x) => (x === 4 ? 1.0 : 8));
   const cd = Engine.cellDepths(depth, grid);
-  const low = new Array(DATA.spots.length).fill(0.2);
-  const r = Engine.findPath(Engine.shoalGrid(grid, cd, 1.5, low), { x: 0, y: 3 }, { x: 8, y: 3 });
-  assert.equal(r.found, false);
+  const shoal = Engine.shoalGrid(grid, cd, 1.5, new Array(DATA.spots.length).fill(0.2));
+  const r = Engine.findPath(shoal, { x: 0, y: 3 }, { x: 8, y: 3 }, 1, 6);
+  assert.equal(r.found, true);
+  assert.equal(r.to.moved, 5);
+  assert.deepEqual(plain(r.points.at(-1)), { x: 3, y: 3 });
+  assert.equal(Engine.findPath(shoal, { x: 0, y: 3 }, { x: 8, y: 3 }).found, true, 'with no reach given, an end may move any distance');
+});
+
+test('an end cut off past its reach gives no path, and the least depth names what blocks it', () => {
+  const { grid, depth } = grids(W, H, (x) => (x === 4 ? 1.0 : 8));
+  const cd = Engine.cellDepths(depth, grid);
+  const low = new Array(DATA.spots.length).fill(0.2), shoal = Engine.shoalGrid(grid, cd, 1.5, low);
+  const toB = Engine.findPath(shoal, { x: 0, y: 3 }, { x: 8, y: 3 }, 1, 2);
+  assert.equal(toB.found, false);
+  assert.equal(toB.cut, 'b');
+  const fromB = Engine.findPath(shoal, { x: 8, y: 3 }, { x: 0, y: 3 }, 2, 1);
+  assert.equal(fromB.found, false);
+  assert.equal(fromB.cut, 'a');
   const plainPath = Engine.findPath(grid, { x: 0, y: 3 }, { x: 8, y: 3 });
   assert.equal(Engine.leastDepth(grid, cd, low, plainPath.points).depth.toFixed(1), '1.2');
 });

@@ -301,6 +301,10 @@
     return { tr: tr, nm: tr.nm + off, run: (tr.score ? tr.score.ms : 0) + off / speed * HOUR };
   }
 
+  /* The path of the run home that the leave-by time measures, leaving now, which the map draws dotted. null
+     without a path. */
+  var runLine = null;
+
   function renderRunHome(h) {
     var el = $('runHome'), t = Date.now(), now = Math.floor(t / MIN) * MIN, sp = nearestSpot(h.x, h.y), sun = E.day(sp, E.dayStart(t)).sun, L = state.limits;
     var home = state.home ? { name: 'Home', x: mapX(state.home.lon), y: mapY(state.home.lat) } : null;
@@ -329,7 +333,7 @@
       notes.push('The map has no coastline to search, so the page cannot find a path home.');
     } else if (!found) {
       rows.push(row('Leave by', 'No path', 'lead'));
-      notes.push('The page found no path over open water from ' + where + ' to home.');
+      notes.push(tr.depth ? depthBlockWords(tr, h.you ? 'your position' : h.name, 'home') : 'The page found no path over open water from ' + where + ' to home.');
     } else if (!lv) {
       rows.push(row('Leave by', 'Not set', 'lead'));
       notes.push('Set your boat speed and margin under Limits. <button type="button" data-act="limits">Limits</button>');
@@ -352,9 +356,14 @@
       var off = [];
       if (p.fromNm >= 0.2) off.push((h.you ? 'Your position' : h.name) + ' is ' + p.fromNm.toFixed(1) + ' nm');
       if (p.toNm >= 0.2) off.push('Home is ' + p.toNm.toFixed(1) + ' nm');
-      if (off.length) notes.push(off.join(', and ') + ' from the nearest open water on the map. The trip counts that water at your boat speed.');
+      if (off.length) notes.push(off.join(', and ') + (tr.depth ? ' from the nearest water that keeps the safe depth.' : ' from the nearest open water on the map.') +
+        ' The trip counts that water at your boat speed.');
     }
+    var skip = tr ? depthSkipWords(tr) : '';
+    if (skip) notes.push(skip);
     el.innerHTML = '<dl class="runrows">' + rows.join('') + '</dl>' + notes.map(function (n) { return '<p class="small">' + n + '</p>'; }).join('');
+    runLine = found ? p.points : null;
+    renderReach();
   }
 
   /* ---------- Wiring ---------- */

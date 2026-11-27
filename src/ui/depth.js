@@ -35,7 +35,7 @@
       depth.status = 'ok'; depth.failedAt = 0;
     }).catch(function () {
       depth.status = 'failed'; depth.failedAt = Date.now();
-    }).then(function () { renderProbe(); renderDepthLayers(); if (depth.status === 'ok') renderRoute(); });
+    }).then(function () { renderProbe(); renderDepthLayers(); renderRoute(); renderNowSide(); });
   }
 
   /* status: idle, loading, ok or failed. data holds { depths, paths, labels } from data/contours.json. */

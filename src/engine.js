@@ -645,10 +645,14 @@ var Engine = (function () {
 
   /* A path over open water from a to b, both in cells. An end on land, or on a closed cell, starts from the
      nearest open cell; from.moved and to.moved say how far that is. found is false when no open water joins
-     the two ends, which a grid with a seed avoids. There is then no path, and no straight line stands in for one. */
-  function findPath(grid, a, b) {
+     the two ends, which a grid with a seed avoids. There is then no path, and no straight line stands in for one.
+     reachA and reachB, when given, are the farthest each end may move, in cells. An end that would move farther
+     gives no path, and cut names it, 'a' or 'b'. */
+  function findPath(grid, a, b, reachA, reachB) {
     var s = nearestOpen(grid, a), g = nearestOpen(grid, b);
     if (!s || !g) return { found: false, from: s, to: g, points: [] };
+    var cut = reachA != null && s.moved > reachA ? 'a' : reachB != null && g.moved > reachB ? 'b' : null;
+    if (cut) return { found: false, from: s, to: g, points: [], cut: cut };
     var cells = searchCells(grid, s.i, g.i);
     if (!cells) return { found: false, from: s, to: g, points: [] };
     return { found: true, from: s, to: g, points: straighten(grid, cells) };

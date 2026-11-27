@@ -90,10 +90,10 @@
         '<circle class="dot" r="4.4"/><text x="7.5" y="2.6">You</text></g>';
       if (geo.pos.acc > 50) ring = '<circle class="m-acc" cx="' + x + '" cy="' + y + '" r="' + (geo.pos.acc / 1852 * NM).toFixed(2) + '"/>';
     }
-    /* On the Now screen, the run home: the path over open water from the starting point to home, dotted. */
-    if (state.mapScreen === 'now' && state.home) {
-      var run = routePath(o, { x: mapX(state.home.lon), y: mapY(state.home.lat) });
-      if (run && run.found) ring += '<polyline class="m-run" points="' + run.points.map(function (q) { return q.x.toFixed(2) + ',' + q.y.toFixed(2); }).join(' ') + '"/>';
+    /* On the Now screen, the run home, dotted: the path that the leave-by time measures, as renderRunHome last
+       found it. With a safe depth, that path keeps the safe depth. */
+    if (state.mapScreen === 'now' && state.home && runLine) {
+      ring += '<polyline class="m-run" points="' + runLine.map(function (q) { return q.x.toFixed(2) + ',' + q.y.toFixed(2); }).join(' ') + '"/>';
     }
     /* The reach belongs to the suggestions, so it goes while a route is open. */
     if (!routeShown()) ring += '<circle class="m-reach" cx="' + x + '" cy="' + y + '" r="' + (REACH_NM * NM).toFixed(2) + '"/>';
