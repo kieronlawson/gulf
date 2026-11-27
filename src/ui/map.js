@@ -292,6 +292,7 @@
     if (dep === undefined) dep = waterDepth(x, y, t);
     var sw = E.shallowWaves(ch.h, dep);
     ch.deep = ch.h; ch.depth = dep; ch.h = sw.h; ch.breaking = sw.breaking; ch.level = chopLevel(ch.h);
+    ch.dry = dep != null && dep <= 0;   /* dry ground carries no waves, which is no calm water */
     return { wind: wi, flow: fl, fetch: f, chop: ch };
   }
 
@@ -371,8 +372,9 @@
       cells.forEach(function (q, i) {
         var c = condAt(q.x, q.y, q.w, t, chopCellDepth(i, q, t));
         if (c && c.chop.level) tint += '<rect class="m-c' + c.chop.level + '" x="' + (q.x - 2.5) + '" y="' + (q.y - 2.5) + '" width="5.15" height="5.15"/>';
-        /* A cell where waves likely break over shallows carries a vermilion outline: an alert. */
-        if (c && c.chop.breaking) tint += '<rect class="m-break" x="' + (q.x - 2.3) + '" y="' + (q.y - 2.3) + '" width="4.6" height="4.6"/>';
+        /* A cell where waves likely break over shallows carries a vermilion outline: an alert. So does a cell whose
+           median depth is dry under chop in open water: its wet part is shallow, and waves break at its edges. */
+        if (c && (c.chop.breaking || (c.chop.depth != null && c.chop.depth <= 0 && c.chop.deep > 0))) tint += '<rect class="m-break" x="' + (q.x - 2.3) + '" y="' + (q.y - 2.3) + '" width="4.6" height="4.6"/>';
       });
     }
     svg.querySelector('#ovTint').innerHTML = tint;

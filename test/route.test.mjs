@@ -299,4 +299,7 @@ test('a leg over ground dry at its time scores Very rough, not calm', () => {
   assert.ok(dry.length > 0);
   assert.ok(dry.every((L) => name(L.level) === 'Very rough' && L.cause === 'dry ground'));
   assert.equal(name(r.legs[0].level), 'Easy');
+  // The clock crosses a forced Very rough leg at the lowest comfortable speed, not at cruising speed.
+  assert.ok(dry.every((L) => L.v === Engine.COMFORT.minKn && L.score >= Engine.COMFORT.levels.at(-1)));
+  assert.equal(r.legs[0].v, 20);
 });

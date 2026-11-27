@@ -787,9 +787,13 @@ var Engine = (function () {
         var a = seaAngle(L.course, c.from), s = scoreLeg(c.h, a, cruise);
         r.h = c.h; r.a = a; r.score = s.score; r.level = s.level; r.cause = s.cause; r.v = s.v;
         /* Where the ground is dry, or waves likely break over shallows, the leg is Very rough, whatever its score:
-           dry ground carries no waves, so its score alone would read as calm. */
-        if (c.dry) { r.level = COMFORT.names.length - 1; r.cause = 'dry ground'; r.dry = true; }
-        else if (c.breaking) { r.level = COMFORT.names.length - 1; r.cause = 'breaking waves'; r.breaking = true; }
+           dry ground carries no waves, so its score alone would read as calm. The leg then takes the score where
+           Very rough starts, at least, and the lowest comfortable speed, so the clock agrees with the level. */
+        if (c.dry || c.breaking) {
+          r.level = COMFORT.names.length - 1; r.cause = c.dry ? 'dry ground' : 'breaking waves';
+          r.score = Math.max(r.score, COMFORT.levels[COMFORT.levels.length - 1]); r.v = Math.min(COMFORT.minKn, cruise);
+          if (c.dry) r.dry = true; else r.breaking = true;
+        }
       } else {
         r.level = null; r.v = null;
         missing += L.nm;
