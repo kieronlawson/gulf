@@ -304,7 +304,7 @@
       label('m-landname', 175.555, -36.94, 0, 'Coromandel');
 
     /* The scale bar and the north mark sit in a corner of the frame, outside the zoomed drawing. */
-    s += '<g id="ovReach"></g><g id="ovArrows"></g><g id="ovRoute"></g><g id="ovProbe"></g>';
+    s += '<g id="ovAreas"></g><g id="ovMarks"></g><g id="ovReach"></g><g id="ovArrows"></g><g id="ovRoute"></g><g id="ovProbe"></g>';
     spots.forEach(function (sp) {
       var px = mapX(sp.lon), py = mapY(sp.lat), left = px > c.w * 0.6;
       s += '<g class="pin" data-id="' + sp.id + '" data-at="' + px.toFixed(1) + ' ' + py.toFixed(1) + '" tabindex="0" role="button" aria-label="' + esc(sp.name) + '">' +
@@ -333,7 +333,7 @@
   }
 
   /* The overlay has three layers. Chop is the slow one, so a zoom or a new probe redraws only the other two. */
-  function renderOverlay() { renderTint(); renderDepthLayers(); renderArrows(); renderProbeMark(); }
+  function renderOverlay() { renderTint(); renderDepthLayers(); renderChartMarks(false); renderArrows(); renderProbeMark(); }
 
   function fieldShown() { return !!(field.wind && fieldIndex(field.wind, mapTime()) != null); }
 
@@ -478,7 +478,7 @@
     if (dots) dots.setAttribute('patternTransform', 'scale(' + s + ')');
     var hatch = document.getElementById('hatch');
     if (hatch) hatch.setAttribute('patternTransform', 'scale(' + s + ') rotate(45)');
-    markContourLabels();
+    markContourLabels(); renderChartMarks(false);
     renderArrows(); renderProbeMark(); renderScaleBar(); markViewButtons();
   }
   var viewQueued = false;
@@ -632,7 +632,7 @@
     var problem = fieldProblem(t);
     /* With nothing selected, the list of places, or while a route is open, the route's strip. */
     if (!state.probe) { if (routeShown()) renderStrip(); else renderGo(); return; }
-    var p = state.probe, head = probeHead() + depthRow(p.x, p.y, t);
+    var p = state.probe, head = probeHead() + depthRow(p.x, p.y, t) + chartRows(p.x, p.y);
     if (!p.water) {
       el.innerHTML = head + '<p class="small">The page has no wind, flow or chop estimate here. This point is on land, or on water that the map does not join to the Gulf.</p>';
       return;

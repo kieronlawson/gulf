@@ -419,18 +419,15 @@ button:disabled:active { transform: none; }
 .mb-layers button { width: 92px; justify-content: flex-start; }
 .mb-zoom { right: 8px; bottom: 8px; }
 .mb-zoom button { width: 44px; padding: 0; font-size: 20px; }
-/* In columns, the views take 152 px of the frame's height and the four layers 202 px, each with their 8 px margin.
-   The two stacks need 12 px between them, twice the gap inside a stack, so that they read as two groups: 366 px in
-   all. A shorter frame, as on the Day screen of an iPad in landscape, puts the layers in a row along its foot. The
-   row and its margin take 298 px of the width, and the zoom buttons 52 px, with 12 px between them, so the row
-   needs 362 px. A short frame narrower than that puts the layers in two columns, which need 102 px of height. */
-@container mapframe (height < 366px) and (width >= 362px) {
-  .mb-layers { flex-direction: row; }
+/* In columns, the views take 152 px of the frame's height and the five layers 252 px, each with their 8 px margin.
+   The two stacks need 12 px between them, twice the gap inside a stack, so that they read as two groups: 416 px in
+   all. A shorter frame, as on the Day screen of an iPad in landscape, puts the layers in three columns of two rows
+   along its foot. They take 102 px of the height, so the frame needs 266 px, and 224 px of the width, which leaves
+   room for the zoom buttons' 52 px and 12 px between. With a route open, the layers keep their row. */
+@container mapframe (height < 416px) {
+  .mb-layers { display: grid; grid-template-columns: repeat(3, 68px); }
   .mb-layers button { width: 68px; padding: 0 8px; }
-}
-@container mapframe (height < 366px) and (width < 362px) {
-  .mb-layers { display: grid; grid-template-columns: 68px 68px; }
-  .mb-layers button { width: 68px; padding: 0 8px; }
+  .dayview.compact .mb-layers { display: flex; }
 }
 .mapmark { position: absolute; right: 8px; top: 8px; display: flex; align-items: flex-end; gap: 8px; padding: 4px 7px; border-radius: 3px; background: var(--chassis); opacity: .85; pointer-events: none; }
 .mapnorth { width: 9px; height: 16px; overflow: visible; }
@@ -449,6 +446,16 @@ button:disabled:active { transform: none; }
 .mapkey .kc { height: 0; border: 0; border-top: 1.5px solid var(--depth-line); }
 .mapkey.chopon .kc { border-top-color: var(--depth-line-chop); }
 .mapkey .nav { color: var(--ink); font-weight: 600; }
+/* Chart marks, in ink, at one size on screen; outlines of areas keep one width at any zoom. */
+#ovAreas, #ovMarks { pointer-events: none; }
+.cm path, .cm circle, .cm rect { fill: none; stroke: var(--ink); stroke-width: .9; stroke-linejoin: round; }
+.cm .cm-ring { stroke-dasharray: .9 1.1; }
+.cm .cm-buoy { fill: var(--chassis); }
+.cm .cm-fill { fill: var(--ink); stroke: var(--chassis); stroke-width: .6; }
+.cm-area { fill: none; stroke: var(--ink2); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.cm-R { stroke-dasharray: 7 3; }
+.cm-F { stroke-dasharray: 2 2; }
+.cm-O { stroke-dasharray: 1 2.5; }
 
 /* The probe reading under the map. */
 #probe { min-width: 0; }
@@ -522,6 +529,12 @@ button:disabled:active { transform: none; }
 .probegrid dd { margin: 0; font-family: var(--mono); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .probegrid dd .sw { width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
 #probe .small { margin-top: 4px; }
+/* The chart lines of the probe reading: the nearest mark and each area around the probe, with its facts under it. */
+.probechart { margin-top: 4px; border-top: 1px solid var(--hair); padding-top: 3px; }
+.probechart div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+.probechart b { font-weight: 600; min-width: 0; }
+.probechart span { flex: none; font-family: var(--mono); font-size: 11px; color: var(--ink2); }
+.probechart p { margin: 1px 0 3px; font-size: 11.5px; color: var(--ink2); }
 /* The depth row of the probe reading: the depth at the map's time on one line, and how it is made up under it. */
 .probedepth { margin-top: 4px; border-top: 1px solid var(--hair); padding-top: 3px; }
 .probedepth div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
