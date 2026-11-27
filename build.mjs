@@ -1,6 +1,6 @@
 // Builds dist/: index.html, one self-contained page, and beside it the service worker, the web app manifest,
-// two icons and the depth grid. The page inlines the styles, astronomy-engine, the Neaps tide predictor, the
-// data and the two page scripts. The depth grid is too large to inline, so the page fetches it.
+// two icons, the depth grid and its contours. The page inlines the styles, astronomy-engine, the Neaps tide predictor, the
+// data and the two page scripts. The depth files are too large to inline, so the page fetches them.
 import { build } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, readdirSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -21,12 +21,13 @@ function shipData(src, stem, ext) {
   return name;
 }
 
-/* The depth grid: data/depth.png, with the numbers from data/depth.json that place and decode its cells. */
+/* The depth grid: data/depth.png, with the numbers from data/depth.json that place and decode its cells; and the
+   contours that tools/contours.py drew from it. */
 const depthMeta = json('data/depth.json');
-const depth = { file: shipData('data/depth.png', 'depth', 'png') };
+const depth = { file: shipData('data/depth.png', 'depth', 'png'), contours: shipData('data/contours.json', 'contours', 'json') };
 for (const k of ['W', 'N', 'k', 'scale', 'cellsPerUnit', 'nx', 'ny']) depth[k] = depthMeta[k];
 depth.offsetDm = depthMeta.encoding.offsetDm;
-const DATA_FILES = [depth.file];
+const DATA_FILES = [depth.file, depth.contours];
 
 const neaps = (await build({
   stdin: { contents: 'export { createTidePredictor } from "@neaps/tide-predictor";', resolveDir: process.cwd() },

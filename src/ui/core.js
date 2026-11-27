@@ -26,17 +26,19 @@
   /* The owner's limits, stored on the device. The wind and the hours set a window, and values out of range
      fall back to the defaults. The boat speed and the margin set the leave-by time for the run home. They
      start unset, and a value out of range reads as unset: the page does not guess them. */
-  var LIMIT_RANGE = { wind: [5, 30, 1], hours: [1, 8, 0.5], speed: [5, 40, 1], margin: [0, 120, 5] };   /* lowest, highest, step */
-  /* The first value of a limit that was unset, when the owner presses its plus button. */
-  var LIMIT_START = { speed: 15, margin: 30 };
+  var LIMIT_RANGE = { wind: [5, 30, 1], hours: [1, 8, 0.5], speed: [5, 40, 1], margin: [0, 120, 5], safe: [0.5, 5, 0.1] };   /* lowest, highest, step */
+  /* The first value of a limit that was unset, when the owner presses its plus button. The safe depth, in meters,
+     sets the map's hatching; like the run home's limits, it starts unset. */
+  var LIMIT_START = { speed: 15, margin: 30, safe: 1.5 };
   function inRange(v, key) { return typeof v === 'number' && v >= LIMIT_RANGE[key][0] && v <= LIMIT_RANGE[key][1]; }
   function readLimits() {
-    var L = { wind: E.LIMITS.wind, hours: E.LIMITS.hours, speed: null, margin: null };
+    var L = { wind: E.LIMITS.wind, hours: E.LIMITS.hours, speed: null, margin: null, safe: null };
     try {
       var o = JSON.parse(store.get('gulf-almanac-limits') || 'null');
       if (o && inRange(o.wind, 'wind') && inRange(o.hours, 'hours')) { L.wind = o.wind; L.hours = o.hours; }
       if (o && inRange(o.speed, 'speed')) L.speed = o.speed;
       if (o && inRange(o.margin, 'margin')) L.margin = o.margin;
+      if (o && inRange(o.safe, 'safe')) L.safe = o.safe;
     } catch (e) { /* use the defaults */ }
     return L;
   }
@@ -61,7 +63,7 @@
     moving: null,       /* the key of a saved place that the next map tap moves */
     mapScreen: 'day',   /* the screen that holds the map: day or now */
     nowStep: 0,         /* hours ahead that the map shows on the Now screen: 0 to 3 */
-    layers: { wind: true, flow: true, chop: true },
+    layers: { depth: true, wind: true, flow: true, chop: true },
     routes: { day: null, now: null }   /* the open route on each screen with the map: see route.js */
   };
 

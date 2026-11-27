@@ -77,6 +77,7 @@
               <button type="button" data-view="spot" aria-pressed="false" id="viewSpot">Around spot</button>
             </div>
             <div class="mapbtns mb-layers" id="layers" role="group" aria-label="Map layers">
+              <button type="button" class="toggle" data-layer="depth" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Depth</button>
               <button type="button" class="toggle" data-layer="wind" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Wind</button>
               <button type="button" class="toggle" data-layer="flow" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Flow</button>
               <button type="button" class="toggle" data-layer="chop" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Chop</button>
@@ -89,6 +90,7 @@
               <svg class="mapnorth" viewBox="-6 -9 12 20"><path d="M0 -9L3.2 -1.5H-3.2Z"/><line x1="0" y1="-2" x2="0" y2="10"/></svg>
               <div class="mapscale" id="mapScale"></div>
             </div>
+            <div class="mapkey" id="mapKey" hidden></div>
           </div>
           </div>
           <div class="mapslot" id="dayGoSlot"><div id="probe" aria-live="polite"></div></div>
@@ -236,6 +238,19 @@
         </div>
       </div>
       <p class="small">Use your cruising speed in knots. The page scores each route against it, and slows the boat where waves from ahead would slam the hull. Below its lowest value, each one returns to Not set.</p>
+    </div>
+    <div class="unit">
+      <h3 class="limhead">Depth</h3>
+      <p class="lede">The least water you accept under the boat. The map hatches water shallower than this at the map's time. Until it is set, the map hatches nothing.</p>
+      <div class="limit">
+        <span id="limSafeName">Safe depth</span>
+        <div class="stepper" role="group" aria-labelledby="limSafeName">
+          <button type="button" class="step" data-lim="safe" data-dir="-1" aria-label="Lower the safe depth">&minus;</button>
+          <output id="limSafe" aria-live="polite"></output>
+          <button type="button" class="step" data-lim="safe" data-dir="1" aria-label="Raise the safe depth">+</button>
+        </div>
+      </div>
+      <p class="small">The depths come from a grid of 93 m cells and the tide at the nearest tide spot. They are not for navigation. Below 0.5 m, the safe depth returns to Not set.</p>
     </div>
   </div>
 </dialog>
