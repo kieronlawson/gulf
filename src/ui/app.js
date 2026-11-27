@@ -400,11 +400,11 @@
        a load that failed earlier may try again at once. */
     document.addEventListener('visibilitychange', function () {
       if (document.visibilityState !== 'visible') return;
-      state.wxFailedAt = 0; field.failedAt = 0; depth.failedAt = 0; chart.failedAt = 0;
+      state.wxFailedAt = 0; field.failedAt = 0; depth.failedAt = 0; contours.failedAt = 0; chart.failedAt = 0;
       tick();
     });
     window.addEventListener('online', function () {
-      state.wxFailedAt = 0; field.failedAt = 0; depth.failedAt = 0; chart.failedAt = 0;
+      state.wxFailedAt = 0; field.failedAt = 0; depth.failedAt = 0; contours.failedAt = 0; chart.failedAt = 0;
       loadWeather(false); syncField(false); loadDepth(false); loadChartMarks(false);
     });
 
