@@ -427,7 +427,7 @@ button:disabled:active { transform: none; }
 @container mapframe (height < 416px) {
   .mb-layers { display: grid; grid-template-columns: repeat(3, 68px); }
   .mb-layers button { width: 68px; padding: 0 8px; }
-  .dayview.compact .mb-layers { display: flex; }
+  .dayview.compact .mb-layers { display: flex; flex-direction: row; }
 }
 .mapmark { position: absolute; right: 8px; top: 8px; display: flex; align-items: flex-end; gap: 8px; padding: 4px 7px; border-radius: 3px; background: var(--chassis); opacity: .85; pointer-events: none; }
 .mapnorth { width: 9px; height: 16px; overflow: visible; }

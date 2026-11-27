@@ -60,9 +60,10 @@
       areasEl.innerHTML = C.areas.map(function (a) { return '<path class="cm-area cm-' + a[0] + '" d="' + a[3] + '"/>'; }).join('');
     }
     if (view.z < MARK_ZOOM) { marksEl.innerHTML = ''; chart.drawn = null; return; }
-    var vb = viewBox(), d = chart.drawn;
-    if (!force && d && d.z === view.z && vb.x >= d.x && vb.y >= d.y && vb.x + vb.w <= d.x + d.w && vb.y + vb.h <= d.y + d.h) return;
-    var box = { x: vb.x - vb.w / 2, y: vb.y - vb.h / 2, w: vb.w * 2, h: vb.h * 2, z: view.z }, s = glyph().toFixed(4), out = '';
+    /* The symbols keep one size on screen, so a new frame size at the same zoom also draws them again. */
+    var vb = viewBox(), d = chart.drawn, s = glyph().toFixed(4);
+    if (!force && d && d.z === view.z && d.s === s && vb.x >= d.x && vb.y >= d.y && vb.x + vb.w <= d.x + d.w && vb.y + vb.h <= d.y + d.h) return;
+    var box = { x: vb.x - vb.w / 2, y: vb.y - vb.h / 2, w: vb.w * 2, h: vb.h * 2, z: view.z, s: s }, out = '';
     C.points.forEach(function (q) {
       if (q[1] < box.x || q[1] > box.x + box.w || q[2] < box.y || q[2] > box.y + box.h) return;
       out += '<g class="cm cm-' + q[0] + '" transform="translate(' + q[1] + ' ' + q[2] + ') scale(' + s + ')">' + MARK_GLYPH[q[0]] + '</g>';
@@ -79,6 +80,16 @@
       }
     });
     return hit;
+  }
+
+  /* The probe reading names marks by the layer and the zoom, so it is written again when the zoom changes, once
+     the zoom has settled. */
+  var chartZoom = { z: null, timer: 0 };
+  function chartZoomChanged() {
+    if (chartZoom.z === view.z) return;
+    chartZoom.z = view.z;
+    clearTimeout(chartZoom.timer);
+    if (state.probe && chart.data) chartZoom.timer = setTimeout(renderProbe, 200);
   }
 
   /* The lines of the probe reading about the chart: the mark nearest the probe, within MARK_TAP_PX on screen,

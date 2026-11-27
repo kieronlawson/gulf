@@ -102,6 +102,15 @@ def one(v):
     return c[0] if c else None
 
 
+def outer_rings(geom):
+    """The outer ring of each part of a Polygon or MultiPolygon, as lists of (lon, lat)."""
+    if geom['type'] == 'Polygon':
+        return [[tuple(p[:2]) for p in geom['coordinates'][0]]]
+    if geom['type'] == 'MultiPolygon':
+        return [[tuple(p[:2]) for p in poly[0]] for poly in geom['coordinates']]
+    return []
+
+
 def rings(geom):
     """The rings of a Polygon or MultiPolygon, as lists of (lon, lat)."""
     if geom['type'] == 'Polygon':
@@ -243,7 +252,7 @@ def main():
     def mx(lon): return round((lon - coast['W']) * coast['k'] * coast['scale'], 1)
     def my(lat): return round((coast['N'] - lat) * coast['scale'], 1)
 
-    cover = {s: [r for f in fetch(key, COVERAGE[s], cache) if one(f['properties'].get('catcov')) == 1 for r in rings(f['geometry'])[:1]]
+    cover = {s: [r for f in fetch(key, COVERAGE[s], cache) if one(f['properties'].get('catcov')) == 1 for r in outer_rings(f['geometry'])]
              for s in SCALES}
     def covered(pt, scales):
         return any(inside(pt, r) for s in scales for r in cover[s])

@@ -289,6 +289,7 @@
       b.setAttribute('aria-pressed', state.layers[key] ? 'true' : 'false');
       b.querySelector('.pip').className = 'pip' + (state.layers[key] ? ' on' : '');
       renderOverlay();
+      if (key === 'marks') renderProbe();   /* the reading names marks only while they show */
     });
     $('probe').addEventListener('click', function (e) {
       var tAttr = e.target.getAttribute ? e.target.getAttribute('data-t') : null;

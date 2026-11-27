@@ -478,7 +478,7 @@
     if (dots) dots.setAttribute('patternTransform', 'scale(' + s + ')');
     var hatch = document.getElementById('hatch');
     if (hatch) hatch.setAttribute('patternTransform', 'scale(' + s + ') rotate(45)');
-    markContourLabels(); renderChartMarks(false);
+    markContourLabels(); renderChartMarks(false); chartZoomChanged();
     renderArrows(); renderProbeMark(); renderScaleBar(); markViewButtons();
   }
   var viewQueued = false;
