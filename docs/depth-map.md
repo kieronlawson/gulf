@@ -163,7 +163,7 @@ Each step is one pull request, merged before the next starts.
 | 1 | `tools/depth.py`, with the datum and coverage report. | Done. `data/depth.png` is 740 KB. |
 | 2 | `depthAt`, `depthAtTime`, the probe row. | Done. The grid was checked against the LINZ soundings first, and the drying flats raised by 0.4 m. |
 | 3 | Contours, tints and hatching. Safe depth in Limits. | Done. `data/contours.json` is 235 KB. |
-| 4 | `tools/chartmarks.py` and the Marks layer. | Done. `data/marks.json` is 91 KB. |
+| 4 | `tools/chartmarks.py` and the Marks layer. | Done. `data/marks.json` is 94 KB. |
 | 5 | Depth in the route. | |
 | 6 | Full-screen map. | |
 | 7 | Waves over shallows. | |
@@ -190,7 +190,7 @@ Each step is one pull request, merged before the next starts.
 - **Chart scales.** `tools/chartmarks.py` uses each scale's coverage polygons. It keeps every Harbour object, an Approach object outside the Harbour coverage, and a Coastal object outside both. An area counts as inside when the mean of its outer ring's corners is. Where two scales still show one object of one kind within 40 m, it keeps the larger scale.
 - **Gaps.** The brief's step for filling gaps in the depth grid from the LINZ depth areas has nothing to fill: the grid covers the whole map.
 - **What the marks keep.** 777 rocks, 45 wrecks, 28 obstructions, 127 buoys, 500 beacons, 80 lights on their own, 17 marine farms as points, and 138 areas: restricted areas, marine farms and foul ground. A light within 30 m of a buoy or beacon joins it, and its characteristic, such as "Fl G 3s", goes into the mark's facts. The tool writes each name and fact in words from the S-57 codes. A special mark's purpose is written only for six codes whose meaning is certain; the others read "Special beacon" or "Special buoy". Restricted areas take LINZ's note, with its heading as the area's name.
-- **Size.** The file is 91 KB, under the brief's 100 KB. Each name and fact is listed once in `texts`, points keep 0.1 map unit, about 37 m, outlines are simplified to within 0.1 map unit, and each kind is one letter.
+- **Size.** The file is 94 KB, under the brief's 100 KB. A thin area keeps its unsimplified outline where simplifying would leave fewer than three corners, so the probe can name it; that adds 3 KB. Each name and fact is listed once in `texts`, points keep 0.1 map unit, about 37 m, outlines are simplified to within 0.1 map unit, and each kind is one letter.
 - **Symbols and color.** The marks are drawn in ink. Lateral marks are not red and green, because in this page green means active or inside the owner's limits, and red means an alert. The reading names the side, as in "Port-hand beacon". A light on a buoy or beacon is not drawn apart from it.
 - **Zoom.** About 1,500 marks would hide the water at the whole-Gulf view, so marks show from zoom 2. Outlines show at every zoom. The marks redraw only when the view leaves a box twice its size, or when the zoom changes.
 - **Naming a mark.** A tap places the probe, as before. The reading then names the mark nearest the probe within 18 px on screen, with its distance, and every area that holds the probe. A tap never selects a mark in place of the probe, so the probe stays usable over crowded water.

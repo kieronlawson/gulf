@@ -307,16 +307,28 @@ def main():
         seen = '' if rng in (None, '') else ' Seen %g nautical mile%s.' % (float(rng), '' if float(rng) == 1 else 's')
         detail = ('Light ' + text + '.' if text else '') + seen
         points.append(['light', mx(pt[0]), my(pt[1]), (p.get('objnam') or '').strip() or 'Light', detail.strip()])
+    small_areas = 0
     for group, kind in (('restricted', 'restricted'), ('farm', 'farm'), ('obstructionArea', 'foul')):
         for si, pt, f in kept[group]:
             name, detail = describe(kind, f['properties'])
             d = ''
             for r in rings(f['geometry']):
-                xy = simplify([(mx(lon), my(lat)) for lon, lat in r], TOLERANCE)
-                if len(xy) >= 3:
+                # A thin area can simplify to a line, which no point lies inside, so the probe could never name it.
+                # Such a ring keeps its unsimplified corners. A ring of fewer than three distinct corners even then
+                # is left out.
+                full = [(mx(lon), my(lat)) for lon, lat in r]
+                xy = simplify(full, TOLERANCE)
+                if len(set(xy[:-1])) < 3:
+                    xy = full
+                if len(set(xy[:-1])) >= 3:
                     d += 'M' + ' '.join('%.1f,%.1f' % q for q in xy[:-1]) + 'Z'
             if d:
                 areas.append([kind, name, detail, d])
+            elif kind != 'restricted':
+                # An area too small to draw at 0.1 map unit stands as a point: a marine farm, or foul ground as an
+                # obstruction.
+                points.append(['farm' if kind == 'farm' else 'obstruction', mx(pt[0]), my(pt[1]), name, detail])
+                small_areas += 1
 
     texts, index = [], {}
     def ref(t):
@@ -340,7 +352,7 @@ def main():
     for row in points:
         counts[row[0]] = counts.get(row[0], 0) + 1
     print('Points:', ', '.join('%s %d' % kv for kv in sorted(counts.items())), '| lights on their own: %d' % lights_alone)
-    print('Areas: %d. %s, %d bytes%s.' % (len(areas), OUT.relative_to(ROOT), len(text.encode()),
+    print('Areas: %d, and %d too small to draw, written as points. %s, %d bytes%s.' % (len(areas), small_areas, OUT.relative_to(ROOT), len(text.encode()),
           ' (over %d)' % MAX_BYTES if len(text.encode()) > MAX_BYTES else ''))
 
 
