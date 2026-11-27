@@ -320,8 +320,10 @@
       if (Math.abs(next.at - cur.at) < MIN) break;
       cur = next;
     }
-    /* The trip leaving at the leave-by time, for the note under it. */
+    /* The trip leaving at the leave-by time, for the note under it. With a safe depth, the tide then can close
+       every way home that the trip leaving now has; shut is that trip. */
     var later = lv && lv.at > now ? homeTrip(h, home, lv.at) : null;
+    var shut = later && later.run == null && later.tr.depth && later.tr.path && !later.tr.path.found ? later.tr : null;
     var rows = [], notes = [], where = h.you ? 'here' : h.name;
     function row(k, v, cls) { return '<div' + (cls ? ' class="' + cls + '"' : '') + '><dt>' + k + '</dt><dd>' + v + '</dd></div>'; }
 
@@ -337,6 +339,9 @@
     } else if (!lv) {
       rows.push(row('Leave by', 'Not set', 'lead'));
       notes.push('Set your boat speed and margin under Limits. <button type="button" data-act="limits">Limits</button>');
+    } else if (shut) {
+      rows.push(row('Leave by', E.fmtTime(lv.at) + '<span>No path then</span>', 'lead alert'));
+      notes.push('The leave-by time comes from the trip leaving now. For a trip leaving at ' + E.fmtTime(lv.at) + ': ' + depthBlockWords(shut, h.you ? 'your position' : h.name, 'home'));
     } else {
       var late = lv.at <= t;
       rows.push(row('Leave by', E.fmtTime(lv.at) + '<span>' + (late ? E.fmtDuration(t - lv.at) + ' ago' : 'in ' + E.fmtDuration(lv.at - t)) + '</span>', 'lead' + (late ? ' alert' : '')));
