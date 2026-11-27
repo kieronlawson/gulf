@@ -6,30 +6,15 @@
   /* status: idle, loading, ok or failed. grid holds what Engine.depthAt reads once the file is decoded. */
   var depth = { status: 'idle', failedAt: 0, grid: null };
 
-  /* The file is an RGB PNG with no color profile: a cell's stored value is red * 256 + green. The decode
-     asks the browser not to convert colors or premultiply, so each byte comes back as written. */
-  function decodeDepth(blob, D) {
-    function viaImage() {
-      return new Promise(function (resolve, reject) {
-        var url = URL.createObjectURL(blob), img = new Image();
-        img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
-        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('depth image')); };
-        img.src = url;
-      });
-    }
-    var picture = window.createImageBitmap ?
-      window.createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' }).catch(viaImage) : viaImage();
-    return picture.then(function (img) {
-      if (img.width !== D.nx || img.height !== D.ny) throw new Error('depth image size');
-      var cv = document.createElement('canvas');
-      cv.width = D.nx; cv.height = D.ny;
-      var cx = cv.getContext('2d', { willReadFrequently: true });
-      cx.drawImage(img, 0, 0);
-      if (img.close) img.close();
-      var px = cx.getImageData(0, 0, D.nx, D.ny).data, n = D.nx * D.ny, v = new Uint16Array(n);
-      for (var i = 0; i < n; i++) v[i] = px[i * 4] * 256 + px[i * 4 + 1];
-      return v;
-    });
+  /* The file's stored values, decoded in script by Engine.pngChunks and Engine.pngValues. The compressed data is
+     inflated by DecompressionStream, which also checks it. No canvas sits in the path, so no browser can change the
+     values on the way. A browser without DecompressionStream gets no depths. */
+  function decodeDepth(buf, D) {
+    if (!window.DecompressionStream || !window.Response) return Promise.reject(new Error('no DecompressionStream'));
+    var png = E.pngChunks(new Uint8Array(buf));
+    if (png.width !== D.nx || png.height !== D.ny) return Promise.reject(new Error('depth image size'));
+    var stream = new Blob([png.data]).stream().pipeThrough(new DecompressionStream('deflate'));
+    return new Response(stream).arrayBuffer().then(function (raw) { return E.pngValues(new Uint8Array(raw), png.width, png.height); });
   }
 
   /* Loads the grid once. After a failed load, automatic loads wait RETRY_MS, as the forecasts do. */
@@ -40,8 +25,8 @@
     depth.status = 'loading';
     fetch(D.file).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.blob();
-    }).then(function (blob) { return decodeDepth(blob, D); }).then(function (v) {
+      return r.arrayBuffer();
+    }).then(function (buf) { return decodeDepth(buf, D); }).then(function (v) {
       depth.grid = { W: D.W, N: D.N, k: D.k, scale: D.scale, cellsPerUnit: D.cellsPerUnit, nx: D.nx, ny: D.ny, offsetDm: D.offsetDm, v: v };
       depth.status = 'ok'; depth.failedAt = 0;
     }).catch(function () {
@@ -52,6 +37,8 @@
   /* ---------- Depth in words ---------- */
 
   function depthM(m) { return Math.abs(m).toFixed(1) + ' m'; }
+  /* A height with its sign, as a tide below chart datum needs. */
+  function signedM(m) { return (m < 0 ? '\u2212' : '') + depthM(m); }
 
   /* The depth at a map point at time t, as { value, sub, grid }: value for the right of the row, sub for the
      sentences under it, which name the tide spot, and grid when the value comes from the depth grid.
@@ -66,13 +53,16 @@
     if (d.tide == null) {
       return { value: d.chart < 0 ? 'Dries ' + depthM(d.chart) : depthM(d.chart) + ' at chart datum', sub: 'No tide height' + at + ' for this time.', grid: true };
     }
-    var tide = 'tide ' + depthM(d.tide) + at;
+    var tide = signedM(d.tide) + at;
     if (d.chart < 0) {
       /* A drying height: the ground stands above chart datum. */
-      if (d.depth <= 0) return { value: 'Dry', sub: 'The ground dries ' + depthM(d.chart) + '. The ' + tide + ' is below it.', grid: true };
-      return { value: depthM(d.depth), sub: 'The ' + tide + ' covers ground that dries ' + depthM(d.chart) + '.', grid: true };
+      if (d.depth <= 0) return { value: 'Dry', sub: 'The ground dries ' + depthM(d.chart) + '. The tide of ' + tide + ' is below it.', grid: true };
+      return { value: depthM(d.depth), sub: 'The tide of ' + tide + ' covers ground that dries ' + depthM(d.chart) + '.', grid: true };
     }
-    return { value: depthM(d.depth), sub: 'Chart ' + depthM(d.chart) + (d.tide < 0 ? ' \u2212 ' : ' + ') + tide + '.', grid: true };
+    var sum = 'Chart ' + depthM(d.chart) + (d.tide < 0 ? ' \u2212 ' : ' + ') + 'tide ' + depthM(d.tide) + at;
+    /* A tide below chart datum can leave a cell at or above the water. */
+    if (d.depth <= 0) return { value: 'Dry', sub: sum + ' leaves no water.', grid: true };
+    return { value: depthM(d.depth), sub: sum + '.', grid: true };
   }
 
   /* The depth row of the probe reading, at the map's time. */

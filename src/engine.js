@@ -802,6 +802,52 @@ var Engine = (function () {
     return best === null ? null : { chart: best };
   }
 
+  /* The depth grid's file, data/depth.png, read without a canvas. A canvas can change the bytes it gives back: some
+     browsers add noise to canvas reads to resist fingerprinting, and one unit of red moves a depth by 25.6 m.
+     pngChunks reads the header and joins the compressed data; the page inflates it with DecompressionStream; and
+     pngValues undoes the row filters and returns each cell's stored value, red * 256 + green. Only the form
+     tools/depth.py writes is read: 8-bit RGB, not interlaced. Anything else throws. */
+  function pngChunks(bytes) {
+    var b = bytes, sig = [137, 80, 78, 71, 13, 10, 26, 10], pos = 8, head = null, parts = [], size = 0;
+    for (var i = 0; i < 8; i++) if (b[i] !== sig[i]) throw new Error('not a PNG file');
+    function u32(o) { return ((b[o] << 24) >>> 0) + (b[o + 1] << 16) + (b[o + 2] << 8) + b[o + 3]; }
+    while (pos + 8 <= b.length) {
+      var n = u32(pos), kind = String.fromCharCode(b[pos + 4], b[pos + 5], b[pos + 6], b[pos + 7]), at = pos + 8;
+      if (at + n > b.length) throw new Error('PNG chunk runs past the file');
+      if (kind === 'IHDR') head = { width: u32(at), height: u32(at + 4), bits: b[at + 8], color: b[at + 9], interlace: b[at + 12] };
+      else if (kind === 'IDAT') { parts.push(b.subarray(at, at + n)); size += n; }
+      else if (kind === 'IEND') break;
+      pos = at + n + 4;
+    }
+    if (!head || head.bits !== 8 || head.color !== 2 || head.interlace !== 0) throw new Error('the PNG must be 8-bit RGB');
+    var data = new Uint8Array(size), off = 0;
+    parts.forEach(function (q) { data.set(q, off); off += q.length; });
+    return { width: head.width, height: head.height, data: data };
+  }
+
+  function pngValues(raw, w, h) {
+    var stride = w * 3, bpp = 3, out = new Uint16Array(w * h), prev = new Uint8Array(stride), cur = new Uint8Array(stride);
+    if (raw.length !== h * (stride + 1)) throw new Error('the PNG data has the wrong length');
+    for (var y = 0; y < h; y++) {
+      var f = raw[y * (stride + 1)], row = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
+      for (var x = 0; x < stride; x++) {
+        var a = x >= bpp ? cur[x - bpp] : 0, up = prev[x], c = x >= bpp ? prev[x - bpp] : 0, pr;
+        if (f === 0) pr = 0;
+        else if (f === 1) pr = a;
+        else if (f === 2) pr = up;
+        else if (f === 3) pr = (a + up) >> 1;
+        else if (f === 4) {
+          var p = a + up - c, pa = Math.abs(p - a), pb = Math.abs(p - up), pc = Math.abs(p - c);
+          pr = pa <= pb && pa <= pc ? a : pb <= pc ? up : c;
+        } else throw new Error('unknown PNG row filter ' + f);
+        cur[x] = (row[x] + pr) & 255;
+      }
+      for (var i = 0; i < w; i++) out[y * w + i] = cur[i * 3] * 256 + cur[i * 3 + 1];
+      var t = prev; prev = cur; cur = t;
+    }
+    return out;
+  }
+
   /* The tide spot nearest a point { lat, lon }, by distance on the ground. */
   function nearestSpot(p) {
     var k = Math.cos(p.lat * Math.PI / 180), best = null, bd = Infinity;
@@ -840,7 +886,7 @@ var Engine = (function () {
     rampColor: rampColor, windColor: windColor, laneTime: laneTime,
     COMFORT: COMFORT, seaAngle: seaAngle, scoreLeg: scoreLeg, findPath: findPath, routeLegs: routeLegs,
     scoreRoute: scoreRoute, joinStretches: joinStretches, worstStretch: worstStretch, laneCrossings: laneCrossings,
-    depthAt: depthAt, depthAtTime: depthAtTime, nearestSpot: nearestSpot,
+    depthAt: depthAt, depthAtTime: depthAtTime, nearestSpot: nearestSpot, pngChunks: pngChunks, pngValues: pngValues,
     parts: parts, midnight: midnight, dayStart: dayStart, addDays: addDays,
     fmtTime: fmtTime, fmtDay: fmtDay, fmtDayLong: fmtDayLong, fmtDuration: fmtDuration, isoDate: isoDate, pad2: pad2,
     spotExtremes: spotExtremes, spotCurve: spotCurve, interp: interp,
