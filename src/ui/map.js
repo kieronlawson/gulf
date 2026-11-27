@@ -357,8 +357,9 @@
     if (!svg) return;
     var t = mapTime(), arrows = '', n1 = function (v) { return v.toFixed(1); };
     /* Arrows sit closer together once the usual 22-unit spacing would be 70 px or more on screen. */
-    /* Past zoom 6 the arrows keep the size on screen they have at zoom 6, so they do not grow over the water. */
-    var vb = viewBox(), fine = frame.h && 22 * frame.h / vb.h >= 70, g = fine ? 0.5 : 1, s = (g * Math.min(1, 6 / view.z)).toFixed(3), pad = 12;
+    /* Past zoom 6 the arrows and the calm-water dots keep the size on screen they have at zoom 6, so they do not
+       grow over the water. */
+    var vb = viewBox(), fine = frame.h && 22 * frame.h / vb.h >= 70, g = fine ? 0.5 : 1, sz = g * Math.min(1, 6 / view.z), s = sz.toFixed(3), pad = 12;
     function seen(q) { return q.x > vb.x - pad && q.x < vb.x + vb.w + pad && q.y > vb.y - pad && q.y < vb.y + vb.h + pad; }
     if (fieldShown()) {
       if (state.layers.wind) {
@@ -376,7 +377,7 @@
           if (!seen(q)) return;
           var f = flowAt(q.w, t);
           if (!f) return;
-          if (f.kn < 0.05) { arrows += '<circle class="m-flowdot" cx="' + q.x + '" cy="' + q.y + '" r="' + (0.9 * g).toFixed(3) + '"/>'; return; }
+          if (f.kn < 0.05) { arrows += '<circle class="m-flowdot" cx="' + q.x + '" cy="' + q.y + '" r="' + (0.9 * sz).toFixed(3) + '"/>'; return; }
           var L = clamp(1.5 + f.kn * 9, 2.2, 8);
           arrows += '<path class="m-flow' + (q.near ? ' near' : '') + '" transform="translate(' + q.x + ' ' + q.y + ') rotate(' + f.toward.toFixed(0) + ') scale(' + s + ')" d="M0 ' + n1(L) + 'L0 ' + n1(-L) +
             'M-1.9 ' + n1(-L + 2.4) + 'L0 ' + n1(-L) + 'L1.9 ' + n1(-L + 2.4) + '"/>';
