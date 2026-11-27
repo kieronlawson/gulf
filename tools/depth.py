@@ -16,13 +16,13 @@ What the script does:
    A map cell therefore never shows deeper water than the shallowest 20 m cell inside it.
 4. It converts the grid's heights to depths below chart datum and writes the two files.
 5. It prints a report: the projection, the vertical datum, the cells of water the grid does not cover, and
-   the cells of water whose datum is uncertain.
+   the cells of water that dry or lie within 2 m of LAT.
 
 The vertical datum. The record states that the bathymetry is reduced to Lowest Astronomical Tide (LAT) and
 that the land heights come from LiDAR in New Zealand Vertical Datum 2016 (NZVD2016). It does not say where the
-two sources meet. At Auckland, NZVD2016 is about 2.0 m above chart datum and LAT about 0.1 m above it, so the
-two readings of one value differ by about 1.9 m. The script reads every value as a height above LAT, and the
-report counts the cells where that reading may be wrong.
+two sources meet. At Auckland the two datums are about 1.9 m apart. A check against the LINZ charts found the
+grid's 0 m line on the charts' drying line, and the grid's drying flats within 1 m of the charts' drying
+heights, so the script reads every value as a height above LAT. docs/depth-map.md records the check.
 
 data/depth.png holds one value per cell in its red and green channels: v = red * 256 + green.
   v = 0     no data
@@ -38,13 +38,14 @@ SOURCE = ('K. Mackay (2025), Hauraki Gulf BathyTopo Digital Elevation Model, 20 
           'doi:10.5281/zenodo.15887269, published 15 July 2025. A revised version of Mackay et al. (2012), '
           'Hauraki Gulf, NIWA Chart Miscellaneous Series 91. CC BY 4.0. Not to be used for navigation.')
 DATUM = ('Bathymetry: Lowest Astronomical Tide (LAT). Land heights: New Zealand Vertical Datum 2016, from LINZ '
-         'LiDAR. The record does not say where the two sources meet.')
+         'LiDAR. The record does not say where the two sources meet. A check against the LINZ charts placed the '
+         "grid's 0 m line on the charts' drying line, so every value is read as a height above LAT.")
 EPSG = 3994                 # WGS 84 / Mercator 41: Mercator on WGS 84, true scale at 41 S, central meridian 100 E
 CELLS_PER_UNIT = 4          # map cells per map unit; a map unit is 1/300 degree of latitude, about 371 m
 LAT_ABOVE_CD = 0.0          # LAT above chart datum, meters. The page's tide model gives 0.10 m at Auckland;
                             # 0 errs on the side of less water.
-LAND_M = 4.0                # a cell more than this above LAT is land under either datum reading
-UNSURE_M = (-2.0, LAND_M)   # heights above LAT in this band may be LiDAR heights in NZVD2016
+LAND_M = 4.0                # a cell more than this above LAT is land: highest astronomical tide is about 3.6 m
+SHALLOW_M = -2.0            # the report counts water cells from this height above LAT up to LAND_M
 OFFSET_DM = 100             # stored value of a depth of 0 m; drying heights down to 9.8 m fit
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT_PNG, OUT_JSON = ROOT / 'data' / 'depth.png', ROOT / 'data' / 'depth.json'
@@ -239,7 +240,7 @@ def main():
     # The report.
     water = water_mask(coast, ny, nx)
     gap = water & ~have
-    unsure = water & have & (elev >= UNSURE_M[0]) & (elev <= UNSURE_M[1])
+    shallow = water & have & (elev >= SHALLOW_M) & (elev <= LAND_M)
     landish = water & have & (elev > LAND_M)
     print()
     print('Source      ', SOURCE)
@@ -255,18 +256,18 @@ def main():
     print()
     print('Coverage of the page\'s water (cells inside the coastline of data/coast.json): %d cells, %.0f km2.' % (n_w, n_w * km2))
     print('  No data:                            %7d cells  %5.1f%%' % (gap.sum(), 100 * gap.sum() / n_w))
-    print('  Height %+.0f to %+.0f m above LAT:      %7d cells  %5.1f%%  datum uncertain' % (UNSURE_M[0], UNSURE_M[1], unsure.sum(), 100 * unsure.sum() / n_w))
+    print('  Height %+.0f to %+.0f m above LAT:      %7d cells  %5.1f%%  dries, or under 2 m at LAT' % (SHALLOW_M, LAND_M, shallow.sum(), 100 * shallow.sum() / n_w))
     print('  More than %.0f m above LAT (land):    %7d cells  %5.1f%%' % (LAND_M, landish.sum(), 100 * landish.sum() / n_w))
-    print('  Deeper than %.0f m below LAT:          %7d cells  %5.1f%%' % (-UNSURE_M[0], (water & have & (elev < UNSURE_M[0])).sum(),
-          100 * (water & have & (elev < UNSURE_M[0])).sum() / n_w))
+    print('  Deeper than %.0f m below LAT:          %7d cells  %5.1f%%' % (-SHALLOW_M, (water & have & (elev < SHALLOW_M)).sum(),
+          100 * (water & have & (elev < SHALLOW_M)).sum() / n_w))
     jj, ii = np.mgrid[0:ny, 0:nx]
     clon = coast['W'] + (ii + 0.5) / CELLS_PER_UNIT / (coast['k'] * coast['scale'])
     clat = coast['N'] - (jj + 0.5) / CELLS_PER_UNIT / coast['scale']
     print()
-    print('By area: water cells, no data, datum uncertain.')
+    print('By area: water cells, no data, dries or under 2 m at LAT.')
     for name, (w0, e0, s0, n0) in AREAS.items():
         m = water & (clon >= w0) & (clon <= e0) & (clat >= s0) & (clat <= n0)
-        print('  %-26s %6d  %6d  %6d  %5.1f%%' % (name, m.sum(), (m & gap).sum(), (m & unsure).sum(), 100 * (m & unsure).sum() / max(1, m.sum())))
+        print('  %-26s %6d  %6d  %6d  %5.1f%%' % (name, m.sum(), (m & gap).sum(), (m & shallow).sum(), 100 * (m & shallow).sum() / max(1, m.sum())))
 
 
 if __name__ == '__main__':

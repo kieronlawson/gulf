@@ -1,6 +1,7 @@
 node_modules/
 dist/
-# Screenshots stay out of the repository. The icons are the one exception.
+# Screenshots stay out of the repository. The icons and the depth grid are the exceptions.
 *.png
 !src/icons/*.png
+!data/depth.png
 __pycache__/

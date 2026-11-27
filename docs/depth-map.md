@@ -1,0 +1,188 @@
+# Brief: depths, chart marks and a full-screen map
+
+Mocks:
+
+- Depths, marks and a route: https://claude.ai/artifact/LZJbcXCBTyxqeHZdmehFqo#artboard-MapFull
+- Wind, flow and chop over depths: https://claude.ai/artifact/LZJbcXCBTyxqeHZdmehFqo#artboard-MapFullChop
+
+## Why
+
+The map knows where land is and nothing about the water. With depths, the page can keep a path out of shallow water, show the depth under any point at any time, and later steepen waves over shallows. With chart marks, the owner sees rocks, buoys and beacons. A full-screen map gives room for all of it on the iPad.
+
+This stays a personal, non-commercial app. The depth data's license depends on that.
+
+## What to build
+
+1. A depth grid for the Gulf, made from NIWA's 20 m grid.
+2. Chart marks from LINZ chart data.
+3. Depth in the page: the map, the probe, Limits and the route.
+4. A full-screen map on Day and Now.
+
+Waves over shallows are a second step, at the end.
+
+## 1. Sources and licenses
+
+The build changed the depth source and its license. See "Decisions made in the build" below.
+
+| Source | What to take | License and limits |
+|---|---|---|
+| NIWA, "Hauraki Gulf bathymetric grid", Mackay et al. (2012). A 20 m grid, 197 MB, from niwa.co.nz/our-science/oceans/bathymetry/download-the-data | A depth for every cell of water. | NIWA Open Data Licence BY-NN-NC-SA 1.0: attribution, non-commercial, share-alike. Not for navigation. |
+| LINZ Data Service, chart vector data ("Hydro" layers), made from the official electronic charts | Rocks, wrecks, obstructions, buoys, beacons, lights, restricted areas, marine farms. Depth areas and soundings, for checks and for gaps. | Creative Commons Attribution 4.0. Not for navigation. LINZ paused updates to these layers in May 2024. |
+
+Rules that follow:
+
+- The reduced depth file in this repository is a copy of NIWA's data, so it carries NIWA's license. Add `data/LICENSE-depth.md` and a row in `NOTICE.md`.
+- LINZ needs a free account and a key. Read the key from the environment variable `LDS_KEY`. Never commit it.
+- The page keeps the words "Not for navigation" on the map whenever depths or marks show.
+
+## 2. Tools
+
+Each tool runs on the owner's machine and writes a file in `data/`. Record the source file's name and date in the output.
+
+**`tools/depth.py`**
+
+1. Read the NIWA grid. Find its projection and its vertical datum, and write both into the output. Stop and report if either is unclear.
+2. Reproject to the map's bounds in `data/coast.json`.
+3. Resample to 100 m. Keep the **shallowest** value in each new cell, so a reduced cell never hides a shoal.
+4. Convert depths to meters below chart datum, the level the tide heights use. If NIWA's datum is mean sea level, the offset at Auckland is 1.94 m.
+5. Write `data/depth.png`: depth in decimeters across two color channels, with one value for "no data". Write `data/depth.json`: bounds, cell size, datum, source and date.
+6. Report the cells of water the grid does not cover. The Firth of Thames and the upper Waitematā are the likely gaps.
+
+**`tools/contours.py`**
+
+Draw contours from the reduced grid at 2, 5, 10, 20, 30 and 50 m. Simplify them and write `data/contours.json`. Contours come from the grid, not from LINZ, so the lines agree with the numbers.
+
+**`tools/chartmarks.py`**
+
+1. Download the LINZ layers inside the map's bounds, at the Approach scale (1:22k to 1:90k), with the Harbour scale (1:4k to 1:22k) where it exists and the Coastal scale (1:90k to 1:350k) where Approach is missing.
+2. Where two scales show one object, keep the larger scale.
+3. Keep position, kind, name and the few attributes the page draws. Write `data/marks.json`.
+4. For water the NIWA grid does not cover, take the shallower limit of each LINZ depth area and write those cells into the depth file, flagged as coarse.
+
+**Size.** Aim for `depth.png` under 1 MB, contours under 300 KB and marks under 100 KB. If the depth file is larger, use 150 m cells. The build ships these files beside `index.html`, and the service worker stores them.
+
+**Coastline.** The current coastline is simplified to about 110 m and looks coarse when zoomed in. Replace it with LINZ's 1:50,000 coastline if that layer is available under the same license. Otherwise lower `TOLERANCE` in `tools/coast.py`.
+
+## 3. Depth in the page
+
+**Two depths.** "Chart depth" is the stored value. "Depth at a time" is chart depth plus the tide height at that time. Take the tide from the tide spot nearest the point.
+
+**Engine.** Add `depthAt(point)` and `depthAtTime(point, t)` to `engine.js`, with tests. A point with no data returns nothing, and the page says "No depth here".
+
+**Limits.** Add "Safe depth", in meters: the least water the owner accepts under the boat. Range 0.5 to 5.0, step 0.1. It starts unset, like boat speed. Until it is set, the page hatches nothing and the route ignores depth.
+
+**Map layers.** Add two toggles beside Wind, Flow and Chop:
+
+| Layer | Drawing |
+|---|---|
+| Depth | Contours as blue hairlines, labeled in meters. Water under the safe depth at the map's time is hatched. With Chop off, three blue tints show chart depth under 5 m, 5 to 10 m and 10 to 20 m. With Chop on, the tints give way to the chop tint, and the contours turn a darker blue so they read over it. |
+| Marks | Rocks, wrecks and obstructions; buoys and beacons; restricted areas and marine farms as outlines. Tapping a mark names it. |
+
+A legend states the time the hatching is drawn for.
+
+**Probe.** Add a row: `Depth at 14:05 — 16.3 m`, and under it `chart 15.7 m + tide 0.6 m`. "Where to go" and saved marks show the same depth.
+
+**Route.**
+
+- The path search treats a cell as closed when its depth is under the safe depth. Use the lowest tide between the leave time and the arrival time at cruising speed, plus 30 minutes.
+- Coarse cells count as closed unless their depth is at least twice the safe depth.
+- The strip under the map gains a depth line, the safe depth as a dashed line, and the least depth on the path.
+- If no path exists at that tide, say so and name the least depth that blocks it.
+- Keep the label "A line for scoring. Not a route to steer."
+
+## 4. Full-screen map
+
+Follow the mock.
+
+- **Entering.** A "Full screen" button on the map, on Day and on Now. "Exit full screen" and the Escape key leave it. The page remembers the choice.
+- **How.** Make it a layout of the page, not the browser's fullscreen mode. Opened from the Home Screen, the page already has the whole screen.
+- **Map.** It fills the screen, edge to edge. Pan, pinch and the view buttons work as now.
+- **Top left.** Exit, then the map's time: "Gulf at 14:05, pinned".
+- **Top right.** View buttons and zoom.
+- **Left.** Layer toggles: Depth, Marks, Route, Wind, Flow, Chop. Under them, one legend: the chop scale when Chop is on, otherwise the depth tints. The hatching and the contour line are in both.
+- **Right.** The probe reading as a card, with "Route to here" and "Save as mark".
+- **Bottom.** One panel. The time bar is always there. With a route open, the comfort and depth strip sits above it.
+- **Rules.** No scrolling. Every control at least 44 px. The panels never cover the probe point or the selected spot: move the map so that both stay clear.
+
+## 5. Second step: waves over shallows
+
+- Cap the chop height at 0.6 times the depth at that time.
+- Where the uncapped height is over half the depth, mark the cell "breaking likely" and score a leg through it as Very rough.
+- Keep both numbers with the other scoring numbers in `engine.js`.
+
+## Tests and checks
+
+- `depthAt` on a small made-up grid: a cell, a cell edge, land, no data.
+- `depthAtTime` adds the tide of the nearest spot.
+- Resampling keeps the shallowest value: a made-up grid with one shoal still shows it at 100 m.
+- A path avoids a made-up shoal at low tide and crosses it at high tide.
+- Compare the reduced grid with LINZ soundings. Report the share within 1 m and the largest differences. Do not ship if the datum looks wrong.
+- Check Day and Now, both themes, an iPad in landscape in full screen, and a 390 px wide screen.
+- `npm test` passes. The page still opens with no connection.
+
+## Then update the docs
+
+`CLAUDE.md`: the depth file, its datum, the two depths, and the rule that reduced cells keep the shallowest value. `NOTICE.md`: NIWA and LINZ. `docs/ipad-plan.md`: the full-screen map.
+
+## Order of work
+
+| Step | Work |
+|---|---|
+| 1 | `tools/depth.py`, with the datum and coverage report. Stop here and show the owner the report. |
+| 2 | `depthAt`, `depthAtTime`, the probe row. |
+| 3 | Contours, tints and hatching. Safe depth in Limits. |
+| 4 | `tools/chartmarks.py` and the Marks layer. |
+| 5 | Depth in the route. |
+| 6 | Full-screen map. |
+| 7 | Waves over shallows. |
+
+## Not yet known
+
+| Question | Why it matters |
+|---|---|
+| Which level NIWA's depths are measured from | The page adds the tide to them. |
+| Whether the grid covers the Firth of Thames and the upper Waitematā | Gaps fall back to coarse LINZ depth areas. |
+| How the 2012 grid compares with current LINZ soundings | Sand moves. Large differences should be flagged on the map. |
+| The size of the reduced files | It decides between 100 m and 150 m cells. |
+
+## Left out on purpose
+
+| Item | Reason |
+|---|---|
+| LINZ chart images under the map | The page draws its own map. This can come later as a toggle. |
+| Navionics or another embedded chart | It would replace the map and give the page no numbers. |
+| Detailed tidal flow | No free source exists. |
+| Live updates to chart data | LINZ paused them. |
+
+## Build order
+
+Each step is one pull request, merged before the next starts.
+
+| Step | Work | State |
+|---|---|---|
+| 1 | `tools/depth.py`, with the datum and coverage report. | Done. `data/depth.png` is 740 KB. |
+| 2 | `depthAt`, `depthAtTime`, the probe row. | |
+| 3 | Contours, tints and hatching. Safe depth in Limits. | |
+| 4 | `tools/chartmarks.py` and the Marks layer. | |
+| 5 | Depth in the route. | |
+| 6 | Full-screen map. | |
+| 7 | Waves over shallows. | |
+
+## Decisions made in the build
+
+- **The depth source.** NIWA no longer offers its 2012 Hauraki Gulf grid for download; its download page offers only the 250 m grid of all of New Zealand. The build uses K. Mackay (2025), "Hauraki Gulf BathyTopo Digital Elevation Model", Zenodo, doi:10.5281/zenodo.15887269: a revised version of the 2012 grid, by its first author, with 20 m cells. Its license is CC BY 4.0, which asks for attribution and allows any use. `data/LICENSE-depth.md` records it. The app stays personal and non-commercial for the other reasons in this brief.
+- **Projection.** The grid is in EPSG:3994, WGS 84 Mercator with true scale at 41°S. `tools/depth.py` reads the code from the file and stops if it differs. The test of the conversion reproduces the corners the grid's own record gives in degrees, to five decimal places.
+- **Vertical datum.** The record says the bathymetry is reduced to Lowest Astronomical Tide (LAT) and the land heights are LiDAR heights in NZVD2016. It does not say where the two sources meet, and at Auckland the two datums are about 1.9 m apart. A check against the LINZ charts settled it for the water (see below), so every value is read as a height above LAT.
+- **LAT and chart datum.** The page's tide model, run over 19 years from 2020, puts LAT 0.10 m above chart datum at Auckland; the same run puts highest astronomical tide at 3.72 m, against 3.74 m in LINZ's table. The build takes chart datum as LAT, which errs by 0.1 m on the side of less water.
+- **Cells.** A map cell is a quarter of a map unit, 92.7 m. Four cells across make one cell of the route's water raster, so a later step can close route cells by depth without resampling. At this size `depth.png` is 740 KB, under the brief's 1 MB, so the brief's fallback to 150 m cells is not needed.
+- **The shallowest value.** Each map cell keeps the highest value, which is the shallowest water, among the 20 m cells whose centers fall inside it. A cell that holds any land therefore reads as land or as drying.
+- **Land in the depth file.** A cell more than 4.0 m above LAT is stored as land. Highest astronomical tide is about 3.6 m above LAT, so such a cell never floats. The page's coastline still decides where land is drawn.
+- **Coverage.** The grid covers every cell of the map, including the Firth of Thames and the upper Waitematā. No cell needs a LINZ depth area, so step 4 has no gaps to fill.
+
+## The datum check
+
+The brief asks for a comparison with LINZ soundings. The LINZ Data Service needs a key that this build did not have, so the first check used the LINZ charts as wetmaps.co.nz shows them, stitched from the official raster charts. A LINZ key can repeat the check against the sounding layers later.
+
+1. **Chart tints.** Screenshots of the charts over seven areas, at zoom 14, were matched pixel by pixel to the 20 m grid: the Waitematā west of the bridge, the upper harbor, Shoal Bay, the Tāmaki Estuary, Mahurangi, the Weiti and the harbor entrance. Along the line where the charts' green drying tint meets the blue water tint, the charts' 0 m line, the grid reads a median of 0.01 m above LAT, with half the samples between −0.03 and 0.24 m. Read as NZVD2016, that line would sit near −2 m. Under the charts' drying tint the grid reads 0.0 to 1.6 m above LAT for 80% of samples. Along the outer edge of the blue tint, the grid reads a median of 4.6 m below LAT.
+2. **Drying heights.** Six drying heights printed in Shoal Bay, 0.3 to 1.5 m, compare with the grid as follows: every one within 1.0 m, and the grid lower by 0.6 m on average. On these flats the grid shows about half a meter more water than the chart.
+3. **Round values.** The grid holds many cells at exactly 0.0, 0.5, 1.0, 1.5 and −2.0 m above LAT. A grid interpolated in part from charted contours and drying heights would hold such values, which would also explain why its 0 m line sits on the charts' drying line.

@@ -1,0 +1,27 @@
+{
+ "source": "K. Mackay (2025), Hauraki Gulf BathyTopo Digital Elevation Model, 20 m cells, Zenodo, doi:10.5281/zenodo.15887269, published 15 July 2025. A revised version of Mackay et al. (2012), Hauraki Gulf, NIWA Chart Miscellaneous Series 91. CC BY 4.0. Not to be used for navigation.",
+ "file": "Hauraki_topobathy_DEM.tif",
+ "md5": "5c582a02eea1102c012b6edf08024cb4",
+ "projection": "EPSG:3994, WGS 84 / Mercator 41. Read from the file.",
+ "datum": "Bathymetry: Lowest Astronomical Tide (LAT). Land heights: New Zealand Vertical Datum 2016, from LINZ LiDAR. The record does not say where the two sources meet. A check against the LINZ charts placed the grid's 0 m line on the charts' drying line, so every value is read as a height above LAT.",
+ "depth": "Meters below chart datum. Chart datum is taken as LAT (latAboveCd).",
+ "latAboveCd": 0.0,
+ "reduced": "Each cell keeps the shallowest of the 20 m cells whose centers fall inside it.",
+ "W": 174.52,
+ "E": 175.66,
+ "S": -37.26,
+ "N": -35.97,
+ "k": 0.8028174751911146,
+ "scale": 300.0,
+ "cellsPerUnit": 4,
+ "cellM": 92.7,
+ "nx": 1099,
+ "ny": 1548,
+ "encoding": {
+  "value": "red * 256 + green",
+  "noData": 0,
+  "land": 1,
+  "landAboveLat": 4.0,
+  "offsetDm": 100
+ }
+}
