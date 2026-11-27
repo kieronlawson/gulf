@@ -422,11 +422,19 @@ button:disabled:active { transform: none; }
 /* In columns, the views take 152 px of the frame's height and the five layers 252 px, each with their 8 px margin.
    The two stacks need 12 px between them, twice the gap inside a stack, so that they read as two groups: 416 px in
    all. A shorter frame, as on the Day screen of an iPad in landscape, puts the layers in three columns of two rows
-   along its foot. They take 102 px of the height, so the frame needs 266 px, and 224 px of the width, which leaves
-   room for the zoom buttons' 52 px and 12 px between. With a route open, the layers keep their row. */
+   along its foot. They take 102 px of the height, so the frame needs 266 px, and 224 px of the width, which with
+   the zoom buttons' 52 px and 12 px between needs a frame 288 px wide. A narrower short frame, as in a 320 px
+   window, puts them in two columns of three rows: 150 px wide and 152 px tall. */
 @container mapframe (height < 416px) {
   .mb-layers { display: grid; grid-template-columns: repeat(3, 68px); }
   .mb-layers button { width: 68px; padding: 0 8px; }
+}
+@container mapframe (height < 416px) and (width < 288px) {
+  .mb-layers { grid-template-columns: repeat(2, 68px); }
+}
+/* With a route open, the layers keep their row where it fits: five buttons and their margin take 372 px, and the
+   zoom buttons 64 px more. */
+@container mapframe (height < 416px) and (width >= 436px) {
   .dayview.compact .mb-layers { display: flex; flex-direction: row; }
 }
 .mapmark { position: absolute; right: 8px; top: 8px; display: flex; align-items: flex-end; gap: 8px; padding: 4px 7px; border-radius: 3px; background: var(--chassis); opacity: .85; pointer-events: none; }
