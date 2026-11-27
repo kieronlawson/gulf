@@ -40,7 +40,6 @@ Wireframes: https://claude.ai/artifact/LZJbcXCBTyxqeHZdmehFqo
 
 ## Open
 
-- A full-detail coastline for zoom. The current one is simplified to about 110 m. See `tools/coast.py`.
 - Better flow data for the channels. Options found so far:
   - Tidal stream tables printed on nautical charts. Not yet checked for the Gulf.
   - MetService Point Forecast API: 5 km model, needs a key, browser access unconfirmed.
