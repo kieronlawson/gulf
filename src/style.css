@@ -439,6 +439,7 @@ button:disabled:active { transform: none; }
 /* The depth key, under the scale, in four lines at most: the time the hatching is drawn for; the tints; the
    hatching and the contour line; and the words "Not for navigation". */
 .mapkey { position: absolute; right: 8px; top: 44px; display: grid; gap: 2px; padding: 4px 7px; border-radius: 3px; background: var(--chassis); opacity: .9; pointer-events: none; font-family: var(--mono); font-size: 10.5px; color: var(--ink2); }
+.mapkey[hidden] { display: none; }
 .mapkey b { font-weight: 600; color: var(--ink); }
 .mapkey div { display: flex; align-items: center; gap: 4px 10px; white-space: nowrap; }
 .mapkey span { display: flex; align-items: center; gap: 4px; }
