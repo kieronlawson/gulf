@@ -1012,6 +1012,8 @@ table { border-collapse: collapse; width: 100%; }
   /* The rows keep this width and padding on a short frame too. */
   .dayview.compact .mb-layers button { width: 84px; padding: 0 14px; }
   .dayview.compact .mb-zoom { flex-direction: row-reverse; }
+  /* The zoom buttons form a row here, so the Full screen button sits right above it. */
+  .dayview.compact .mb-full { bottom: 58px; }
   /* The strip needs less height than the list it replaces, so the map takes the rest. A reading scrolls in the box. */
   .dayview.compact #probe { height: 150px; }
   /* Under the wide map, four buttons fit beside the name. */
@@ -1032,6 +1034,64 @@ table { border-collapse: collapse; width: 100%; }
   .nowgo { display: flex; flex-direction: column; min-height: 0; }
   .runhome { min-height: 0; overflow-y: auto; }
   .nowgo #probe { flex: 1; min-height: 0; height: auto; overflow-y: auto; overscroll-behavior: contain; }
+}
+
+/* ---------- The full-screen map ----------
+   A layout of the page: the map frame covers the window, and the page under it does not scroll. Exit and the
+   map's time sit at the top left; the view buttons and zoom at the top right; the layer buttons and the key at
+   the left; the probe card at the right, over the bottom panel, which holds the route's strip and the time bar.
+   Every control is at least 44 px. */
+.mb-full { right: 8px; bottom: 108px; width: 44px; height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.mb-full svg { width: 18px; height: 18px; fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.fm-only, .fm-top[hidden], .fm-card[hidden], .fm-bottom[hidden], .mb-full[hidden] { display: none; }
+.fm-top, .fm-card, .fm-bottom { position: absolute; z-index: 2; }
+html.fullmap, html.fullmap body, html.fullmap .stack { overflow: hidden; overscroll-behavior: none; }
+.fullmap .mapframe { position: fixed; inset: 0; z-index: 40; width: auto; height: auto; max-height: none; aspect-ratio: auto; border: 0; border-radius: 0; }
+.fullmap .fm-only { display: inline-flex; }
+.fm-top { left: 14px; top: 14px; display: flex; align-items: center; gap: 8px; }
+.fm-exit { background: var(--ink); border-color: var(--ink); color: var(--chassis); padding: 0 16px; }
+.fm-time { display: flex; align-items: center; height: 44px; margin: 0; padding: 0 14px; border: 1px solid var(--hair); border-radius: 4px; background: var(--chassis); font-family: var(--mono); font-size: 14px; white-space: nowrap; }
+/* html and .mapframe raise these rules over the layouts of a short frame and of an open route. */
+html.fullmap .mapframe .mb-views { left: auto; right: 112px; top: 14px; flex-direction: row; }
+html.fullmap .mapframe .mb-views button { width: auto; min-width: 96px; padding: 0 14px; }
+html.fullmap .mapframe .mb-zoom { right: 14px; top: 14px; bottom: auto; flex-direction: row-reverse; }
+html.fullmap .mapframe .mb-layers { left: 14px; top: 72px; bottom: auto; display: flex; flex-direction: column; }
+html.fullmap .mapframe .mb-layers button { width: 96px; padding: 0 12px; }
+.fullmap .mapmark { right: 14px; top: 72px; }
+.fullmap .mapkey { left: 14px; right: auto; top: 378px; max-width: 220px; padding: 8px 10px; gap: 4px; border: 1px solid var(--hair); border-radius: 4px; font-size: 11.5px; }
+.mapkey .q1 { background: var(--c1); } .mapkey .q2 { background: var(--c2); } .mapkey .q3 { background: var(--c3); } .mapkey .q4 { background: var(--c4); }
+.fm-card { right: 14px; top: 110px; width: 320px; max-height: calc(100% - 110px - var(--fmb, 0px) - 28px); overflow-y: auto; overscroll-behavior: contain;
+  padding: 12px 14px; border: 1px solid var(--hair); border-radius: 6px; background: var(--chassis); box-shadow: 0 2px 10px rgba(0, 0, 0, .12); }
+/* In the card the reading takes its own height, and the card scrolls if it must. */
+html.fullmap .fm-card #probe { height: auto; overflow: visible; }
+/* In the card the reading's head takes two lines: the name and Close, then the buttons. */
+.fm-card .probehead { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name x" "acts acts"; gap: 6px 8px; }
+.fm-card .probename { grid-area: name; }
+.fm-card .probex { grid-area: x; }
+.fm-card .probeacts { grid-area: acts; flex-wrap: wrap; }
+.fm-bottom { left: 14px; right: 14px; bottom: 14px; padding: 10px 14px; border: 1px solid var(--hair); border-radius: 6px; background: var(--chassis); box-shadow: 0 2px 10px rgba(0, 0, 0, .12); }
+.fm-strip:empty { display: none; }
+.fm-strip { margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--hair); }
+.fm-bottom .timebar { border: 0; box-shadow: none; padding: 0; background: none; flex-wrap: nowrap; }
+.fm-bottom .nowsteps { max-width: 480px; }
+.fm-bottom .nowsteps button { height: 44px; }
+/* Under 800 px of height, as on an iPad mini in landscape, the layer buttons take two columns, so the key fits
+   above the bottom panel. */
+@media (max-height: 800px) {
+  html.fullmap .mapframe .mb-layers { display: grid; grid-template-columns: 96px 96px; }
+  .fullmap .mapkey { top: 228px; }
+}
+/* On a narrow screen the card spans the width above the bottom panel, and the views stack at the right. */
+@media (max-width: 760px) {
+  html.fullmap .mapframe .mb-zoom { top: 72px; }
+  html.fullmap .mapframe .mb-views { flex-direction: column; right: 14px; top: 126px; }
+  html.fullmap .mapframe .mb-views button { min-width: 0; width: 124px; }
+  .fullmap .mapmark { top: auto; bottom: calc(var(--fmb, 0px) + 28px); right: 14px; }
+  .fm-card { left: 14px; right: 14px; width: auto; top: auto; bottom: calc(var(--fmb, 0px) + 28px); max-height: 42%; }
+  .fm-time { font-size: 12.5px; padding: 0 10px; }
+  /* While the card shows, it takes the place of the layer buttons, the key and the strip; Close brings them back. */
+  html.fullmap .mapframe.fm-card-open .mb-layers, html.fullmap .mapframe.fm-card-open .mapkey, html.fullmap .mapframe.fm-card-open .fm-strip { display: none; }
+  .fm-bottom .timebar { flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {

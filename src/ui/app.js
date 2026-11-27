@@ -63,6 +63,7 @@
      while it shows. */
   function setScreen(name) {
     if (SCREENS.indexOf(name) < 0) return;
+    if (full.on && name !== state.screen) setFull(false);
     state.screen = name;
     store.set('gulf-almanac-screen', name);
     SCREENS.forEach(function (n) { $('screen-' + n).hidden = n !== name; });
@@ -290,6 +291,7 @@
       b.querySelector('.pip').className = 'pip' + (state.layers[key] ? ' on' : '');
       renderOverlay();
       if (key === 'marks') renderProbe();   /* the reading names marks only while they show */
+      if (key === 'route') drawRouteMap();
     });
     $('probe').addEventListener('click', function (e) {
       var tAttr = e.target.getAttribute ? e.target.getAttribute('data-t') : null;
@@ -424,10 +426,12 @@
     renderPlaces();
     wireMapGestures();
     wireNow();
+    wireFull();
     renderAll();
     loadWeather(false);
     loadDepth(false);
     loadChartMarks(false);
+    if (store.get('gulf-almanac-fullmap') === '1') setFull(true);
 
     /* The service worker keeps the page and its fonts on the device for use without a connection.
        Browsers allow it only on https or on this computer, so a page opened from a file runs without it. */

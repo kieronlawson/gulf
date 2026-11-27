@@ -247,6 +247,7 @@
   function renderMapKey(t, chop) {
     var el = $('mapKey');
     if (!el) return;
+    if (full.on) { renderFullKey(el, t, chop); return; }
     var deep = state.layers.depth && (depth.status === 'ok' || contours.status === 'ok'), shown = deep || chartShown();
     el.hidden = !shown;
     if (!shown) return;
@@ -264,6 +265,28 @@
     if (contours.status === 'ok') marks += '<span><i class="kc"></i>contour, m</span>';
     if (marks) rows.push('<div>' + marks + '</div>');
     rows.push('<span class="nav">Not for navigation</span>');
+    el.classList.toggle('chopon', chop);
+    el.innerHTML = rows.join('');
+  }
+
+  /* The full-screen map's key, one item to a line, under the layer buttons: the chop scale while the chop tint
+     shows, otherwise the depth tints; then the hatching and the contour line in both. */
+  function renderFullKey(el, t, chop) {
+    var deep = state.layers.depth && depth.status === 'ok', lines = state.layers.depth && contours.status === 'ok';
+    var safe = state.limits.safe, rows = [];
+    el.hidden = !(chop || deep || lines || chartShown());
+    if (el.hidden) return;
+    rows.push('<b>' + (chop ? 'Chop at ' + E.fmtTime(t) : deep && safe != null ? 'Depth at ' + E.fmtTime(t) : deep ? 'Chart depth' : 'Map') + '</b>');
+    if (chop) {
+      [['q1', 'light, from 0.15 m'], ['q2', 'moderate, 0.3 m'], ['q3', 'rough, 0.5 m'], ['q4', 'very rough, 0.8 m']].forEach(function (q) {
+        rows.push('<span><i class="' + q[0] + '"></i>' + q[1] + '</span>');
+      });
+    } else if (deep) {
+      rows.push('<span><i class="k1"></i>under 5 m</span>', '<span><i class="k2"></i>5 to 10 m</span>', '<span><i class="k3"></i>10 to 20 m</span>');
+    }
+    if (deep && safe != null) rows.push('<span><i class="kh"></i>depth under ' + safe.toFixed(1) + ' m</span>');
+    if (lines) rows.push('<span><i class="kc"></i>chart depth, m</span>');
+    if (deep || lines || chartShown()) rows.push('<span class="nav">Not for navigation</span>');
     el.classList.toggle('chopon', chop);
     el.innerHTML = rows.join('');
   }

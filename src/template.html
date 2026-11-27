@@ -79,6 +79,7 @@
             <div class="mapbtns mb-layers" id="layers" role="group" aria-label="Map layers">
               <button type="button" class="toggle" data-layer="depth" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Depth</button>
               <button type="button" class="toggle" data-layer="marks" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Marks</button>
+              <button type="button" class="toggle fm-only" data-layer="route" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Route</button>
               <button type="button" class="toggle" data-layer="wind" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Wind</button>
               <button type="button" class="toggle" data-layer="flow" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Flow</button>
               <button type="button" class="toggle" data-layer="chop" aria-pressed="true"><span class="pip on" aria-hidden="true"></span>Chop</button>
@@ -92,6 +93,10 @@
               <div class="mapscale" id="mapScale"></div>
             </div>
             <div class="mapkey" id="mapKey" hidden></div>
+            <button type="button" class="mapbtns mb-full" id="fullOpen" aria-label="Full screen" title="Full screen"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8V3h5M12 3h5v5M17 12v5h-5M8 17H3v-5"/></svg></button>
+            <div class="fm-top" id="fmTop" hidden><button type="button" class="fm-exit" id="fullExit">Exit full screen</button><p class="fm-time" id="fmTime"></p></div>
+            <div class="fm-card" id="fmCard" hidden></div>
+            <div class="fm-bottom" id="fmBottom" hidden><div class="fm-strip" id="fmStrip"></div></div>
           </div>
           </div>
           <div class="mapslot" id="dayGoSlot"><div id="probe" aria-live="polite"></div></div>

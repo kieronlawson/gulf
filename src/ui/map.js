@@ -473,7 +473,7 @@
     var vb = viewBox(), s = glyph().toFixed(4);
     svg.setAttribute('viewBox', vb.x.toFixed(2) + ' ' + vb.y.toFixed(2) + ' ' + vb.w.toFixed(2) + ' ' + vb.h.toFixed(2));
     /* Zoomed out, a one-finger drag scrolls the page. Zoomed in, it moves the map. */
-    svg.style.touchAction = view.z > 1.01 ? 'none' : 'pan-y';
+    svg.style.touchAction = view.z > 1.01 || full.on ? 'none' : 'pan-y';
     Array.prototype.forEach.call(svg.querySelectorAll('[data-at]'), function (g) {
       g.setAttribute('transform', 'translate(' + g.getAttribute('data-at') + ') scale(' + s + ')');
     });
@@ -628,9 +628,12 @@
     return '';
   }
 
-  function renderProbe() {
+  /* In the full-screen map the reading sits in a card that shows only while there is a reading. */
+  function renderProbe() { renderProbeIn(); renderFullCard(); }
+  function renderProbeIn() {
     var el = $('probe'), t = mapTime();
     updateSuggestions();
+    if (full.on && !state.probe && state.moving == null) { el.innerHTML = ''; return; }
     if (state.moving != null) { el.innerHTML = movingPanel(); return; }
     var problem = fieldProblem(t);
     /* With nothing selected, the list of places, or while a route is open, the route's strip. */
@@ -676,6 +679,7 @@
     if (el) el.textContent = state.pin != null ? E.fmtDay(t) + ' ' + E.fmtTime(t) : 'Now, ' + E.fmtTime(t);
     $('mapTitle').textContent = state.pin != null ? 'Gulf at the pinned time' : 'Gulf now';
     if (state.mapScreen === 'now') markNowSteps();
+    renderFullTime();
     renderOverlay(); renderRoute(); renderProbe();
   }
 

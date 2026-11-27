@@ -124,7 +124,7 @@
       acts = routeButton(key) + '<button type="button" data-act="rename">Rename</button><button type="button" data-act="move">Move</button>' +
         '<button type="button" data-act="delete">' + (key === 'home' ? 'Remove' : 'Delete') + '</button>';
     } else {
-      acts = routeButton(null) + '<button type="button" data-act="savemark">Save mark</button><button type="button" data-act="sethome">Set home</button>';
+      acts = routeButton(null) + '<button type="button" data-act="savemark">' + (full.on ? 'Save as mark' : 'Save mark') + '</button><button type="button" data-act="sethome">Set home</button>';
     }
     /* Four buttons leave the name too little room on one line, so they take a line of their own. */
     var many = (acts.match(/<button/g) || []).length >= 4;
@@ -137,7 +137,7 @@
      home has none, because home is the starting point there. */
   function routeButton(key) {
     if (key === 'home' && state.mapScreen === 'day') return '';
-    return '<button type="button" data-act="route">Route</button>';
+    return '<button type="button" data-act="route">' + (full.on ? 'Route to here' : 'Route') + '</button>';
   }
 
   /* While a place moves, the next tap on the map gives its new position. */

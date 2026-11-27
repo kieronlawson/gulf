@@ -165,7 +165,7 @@ Each step is one pull request, merged before the next starts.
 | 3 | Contours, tints and hatching. Safe depth in Limits. | Done. `data/contours.json` is 235 KB. |
 | 4 | `tools/chartmarks.py` and the Marks layer. | Done. `data/marks.json` is 94 KB. |
 | 5 | Depth in the route. | Done. |
-| 6 | Full-screen map. | |
+| 6 | Full-screen map. | Done. |
 | 7 | Waves over shallows. | |
 
 ## Decisions made in the build
@@ -203,6 +203,12 @@ Each step is one pull request, merged before the next starts.
 - **No path.** When the safe depth closes every way, or an end is too far from water deep enough, the panel says so, with the window's times. It names the end and its distance from water deep enough, and the least depth that the open-water path crosses at the lowest tide. The run home on the Now screen says the same.
 - **The strip.** A band under the speed draws each leg's least depth at the time the boat is at its middle, deeper further down, with the safe depth as a dashed line and "least 1.8 m" beside the shallowest leg. The panel adds a row with the least depth and its time.
 - **The run home** uses the same trip, so it keeps the same rule. The dotted line of the run home on the map is the path that the leave-by time measures. The trip leaving at the leave-by time can have no path at the safe depth when leaving now has one, as when the tide falls over a bar near home. The leave-by time then shows as an alert, with "No path then", and the note says why.
+- **The full-screen map** follows the mock at 1180 × 820. The parts of the page move rather than copy: the time bar, or the Now screen's steps, into the bottom panel, and the probe reading into the card, so every control keeps its wiring. The Full screen button sits on the map above the zoom buttons, as an icon with the label "Full screen" for VoiceOver.
+- **Labels in full screen.** The probe card's buttons read Route to here and Save as mark, as in the mock. The Route layer button, which only the full-screen map has, hides the route's line on the map; the strip stays.
+- **The strip in full screen** leaves out the speed line, as the mock does, so the bottom panel leaves more of the map in view. The route panel's totals do not show in full screen.
+- **Keeping the probe clear.** After each change of the probe, the card or the window's size, the map moves by the least distance that brings the probe and the selected spot inside the area no panel covers. Where both cannot fit, the probe stays clear. At zoom 1 the map cannot move.
+- **Smaller screens.** Under 800 px of height, as on an iPad mini, the layer buttons take two columns, so the key fits above the bottom panel. Up to 760 px wide, the card spans the width above the bottom panel and the view buttons stand in a column at the right; on a phone, while the card shows, it takes the place of the layer buttons, the key and the strip, and Close brings them back. In full screen a one-finger drag moves the map even at zoom 1, because no page scrolls under it.
+- **Suggestions and depth.** Once the depths show, Where to go could suggest "Calmest water" on a cell the depth grid puts on land or dry, because sheltered water lies close to shore. A suggestion now needs water at the map's time, and, once a safe depth is set, at least that much.
 - **The probe row.** The row reads "Depth at 14:05" and the depth at the map's time. The line under it gives the chart depth, the tide and the tide spot, and ends "Not for navigation." A drying cell covered by the tide says how much the ground dries. A drying cell above the tide says "Dry". A land cell says the grid puts it above high water. The row shows on a point the coastline puts on land, such as a marina, because the grid often has a value there. In Where to go, each row gives the depth after the distance, before the wind, because a long line loses its end.
 
 ## The datum check
