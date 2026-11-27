@@ -31,6 +31,7 @@ Wireframes: https://claude.ai/artifact/LZJbcXCBTyxqeHZdmehFqo
 16. **Boat speed and margin.** The owner sets a cruising speed and a margin before last light under Limits. The leave-by time shows as missing until both are set.
 17. **Wind over the limit** shows in vermilion on Week, as an alert. Step 3 updates the color table in CLAUDE.md to match.
 18. **Touch targets** are at least 44 px, from step 1 on.
+19. **Full-screen map.** A button on the map, on Day and on Now, makes the map fill the window, edge to edge. It is a layout of the page, not the browser's full-screen mode: opened from the Home Screen, the page already has the whole screen. Exit full screen, at the top left, and the Escape key leave it, and the iPad stores the choice. Beside Exit, the map's time reads "Gulf at 14:05, pinned". The view buttons and zoom sit at the top right; the layer buttons Depth, Marks, Route, Wind, Flow and Chop at the left, with one key under them; the probe reading as a card at the right, with Route to here and Save as mark; and one panel along the bottom, with the time bar, or the Now screen's steps, and the route's strip above it. The page does not scroll. Every control is at least 44 px. When a panel would cover the probe or the selected spot, the map moves so both stay clear. `docs/depth-map.md` holds the design.
 
 ## Assumed, not confirmed
 
@@ -69,4 +70,5 @@ Each step ends with a working page that the owner can try on the iPad. Logic tha
 | 8 | Now screen, with the iPad's position. | Done. The map moves between Day and Now, and each keeps its own view. Without a position, Now measures from the selected spot. Run home shows the distance, sunset and last light. |
 | 9 | Run home and leave-by. | Done. Boat speed and margin sit under Limits and start unset. Run home no longer uses a straight line: since step 4 of `docs/route-comfort.md`, it follows the path over open water to home, and the leave-by time uses the trip time at comfortable speeds. |
 | 10 | Service worker, stored fonts, and Home Screen tags. | Done. The page comes from the network first, so a new build shows at once when online. Without a connection, the iPad's stored copy and fonts serve. |
+| 12 | Full-screen map, from `docs/depth-map.md`. | Done. |
 | 11 | Check on the boat: sunlight, touch size, chop steps. | Ready for the owner. `docs/boat-check.md` lists the checks and has a table for the chop notes. |

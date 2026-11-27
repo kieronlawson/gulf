@@ -8,6 +8,24 @@
   /* status: idle, loading, ok or failed. grid holds what Engine.depthAt reads once the file is decoded. */
   var depth = { status: 'idle', failedAt: 0, grid: null };
 
+  /* The tide of a spot at time t. Code that reads many points at one time, such as the suggestions of Where to go,
+     takes the tide from here, so each spot's tide is worked out once for each time. */
+  var tideMemo = { t: null, h: {} };
+  function spotTide(sp, t) {
+    if (tideMemo.t !== t) { tideMemo.t = t; tideMemo.h = {}; }
+    if (!(sp.id in tideMemo.h)) tideMemo.h[sp.id] = E.tideNow(sp, t).h;
+    return tideMemo.h[sp.id];
+  }
+  /* The depth at a point at time t, as Engine.depthAtTime gives it, with the tide from spotTide. Null before the
+     grid loads, and where the grid has no value. */
+  function depthAtTimeMemo(p, t) {
+    var d = depth.status === 'ok' ? E.depthAt(depth.grid, p) : null;
+    if (!d) return null;
+    var sp = E.nearestSpot(p), h = spotTide(sp, t);
+    if (d.land) return { land: true, tide: h, spot: sp };
+    return { depth: h == null ? null : d.chart + h, chart: d.chart, tide: h, spot: sp };
+  }
+
   /* The file's stored values, decoded in script by Engine.pngChunks and Engine.pngValues. The compressed data is
      inflated by DecompressionStream, which also checks it. No canvas sits in the path, so no browser can change the
      values on the way. A browser without DecompressionStream gets no depths. */
@@ -247,6 +265,7 @@
   function renderMapKey(t, chop) {
     var el = $('mapKey');
     if (!el) return;
+    if (full.on) { renderFullKey(el, t, chop); return; }
     var deep = state.layers.depth && (depth.status === 'ok' || contours.status === 'ok'), shown = deep || chartShown();
     el.hidden = !shown;
     if (!shown) return;
@@ -264,6 +283,28 @@
     if (contours.status === 'ok') marks += '<span><i class="kc"></i>contour, m</span>';
     if (marks) rows.push('<div>' + marks + '</div>');
     rows.push('<span class="nav">Not for navigation</span>');
+    el.classList.toggle('chopon', chop);
+    el.innerHTML = rows.join('');
+  }
+
+  /* The full-screen map's key, one item to a line, under the layer buttons: the chop scale while the chop tint
+     shows, otherwise the depth tints; then the hatching and the contour line in both. */
+  function renderFullKey(el, t, chop) {
+    var deep = state.layers.depth && depth.status === 'ok', lines = state.layers.depth && contours.status === 'ok';
+    var safe = state.limits.safe, rows = [];
+    el.hidden = !(chop || deep || lines || chartShown());
+    if (el.hidden) return;
+    rows.push('<b>' + (chop ? 'Chop at ' + E.fmtTime(t) : deep && safe != null ? 'Depth at ' + E.fmtTime(t) : deep ? 'Chart depth' : 'Map') + '</b>');
+    if (chop) {
+      [['q1', 'light, from 0.15 m'], ['q2', 'moderate, 0.3 m'], ['q3', 'rough, 0.5 m'], ['q4', 'very rough, 0.8 m']].forEach(function (q) {
+        rows.push('<span><i class="' + q[0] + '"></i>' + q[1] + '</span>');
+      });
+    } else if (deep) {
+      rows.push('<span><i class="k1"></i>under 5 m</span>', '<span><i class="k2"></i>5 to 10 m</span>', '<span><i class="k3"></i>10 to 20 m</span>');
+    }
+    if (deep && safe != null) rows.push('<span><i class="kh"></i>depth under ' + safe.toFixed(1) + ' m</span>');
+    if (lines) rows.push('<span><i class="kc"></i>chart depth, m</span>');
+    if (deep || lines || chartShown()) rows.push('<span class="nav">Not for navigation</span>');
     el.classList.toggle('chopon', chop);
     el.innerHTML = rows.join('');
   }

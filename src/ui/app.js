@@ -63,6 +63,7 @@
      while it shows. */
   function setScreen(name) {
     if (SCREENS.indexOf(name) < 0) return;
+    if (full.on && name !== state.screen) setFull(false);
     state.screen = name;
     store.set('gulf-almanac-screen', name);
     SCREENS.forEach(function (n) { $('screen-' + n).hidden = n !== name; });
@@ -115,6 +116,7 @@
     state.limits = L;
     store.set('gulf-almanac-limits', JSON.stringify(L));
     renderLimits(); renderWindows(); renderTimebar(); renderWeek(); renderNowSide(); renderRoute(); renderDepthLayers();
+    renderProbe();   /* Where to go leaves out water under the safe depth */
   }
 
   function stepLimit(key, dir) {
@@ -290,6 +292,7 @@
       b.querySelector('.pip').className = 'pip' + (state.layers[key] ? ' on' : '');
       renderOverlay();
       if (key === 'marks') renderProbe();   /* the reading names marks only while they show */
+      if (key === 'route') drawRouteMap();
     });
     $('probe').addEventListener('click', function (e) {
       var tAttr = e.target.getAttribute ? e.target.getAttribute('data-t') : null;
@@ -313,6 +316,12 @@
       if (act === 'route-swap') swapRoute();
       else if (act === 'route-close') closeRoute();
       else if (act === 'reload') sync();
+      else if (act === 'limits') { renderLimits(); openSheet('limits'); }
+    });
+    /* In full screen the route's strip sits in the bottom panel, with its Limits and Load now buttons. */
+    $('fmStrip').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-act]') : null, act = b && b.getAttribute('data-act');
+      if (act === 'reload') sync();
       else if (act === 'limits') { renderLimits(); openSheet('limits'); }
     });
     $('dayToggle').addEventListener('click', toggleDayDisplay);
@@ -424,10 +433,12 @@
     renderPlaces();
     wireMapGestures();
     wireNow();
+    wireFull();
     renderAll();
     loadWeather(false);
     loadDepth(false);
     loadChartMarks(false);
+    if (store.get('gulf-almanac-fullmap') === '1') setFull(true);
 
     /* The service worker keeps the page and its fonts on the device for use without a connection.
        Browsers allow it only on https or on this computer, so a page opened from a file runs without it. */

@@ -245,8 +245,15 @@
     var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     pts.forEach(function (q) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); });
     var fw = frame.w || 400, fh = frame.h || 400;
-    var w = Math.max(x1 - x0, 2 * NM) * fw / Math.max(fw - 48, fw / 2), h = Math.max(y1 - y0, 2 * NM) * fh / Math.max(fh - 120, fh / 2);
-    var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    /* In the full-screen map the path keeps clear of the layer buttons at the left, the top bar and the bottom
+       panel. */
+    var padX = 48, padY = 120, shiftX = 0, shiftY = 0;
+    if (full.on) {
+      var fmb = $('fmBottom').offsetHeight || 0;
+      padX = 160; padY = 72 + fmb + 40; shiftX = (124 - 24) / 2; shiftY = (72 - fmb - 28) / 2;
+    }
+    var w = Math.max(x1 - x0, 2 * NM) * fw / Math.max(fw - padX, fw / 2), h = Math.max(y1 - y0, 2 * NM) * fh / Math.max(fh - padY, fh / 2);
+    var cx = (x0 + x1) / 2 - shiftX * w / fw, cy = (y0 + y1) / 2 - shiftY * h / fh;
     return fitBox(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2);
   }
 
@@ -277,7 +284,8 @@
     /* The Day screen's panel draws only while the map is there, because trip is the shown route. */
     if (onDay && compact) { renderRoutePanel(); renderDayLane(); }
     else if (onDay) { $('routePanel').innerHTML = ''; $('dayLane').innerHTML = ''; }
-    if (r && !state.probe && state.moving == null) renderStrip();
+    if (r && (full.on || (!state.probe && state.moving == null))) renderStrip();
+    else if (full.on) $('fmStrip').innerHTML = '';
   }
 
   var LEVEL_NAMES = E.COMFORT.names;
@@ -293,7 +301,8 @@
   function drawRouteMap() {
     var layer = $('ovRoute'), ends = $('ovEnds');
     if (!layer || !ends) return;
-    if (!trip) { layer.innerHTML = ''; ends.innerHTML = ''; return; }
+    /* The Route layer button belongs to the full-screen map, so it hides the line only there. */
+    if (!trip || (full.on && !state.layers.route)) { layer.innerHTML = ''; ends.innerHTML = ''; return; }
     var p = trip.path, s = '';
     function pt(x, y) { return x.toFixed(2) + ',' + y.toFixed(2); }
     var A = trip.a, B = trip.b;
@@ -438,10 +447,12 @@
   /* On the Now screen the route panel comes first and the strip under it, in the place of Where to go, whose
      box there is short. */
   function renderStrip() {
-    var el = $('probe');
+    var el = full.on ? $('fmStrip') : $('probe');
     if (!trip) { el.innerHTML = ''; return; }
     var W = Math.floor(el.clientWidth);
     stripW = W;
+    /* In the full-screen map the strip sits above the time bar, and the probe has its own card. */
+    if (full.on) { el.innerHTML = stripHtml(W, true, true); return; }
     /* On the Day screen the strip says why it draws no route or no score. Once the day display shows again, the
        panel is hidden, so the strip also says why legs are gray. On the Now screen the panel above it says both. */
     var r = state.routes.day, panelHidden = !!(r && r.showDay);
@@ -469,14 +480,15 @@
     function X(nm) { return x0 + nm / total * (x1 - x0); }
     /* With ferry lanes to mark, a band of 14 px above the bar holds their ticks and names. */
     var off = tr.ferries.length ? 14 : 0;
-    /* With depths, a band of 34 px under the speed holds the depth line. */
-    var dep = tr.depths ? 34 : 0;
-    var BAR = 4 + off, BAR_H = 20, CAUSE = BAR + BAR_H + 13, SP_TOP = 58 + off, SP_BOT = 78 + off, AXIS = 88 + off + dep, H = 106 + off + dep;
-    var DP_TOP = SP_BOT + 14, DP_BOT = DP_TOP + 22;
+    /* With depths, a band of 34 px under the speed holds the depth line. The full-screen map leaves the speed
+       out, so its bottom panel leaves more of the map in view. */
+    var dep = tr.depths ? 34 : 0, sp = full.on ? 0 : 1, lift = full.on ? 34 : 0;
+    var BAR = 4 + off, BAR_H = 20, CAUSE = BAR + BAR_H + 13, SP_TOP = 58 + off, SP_BOT = 78 + off, AXIS = 88 + off + dep - lift, H = 106 + off + dep - lift;
+    var DP_TOP = SP_BOT + 14 - lift, DP_BOT = DP_TOP + 22;
     var vMin = Math.min(E.COMFORT.minKn, tr.cruise), vMax = tr.cruise;
     function Y(v) { return vMax > vMin ? SP_BOT - (v - vMin) / (vMax - vMin) * (SP_BOT - SP_TOP) : SP_TOP; }
 
-    s.push('<text class="st-k" x="0" y="' + (BAR + 14) + '">Comfort</text><text class="st-k" x="0" y="' + ((SP_TOP + SP_BOT) / 2 + 4) + '">Speed</text>');
+    s.push('<text class="st-k" x="0" y="' + (BAR + 14) + '">Comfort</text>' + (sp ? '<text class="st-k" x="0" y="' + ((SP_TOP + SP_BOT) / 2 + 4) + '">Speed</text>' : ''));
     /* One rectangle per stretch, which holds the legs of one level, a hair wider so no seam shows between neighbors. */
     tr.stretches.forEach(function (st) {
       var a = X(st.at), b = X(st.at + st.nm);
@@ -513,10 +525,12 @@
       run.push(n(X(L.at + L.nm / 2)) + ',' + n(Y(L.v)));
       run.last = n(X(L.at + L.nm)) + ',' + n(Y(L.v));
     });
-    runs.forEach(function (pts) { s.push('<polyline class="st-speed" points="' + pts.concat([pts.last]).join(' ') + '"/>'); });
     var first = legs[0], last = legs[legs.length - 1];
-    if (first.v != null) s.push('<text class="st-v" x="' + n(x0) + '" y="' + n(Y(first.v) - 4) + '">' + Math.round(first.v) + ' kn</text>');
-    if (last.v != null) s.push('<text class="st-v" x="' + n(x1) + '" y="' + n(Y(last.v) - 4) + '" text-anchor="end">' + Math.round(last.v) + ' kn</text>');
+    if (sp) {
+      runs.forEach(function (pts) { s.push('<polyline class="st-speed" points="' + pts.concat([pts.last]).join(' ') + '"/>'); });
+      if (first.v != null) s.push('<text class="st-v" x="' + n(x0) + '" y="' + n(Y(first.v) - 4) + '">' + Math.round(first.v) + ' kn</text>');
+      if (last.v != null) s.push('<text class="st-v" x="' + n(x1) + '" y="' + n(Y(last.v) - 4) + '" text-anchor="end">' + Math.round(last.v) + ' kn</text>');
+    }
     /* The depth: a line through each leg's least depth at its time, deeper further down, with the safe depth as a
        dashed line and the least depth on the path named beside it. */
     if (dep) {
@@ -557,6 +571,6 @@
   }
   /* The strip is drawn to its box's width, so it draws again when the box changes width. */
   function fitStrip() {
-    if (!routeShown() || state.probe || state.moving != null) return;
-    if (Math.floor($('probe').clientWidth) !== stripW) renderStrip();
+    if (!routeShown() || (!full.on && (state.probe || state.moving != null))) return;
+    if (Math.floor((full.on ? $('fmStrip') : $('probe')).clientWidth) !== stripW) renderStrip();
   }
