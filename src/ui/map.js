@@ -284,8 +284,11 @@
       return '<g data-at="' + mapX(lon).toFixed(1) + ' ' + mapY(lat).toFixed(1) + '"><text class="' + cls + '" x="0" y="' + dy + '" text-anchor="middle">' + text + '</text></g>';
     }
     var s = '<svg id="mapSvg" viewBox="0 0 ' + c.w + ' ' + c.h + '" role="group" aria-label="Map of the Hauraki Gulf. Each lamp selects a tide spot. Select a point on the water to read wind, flow and chop there.">';
-    s += '<defs><pattern id="landDots" width="3" height="3" patternUnits="userSpaceOnUse"><rect class="m-landbg" width="3" height="3"/><circle class="m-landdot" cx="1.5" cy="1.5" r=".42"/></pattern></defs>';
-    s += '<g id="ovTint"></g><path class="m-land" d="' + c.path + '"/>';
+    s += '<defs><pattern id="landDots" width="3" height="3" patternUnits="userSpaceOnUse"><rect class="m-landbg" width="3" height="3"/><circle class="m-landdot" cx="1.5" cy="1.5" r=".42"/></pattern>' +
+      '<pattern id="hatch" width="2.6" height="2.6" patternUnits="userSpaceOnUse"><line class="m-hatchline" x1="1.3" y1="0" x2="1.3" y2="2.6"/></pattern>' +
+      '<mask id="hatchMask" maskUnits="userSpaceOnUse" x="0" y="0" width="' + c.w + '" height="' + c.h + '"><image id="hatchImg" x="0" y="0" width="0" height="0" preserveAspectRatio="none"/></mask></defs>';
+    /* Under the land: the depth tints, the chop tint, the hatching of water under the safe depth, and the contours. */
+    s += '<g id="ovDepthTint"></g><g id="ovTint"></g><g id="ovHatch"></g><g id="ovContours"></g><path class="m-land" d="' + c.path + '"/>';
 
     /* Calibration ticks every 10 minutes of arc along the frame. */
     for (k = Math.ceil(c.S * 6); k <= Math.floor(c.N * 6); k++) {
@@ -330,7 +333,7 @@
   }
 
   /* The overlay has three layers. Chop is the slow one, so a zoom or a new probe redraws only the other two. */
-  function renderOverlay() { renderTint(); renderArrows(); renderProbeMark(); }
+  function renderOverlay() { renderTint(); renderDepthLayers(); renderArrows(); renderProbeMark(); }
 
   function fieldShown() { return !!(field.wind && fieldIndex(field.wind, mapTime()) != null); }
 
@@ -473,6 +476,9 @@
     });
     var dots = document.getElementById('landDots');
     if (dots) dots.setAttribute('patternTransform', 'scale(' + s + ')');
+    var hatch = document.getElementById('hatch');
+    if (hatch) hatch.setAttribute('patternTransform', 'scale(' + s + ') rotate(45)');
+    markContourLabels();
     renderArrows(); renderProbeMark(); renderScaleBar(); markViewButtons();
   }
   var viewQueued = false;

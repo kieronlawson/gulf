@@ -45,6 +45,10 @@
   --c-moon: #525866;
   --c-moonshade: #525866;
   --c-tide: #2A6FA8;
+  /* Depths on the map: three tints of the tide blue for chart depth under 5 m, 5 to 10 m and 10 to 20 m; the
+     contour line, and the stronger line it takes over the chop tint; the hatching of water under the safe depth. */
+  --depth-1: rgba(42, 111, 168, .29); --depth-2: rgba(42, 111, 168, .19); --depth-3: rgba(42, 111, 168, .09);
+  --depth-line: rgba(42, 111, 168, .8); --depth-line-chop: #1D4E7A; --depth-hatch: rgba(26, 26, 24, .6);
   --win: rgba(46, 139, 87, .12);
   --win2: rgba(46, 139, 87, .3);
   --knob-pin: rgba(26, 26, 24, .12);
@@ -96,6 +100,8 @@
     --c-moon: #C5CAD4;
     --c-moonshade: #6D727B;
     --c-tide: #76B8EA;
+    --depth-1: rgba(118, 184, 234, .26); --depth-2: rgba(118, 184, 234, .16); --depth-3: rgba(118, 184, 234, .08);
+    --depth-line: rgba(118, 184, 234, .75); --depth-line-chop: #B4DAF6; --depth-hatch: rgba(236, 235, 230, .6);
     --win: rgba(55, 165, 107, .18);
     --win2: rgba(55, 165, 107, .36);
     --knob-pin: rgba(236, 235, 230, .24);
@@ -143,6 +149,8 @@
   --c-moon: #C5CAD4;
   --c-moonshade: #6D727B;
   --c-tide: #76B8EA;
+  --depth-1: rgba(118, 184, 234, .26); --depth-2: rgba(118, 184, 234, .16); --depth-3: rgba(118, 184, 234, .08);
+  --depth-line: rgba(118, 184, 234, .75); --depth-line-chop: #B4DAF6; --depth-hatch: rgba(236, 235, 230, .6);
   --win: rgba(55, 165, 107, .18);
   --win2: rgba(55, 165, 107, .36);
   --knob-pin: rgba(236, 235, 230, .24);
@@ -272,6 +280,18 @@ button:disabled:active { transform: none; }
 .m-landbg { fill: var(--land); }
 .m-landdot { fill: var(--grille); }
 .m-c1 { fill: var(--c1); } .m-c2 { fill: var(--c2); } .m-c3 { fill: var(--c3); } .m-c4 { fill: var(--c4); }
+/* Depths: the tint image, contours with labels in meters, and hatching over water under the safe depth. The lines
+   keep one width on screen at any zoom. Over the chop tint, the contours take a stronger blue. */
+#ovDepthTint, #ovHatch, #ovContours { pointer-events: none; }
+.m-cont { fill: none; stroke: var(--depth-line); stroke-width: .8px; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.chopon .m-cont { stroke: var(--depth-line-chop); }
+.m-cont.c10, .m-cont.c50 { stroke-width: 1.1px; }
+.m-clab text { font-family: var(--mono); font-size: 5.6px; fill: var(--depth-line); paint-order: stroke; stroke: var(--chassis); stroke-width: 2px; stroke-linejoin: round; }
+.chopon .m-clab text { fill: var(--depth-line-chop); }
+.m-clab { display: none; }
+.lab0 .m-clab.t0, .lab1 .m-clab { display: inline; }
+.m-hatchline { stroke: var(--depth-hatch); stroke-width: .55; }
+.m-hatchbg { fill: url(#hatch); }
 .m-wind { fill: var(--ink); }
 .m-flow { fill: none; stroke: var(--ink2); stroke-width: .95; stroke-linecap: round; stroke-linejoin: round; }
 .m-flow.near { stroke-dasharray: 1.3 1.5; }
@@ -399,18 +419,35 @@ button:disabled:active { transform: none; }
 .mb-layers button { width: 92px; justify-content: flex-start; }
 .mb-zoom { right: 8px; bottom: 8px; }
 .mb-zoom button { width: 44px; padding: 0; font-size: 20px; }
-/* In columns, the views and the layers each take 152 px of the frame's height, with their 8 px margin. The two
-   stacks need 12 px between them, twice the gap inside a stack, so that they read as two groups: 316 px in all.
-   A shorter frame, as on an iPad mini in landscape, puts the layers in a row along its foot. The row and its margin
-   take 236 px of the width, and the zoom buttons 52 px, with 12 px between them, so the row needs 300 px. */
-@container mapframe (height < 316px) and (width >= 300px) {
+/* In columns, the views take 152 px of the frame's height and the four layers 202 px, each with their 8 px margin.
+   The two stacks need 12 px between them, twice the gap inside a stack, so that they read as two groups: 366 px in
+   all. A shorter frame, as on the Day screen of an iPad in landscape, puts the layers in a row along its foot. The
+   row and its margin take 298 px of the width, and the zoom buttons 52 px, with 12 px between them, so the row
+   needs 362 px. A short frame narrower than that puts the layers in two columns, which need 102 px of height. */
+@container mapframe (height < 366px) and (width >= 362px) {
   .mb-layers { flex-direction: row; }
-  .mb-layers button { width: 72px; padding: 0 10px; }
+  .mb-layers button { width: 68px; padding: 0 8px; }
+}
+@container mapframe (height < 366px) and (width < 362px) {
+  .mb-layers { display: grid; grid-template-columns: 68px 68px; }
+  .mb-layers button { width: 68px; padding: 0 8px; }
 }
 .mapmark { position: absolute; right: 8px; top: 8px; display: flex; align-items: flex-end; gap: 8px; padding: 4px 7px; border-radius: 3px; background: var(--chassis); opacity: .85; pointer-events: none; }
 .mapnorth { width: 9px; height: 16px; overflow: visible; }
 .mapscale { font-family: var(--mono); font-size: 10.5px; color: var(--ink2); text-align: right; }
 .mapscale i { display: block; height: 5px; margin: 0 0 3px auto; border: 1.5px solid var(--ink2); border-top: 0; }
+/* The depth key, under the scale, in four lines at most: the time the hatching is drawn for; the tints; the
+   hatching and the contour line; and the words "Not for navigation". */
+.mapkey { position: absolute; right: 8px; top: 44px; display: grid; gap: 2px; padding: 4px 7px; border-radius: 3px; background: var(--chassis); opacity: .9; pointer-events: none; font-family: var(--mono); font-size: 10.5px; color: var(--ink2); }
+.mapkey b { font-weight: 600; color: var(--ink); }
+.mapkey div { display: flex; align-items: center; gap: 4px 10px; white-space: nowrap; }
+.mapkey span { display: flex; align-items: center; gap: 4px; }
+.mapkey i { flex: none; width: 12px; height: 9px; border: 1px solid var(--edge); }
+.mapkey .k1 { background: var(--depth-1); } .mapkey .k2 { background: var(--depth-2); } .mapkey .k3 { background: var(--depth-3); }
+.mapkey .kh { background: repeating-linear-gradient(135deg, var(--depth-hatch) 0 1px, transparent 1px 3.5px); }
+.mapkey .kc { height: 0; border: 0; border-top: 1.5px solid var(--depth-line); }
+.mapkey.chopon .kc { border-top-color: var(--depth-line-chop); }
+.mapkey .nav { color: var(--ink); font-weight: 600; }
 
 /* The probe reading under the map. */
 #probe { min-width: 0; }

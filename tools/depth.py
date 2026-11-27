@@ -203,6 +203,49 @@ def write_png(path, rgb):
     return len(png)
 
 
+def read_png(path):
+    """The stored values of a PNG that write_png wrote, red * 256 + green, as an (ny, nx) array. It reads 8-bit
+    RGB, with any of the five row filters."""
+    raw = pathlib.Path(path).read_bytes()
+    pos, idat, w = 8, b'', 0
+    while pos < len(raw):
+        n, = struct.unpack('>I', raw[pos:pos + 4]); kind = raw[pos + 4:pos + 8]; data = raw[pos + 8:pos + 8 + n]
+        if kind == b'IHDR':
+            w, h, bits, ctype = struct.unpack('>IIBB', data[:10])
+            if bits != 8 or ctype != 2:
+                sys.exit('data/depth.png must be 8-bit RGB.')
+        elif kind == b'IDAT':
+            idat += data
+        pos += 12 + n
+    buf = np.frombuffer(zlib.decompress(idat), np.uint8).reshape(h, 1 + w * 3)
+    out = np.zeros((h, w * 3), np.int32)
+    prev = np.zeros(w * 3, np.int32)
+    for j in range(h):
+        ftype, cur = buf[j, 0], buf[j, 1:].astype(np.int32)
+        if ftype == 0:
+            row = cur
+        elif ftype == 2:
+            row = (cur + prev) % 256
+        else:
+            row = np.zeros(w * 3, np.int32)
+            for i in range(w * 3):
+                left = row[i - 3] if i >= 3 else 0
+                up, ul = prev[i], (prev[i - 3] if i >= 3 else 0)
+                if ftype == 1:
+                    pr = left
+                elif ftype == 3:
+                    pr = (left + up) // 2
+                else:
+                    p = left + up - ul
+                    pa, pb, pc = abs(p - left), abs(p - up), abs(p - ul)
+                    pr = left if pa <= pb and pa <= pc else (up if pb <= pc else ul)
+                row[i] = (cur[i] + pr) % 256
+        out[j] = row
+        prev = row
+    rgb = out.reshape(h, w, 3)
+    return rgb[..., 0] * 256 + rgb[..., 1]
+
+
 def main():
     src = sys.argv[1] if len(sys.argv) > 1 else None
     if not src:

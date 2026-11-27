@@ -101,6 +101,7 @@
     $('limHours').textContent = hoursWords(L.hours);
     $('limSpeed').textContent = L.speed == null ? 'Not set' : L.speed + ' kn';
     $('limMargin').textContent = L.margin == null ? 'Not set' : L.margin + ' min';
+    $('limSafe').textContent = L.safe == null ? 'Not set' : L.safe.toFixed(1) + ' m';
     /* A limit that can be unset steps below its lowest value to unset. */
     var bs = $('limits').querySelectorAll('button[data-lim]');
     for (var i = 0; i < bs.length; i++) {
@@ -113,7 +114,7 @@
   function setLimits(L) {
     state.limits = L;
     store.set('gulf-almanac-limits', JSON.stringify(L));
-    renderLimits(); renderWindows(); renderTimebar(); renderWeek(); renderNowSide(); renderRoute();
+    renderLimits(); renderWindows(); renderTimebar(); renderWeek(); renderNowSide(); renderRoute(); renderDepthLayers();
   }
 
   function stepLimit(key, dir) {
@@ -121,7 +122,7 @@
     for (var k in state.limits) next[k] = state.limits[k];
     if (v == null) { if (dir < 0) return; next[key] = LIMIT_START[key]; }
     else if (dir < 0 && v <= R[0] && key in LIMIT_START) next[key] = null;
-    else next[key] = clamp(Math.round((v + dir * R[2]) / R[2]) * R[2], R[0], R[1]);
+    else next[key] = clamp(Math.round(Math.round((v + dir * R[2]) / R[2]) * R[2] * 100) / 100, R[0], R[1]);
     setLimits(next);
   }
 
@@ -241,7 +242,7 @@
     $('limitsOpen').addEventListener('click', function () { renderLimits(); openSheet('limits'); });
     $('limitsClose').addEventListener('click', function () { closeSheet('limits'); });
     $('limitsReset').addEventListener('click', function () {
-      setLimits({ wind: E.LIMITS.wind, hours: E.LIMITS.hours, speed: state.limits.speed, margin: state.limits.margin });
+      setLimits({ wind: E.LIMITS.wind, hours: E.LIMITS.hours, speed: state.limits.speed, margin: state.limits.margin, safe: state.limits.safe });
     });
     $('limits').addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('button[data-lim]') : null;
@@ -406,10 +407,11 @@
       loadWeather(false); syncField(false); loadDepth(false);
     });
 
-    /* The Week rows take their wind colors from the theme, so a change of theme draws them again. */
+    /* The Week rows and the depth tints take their colors from the theme, so a change of theme draws them again. */
     var dark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-    if (dark && dark.addEventListener) dark.addEventListener('change', renderWeek);
-    else if (dark && dark.addListener) dark.addListener(renderWeek);
+    function themeChanged() { renderWeek(); renderDepthLayers(); }
+    if (dark && dark.addEventListener) dark.addEventListener('change', themeChanged);
+    else if (dark && dark.addListener) dark.addListener(themeChanged);
 
     setScreen(state.screen);
     buildMask();
