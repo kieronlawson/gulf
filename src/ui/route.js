@@ -24,6 +24,72 @@
     return res;
   }
 
+  /* ---------- Depth in the route ----------
+     With a safe depth and a boat speed set, and the depth grid loaded, the path keeps to water whose depth at the
+     lowest tide of the trip is at least the safe depth. The trip runs from the leave time to the arrival at
+     cruising speed along the open-water path, plus DEPTH_MARGIN_MS. A grid cell's depth is the shallowest of its
+     four depth cells, with the tide of its nearest spot. */
+  var DEPTH_MARGIN_MS = 30 * MIN;
+  var cellDepthCache = null, depthPaths = [];
+  function routeCellDepths() {
+    if (!MASK || depth.status !== 'ok') return null;
+    if (!cellDepthCache) cellDepthCache = E.cellDepths(depth.grid, MASK);
+    return cellDepthCache;
+  }
+  function pathNm(points) {
+    var nm = 0;
+    for (var i = 1; i < points.length; i++) nm += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y) / NM;
+    return nm;
+  }
+  /* The depth rule for a trip that leaves at t0 along the open-water path p, or null when it does not apply. */
+  function depthRule(p, t0) {
+    var safe = state.limits.safe, cruise = state.limits.speed, cd = routeCellDepths();
+    if (safe == null || cruise == null || !cd || !p || !p.found) return null;
+    var t1 = t0 + pathNm(p.points) / cruise * HOUR + DEPTH_MARGIN_MS;
+    return { safe: safe, t0: t0, t1: t1, low: E.lowestTides(t0, t1), cd: cd };
+  }
+  /* The path between two points that keeps the safe depth, in the shape routePath gives. Without one, found is
+     false, and blocked gives the least depth on the open-water path at the lowest tides, the depth that blocks it.
+     The last four are kept, by their ends, the safe depth and the lowest tides. */
+  function depthPath(a, b, rule) {
+    var R = MASK.R, key = [a.x, a.y, b.x, b.y].map(function (v) { return Math.round(v * R); }).join(' ') + '|' + rule.safe + '|' +
+      rule.low.map(function (h) { return h == null ? 'x' : h.toFixed(2); }).join(',');
+    for (var i = 0; i < depthPaths.length; i++) if (depthPaths[i].key === key) return depthPaths[i].res;
+    var g = E.shoalGrid(MASK, rule.cd, rule.safe, rule.low), r = E.findPath(g, { x: a.x * R, y: a.y * R }, { x: b.x * R, y: b.y * R });
+    var res = {
+      found: r.found,
+      points: r.points.map(function (q) { return { x: q.x / R, y: q.y / R }; }),
+      fromNm: r.from ? r.from.moved / R / NM : null,
+      toNm: r.to ? r.to.moved / R / NM : null
+    };
+    if (!r.found) {
+      var plain = routePath(a, b), least = plain && plain.found ?
+        E.leastDepth(MASK, rule.cd, rule.low, plain.points.map(function (q) { return { x: q.x * R, y: q.y * R }; })) : null;
+      res.blocked = least ? least.depth : null;
+    }
+    depthPaths.unshift({ key: key, res: res });
+    if (depthPaths.length > 4) depthPaths.length = 4;
+    return res;
+  }
+  /* The least depth on each scored leg, at the time the boat is at the leg's middle, with the tide of the nearest
+     spot of the leg's shallowest grid cell. null for a leg over no depth data. */
+  function legDepths(legs, cd) {
+    var R = MASK.R;
+    return legs.map(function (L) {
+      var n = Math.max(1, Math.ceil(Math.hypot(L.x1 - L.x0, L.y1 - L.y0) * R * 4)), best = null, bi = -1;
+      for (var j = 0; j <= n; j++) {
+        var x = Math.round((L.x0 + (L.x1 - L.x0) * j / n) * R), y = Math.round((L.y0 + (L.y1 - L.y0) * j / n) * R);
+        if (x < 0 || y < 0 || x >= MASK.w || y >= MASK.h) continue;
+        var i = x + y * MASK.w, c = cd.chart[i];
+        if (c !== c || c === -Infinity) continue;
+        if (best == null || c < best) { best = c; bi = i; }
+      }
+      if (best == null) return null;
+      var h = E.tideNow(spots[cd.spot[bi]], L.t + L.ms / 2).h;
+      return h == null ? null : best + h;
+    });
+  }
+
   /* Auckland Transport's ferry lanes, in map units. tools/ferries.py writes data/ferries.json. */
   var LANES = ((DATA.ferries && DATA.ferries.lanes) || []).map(function (l) {
     return { name: l.name, paths: l.paths.map(function (p) { return p.map(function (q) { return { x: mapX(q[0]), y: mapY(q[1]) }; }); }) };
@@ -38,7 +104,8 @@
   /* A route for a leave time: its path and legs, and, once the owner has set a boat speed, the scored legs,
      the stretches and the worst stretch. The page does not guess a speed. */
   function scoreTrip(a, b, t0) {
-    var p = routePath(a, b), out = { path: p, t0: t0 };
+    var p = routePath(a, b), out = { path: p, t0: t0 }, rule = depthRule(p, t0);
+    if (rule) { out.depth = rule; out.path = p = depthPath(a, b, rule); }
     if (!p || !p.found) return out;
     out.legs = E.routeLegs(p.points, NM);
     out.nm = out.legs.reduce(function (s, L) { return s + L.nm; }, 0);
@@ -49,6 +116,10 @@
     out.score = E.scoreRoute(out.legs, t0, cruise, routeCond);
     out.stretches = E.joinStretches(out.score.legs);
     out.worst = E.worstStretch(out.stretches);
+    if (rule) {
+      out.depths = legDepths(out.score.legs, rule.cd);
+      out.depths.forEach(function (d, i) { if (d != null && (out.least == null || d < out.least.depth)) out.least = { depth: d, leg: i }; });
+    }
     return out;
   }
 
@@ -137,7 +208,8 @@
   function routeBox() {
     var r = curRoute();
     if (!r) return PRESETS.whole();
-    var a = endAt(r.a), b = endAt(r.b), p = routePath(a, b), pts = p && p.found ? p.points : [a, b];
+    /* The view fits the path the map draws: with a safe depth, the one that keeps it. */
+    var a = endAt(r.a), b = endAt(r.b), p = trip && trip.path && trip.path.found ? trip.path : routePath(a, b), pts = p && p.found ? p.points : [a, b];
     var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     pts.forEach(function (q) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y); });
     var fw = frame.w || 400, fh = frame.h || 400;
@@ -214,6 +286,11 @@
   function noPathWords(tr) {
     var p = tr.path;
     if (!p) return '<p class="probehint">The map has no coastline to search, so the page cannot find a path.</p>';
+    if (!p.found && tr.depth) {
+      return '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>No path keeps ' + tr.depth.safe.toFixed(1) + ' m of water under the boat at the lowest tide between ' +
+        E.fmtTime(tr.depth.t0) + ' and ' + E.fmtTime(tr.depth.t1) + '. ' + (p.blocked != null ? 'The open-water path crosses ' + Math.max(0, p.blocked).toFixed(1) + ' m' + (p.blocked <= 0 ? ', which is dry' : '') + ' at that tide.' :
+        'The page found no path over open water from A to B either.') + ' Not for navigation.</span></p>';
+    }
     if (!p.found) return '<p class="rt-warn"><span class="pip alert" aria-hidden="true"></span><span>The page found no path over open water from A to B. ' +
       'It keeps a path about 200 m off land, so a narrow entrance can close it.</span></p>';
     return '<p class="probehint">A and B are at the same point of open water.</p>';
@@ -252,6 +329,7 @@
         var sc = tr.score, w = tr.worst;
         rows.push(row('Trip time', E.fmtDuration(sc.ms) + ' <span class="muted">(' + E.fmtDuration(sc.cruiseMs) + ' at ' + tr.cruise + ' kn)</span>'));
         rows.push(row('Worst stretch', w ? LEVEL_NAMES[w.level] + ', ' + causeWords(w) : 'No forecast'));
+        if (tr.least) rows.push(row('Least depth', tr.least.depth.toFixed(1) + ' m <span class="muted">at ' + E.fmtTime(sc.legs[tr.least.leg].t) + '</span>'));
       }
       /* The count is of crossings: a lane that runs beside the path can be crossed more than once. The note
          names each lane once, in the order the path first crosses it. */
@@ -271,8 +349,11 @@
         if (listed.length < tr.stretches.length) notes.push('Stretches under ' + E.COMFORT.stretchNm + ' nm are left out of this list.');
       }
       [['fromNm', r.a.name, 'starts'], ['toNm', r.b.name, 'ends']].forEach(function (q) {
-        if (p[q[0]] >= 0.2) notes.push('The line ' + q[2] + ' ' + p[q[0]].toFixed(1) + ' nm from ' + esc(q[1]) + ', at the nearest open water.');
+        if (p[q[0]] >= 0.2) notes.push('The line ' + q[2] + ' ' + p[q[0]].toFixed(1) + ' nm from ' + esc(q[1]) + ', at the nearest open water' + (tr.depth ? ' with the safe depth' : '') + '.');
       });
+      if (tr.depth) notes.push('The path keeps ' + tr.depth.safe.toFixed(1) + ' m of water under the boat at the lowest tide between ' + E.fmtTime(tr.depth.t0) + ' and ' + E.fmtTime(tr.depth.t1) +
+        ', the arrival at cruising speed plus 30 minutes. Depths are not for navigation.');
+      else if (state.limits.safe == null) notes.push('Set a safe depth under Limits, and the path keeps out of shallow water.');
     }
     notes.push('A line for scoring. Not a route to steer.');
     return html + notes.map(function (n) { return '<p class="small">' + n + '</p>'; }).join('');
@@ -332,7 +413,10 @@
     function X(nm) { return x0 + nm / total * (x1 - x0); }
     /* With ferry lanes to mark, a band of 14 px above the bar holds their ticks and names. */
     var off = tr.ferries.length ? 14 : 0;
-    var BAR = 4 + off, BAR_H = 20, CAUSE = BAR + BAR_H + 13, SP_TOP = 58 + off, SP_BOT = 78 + off, AXIS = 88 + off, H = 106 + off;
+    /* With depths, a band of 34 px under the speed holds the depth line. */
+    var dep = tr.depths ? 34 : 0;
+    var BAR = 4 + off, BAR_H = 20, CAUSE = BAR + BAR_H + 13, SP_TOP = 58 + off, SP_BOT = 78 + off, AXIS = 88 + off + dep, H = 106 + off + dep;
+    var DP_TOP = SP_BOT + 14, DP_BOT = DP_TOP + 22;
     var vMin = Math.min(E.COMFORT.minKn, tr.cruise), vMax = tr.cruise;
     function Y(v) { return vMax > vMin ? SP_BOT - (v - vMin) / (vMax - vMin) * (SP_BOT - SP_TOP) : SP_TOP; }
 
@@ -377,6 +461,27 @@
     var first = legs[0], last = legs[legs.length - 1];
     if (first.v != null) s.push('<text class="st-v" x="' + n(x0) + '" y="' + n(Y(first.v) - 4) + '">' + Math.round(first.v) + ' kn</text>');
     if (last.v != null) s.push('<text class="st-v" x="' + n(x1) + '" y="' + n(Y(last.v) - 4) + '" text-anchor="end">' + Math.round(last.v) + ' kn</text>');
+    /* The depth: a line through each leg's least depth at its time, deeper further down, with the safe depth as a
+       dashed line and the least depth on the path named beside it. */
+    if (dep) {
+      var ds = tr.depths, dMax = Math.max(tr.depth.safe * 2, 5);
+      ds.forEach(function (d) { if (d != null) dMax = Math.max(dMax, Math.min(d, 40)); });
+      var DY = function (d) { return DP_TOP + Math.max(0, Math.min(d, dMax)) / dMax * (DP_BOT - DP_TOP); };
+      s.push('<text class="st-k" x="0" y="' + ((DP_TOP + DP_BOT) / 2 + 4) + '">Depth</text>');
+      s.push('<line class="st-safe" x1="' + n(x0) + '" y1="' + n(DY(tr.depth.safe)) + '" x2="' + n(x1) + '" y2="' + n(DY(tr.depth.safe)) + '"/>');
+      var druns = [], drun = null;
+      legs.forEach(function (L, i) {
+        if (ds[i] == null) { drun = null; return; }
+        if (!drun) { drun = []; druns.push(drun); drun.push(n(X(L.at)) + ',' + n(DY(ds[i]))); }
+        drun.push(n(X(L.at + L.nm / 2)) + ',' + n(DY(ds[i])));
+        drun.last = n(X(L.at + L.nm)) + ',' + n(DY(ds[i]));
+      });
+      druns.forEach(function (pts) { s.push('<polyline class="st-depth" points="' + pts.concat([pts.last]).join(' ') + '"/>'); });
+      if (tr.least) {
+        var lx = X(legs[tr.least.leg].at + legs[tr.least.leg].nm / 2), right = lx > (x0 + x1) / 2;
+        s.push('<text class="st-v" x="' + n(right ? lx - 4 : lx + 4) + '" y="' + (DP_TOP - 2) + '"' + (right ? ' text-anchor="end"' : '') + '>least ' + tr.least.depth.toFixed(1) + ' m</text>');
+      }
+    }
     /* The axis: a tick every 2 nautical miles, labeled as often as the width allows. */
     s.push('<line class="st-axis" x1="' + n(x0) + '" y1="' + AXIS + '" x2="' + n(x1) + '" y2="' + AXIS + '"/>');
     var per = (x1 - x0) / total, every = [2, 4, 10, 20, 50].filter(function (k) { return k * per >= 34; })[0] || 50;
@@ -389,7 +494,8 @@
       return (st.level == null ? 'no forecast' : LEVEL_NAMES[st.level] + ', ' + causeWords(st)) + ' for ' + st.nm.toFixed(1) + ' nautical miles';
     }).join('; ');
     var label = 'Comfort from A to B by distance: ' + said + '.' + (first.v != null && last.v != null ? ' Comfortable speed ' + Math.round(first.v) + ' knots at A and ' + Math.round(last.v) + ' knots at B.' : '') +
-      (tr.ferries.length ? ' Crosses ' + tr.ferries.map(function (f) { return 'the ' + f.name + ' ferry lane at ' + f.at.toFixed(1) + ' nautical miles'; }).join(', ') + '.' : '');
+      (tr.ferries.length ? ' Crosses ' + tr.ferries.map(function (f) { return 'the ' + f.name + ' ferry lane at ' + f.at.toFixed(1) + ' nautical miles'; }).join(', ') + '.' : '') +
+      (tr.least ? ' Least depth ' + tr.least.depth.toFixed(1) + ' meters, against a safe depth of ' + tr.depth.safe.toFixed(1) + ' meters.' : '');
     return head + '<svg class="rstrip" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(label) + '">' + s.join('') + '</svg>' +
       (gaps ? missingWords(tr) : '');
   }
