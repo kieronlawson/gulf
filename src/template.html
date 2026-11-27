@@ -285,14 +285,15 @@
         <p>The activity index adds a rise for each period and for sunrise and sunset, scaled by the moon phase. The fish rate each period by the highest value of that index inside the period.</p>
       </div>
       <div>
-        <h4>Weather and coastline</h4>
+        <h4>Weather, coastline and depths</h4>
         <p>Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a>, CC BY 4.0. Wave figures come from open-water models and do not describe sheltered bays.</p>
-        <p>Ferry routes from Auckland Transport's public transport data, CC BY 4.0. Fish icon from Font Awesome Free, CC BY 4.0. Coastline from GSHHG. TICON-4: Hart-Davis, Dettmering and Seitz (2025), <a href="https://doi.org/10.17882/109129" target="_blank" rel="noopener">doi.org/10.17882/109129</a>, CC BY 4.0.</p>
+        <p>Ferry routes from Auckland Transport's public transport data, CC BY 4.0. Depths from K. Mackay (2025), Hauraki Gulf BathyTopo Digital Elevation Model, <a href="https://doi.org/10.5281/zenodo.15887269" target="_blank" rel="noopener">doi.org/10.5281/zenodo.15887269</a>, CC BY 4.0, not for navigation. Fish icon from Font Awesome Free, CC BY 4.0. Coastline from GSHHG. TICON-4: Hart-Davis, Dettmering and Seitz (2025), <a href="https://doi.org/10.17882/109129" target="_blank" rel="noopener">doi.org/10.17882/109129</a>, CC BY 4.0.</p>
       </div>
       <div>
         <h4>Wind, flow and chop on the map</h4>
         <p>Wind and current come from Open-Meteo at grid points 0.1° apart. The current model has cells of about 8 km. It does not resolve the channels and is unreliable near land.</p>
         <p>Chop is an estimate. The page measures the open water upwind of a point, takes wave height and period from the JONSWAP growth curves, and assumes the wind has blown long enough. It then raises the waves where the current runs against them and lowers them where it runs with them. Swell is not included.</p>
+        <p>The depth at a point is its chart depth plus the tide at the nearest tide spot, at the map's time. The chart depth comes from a grid of cells about 93&nbsp;m across. Each cell holds the shallowest water the 20&nbsp;m source grid shows inside it, so a cell can read shallower than the water at the point itself. A negative chart depth is a drying height.</p>
         <p><strong>Not for navigation.</strong> Read the marine forecast before you go out.</p>
       </div>
       <div>

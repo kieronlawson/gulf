@@ -81,16 +81,16 @@
       return;
     }
     html += '<div class="golist">' + rows.map(function (r) {
-      var d = distNm(o, r), dir = compass(bearingFrom(o, r));
+      var d = distNm(o, r), dir = compass(bearingFrom(o, r)), deep = depthShort(r.x, r.y, t);
       var wind = r.c ? compass(r.c.wind.from) + ' ' + Math.round(r.c.wind.kn) + ' kn' : '';
       var chopCell = r.c ? '<b><i class="sw sw' + r.c.chop.level + '"></i>' + CHOP_SHORT[r.c.chop.level] + '</b><span>' + (r.c.chop.h >= 0.05 ? r.c.chop.h.toFixed(1) + ' m' : 'under 0.1 m') + '</span>' :
         '<b>' + (r.water ? 'No forecast' : 'No estimate') + '</b>';
-      var label = r.name + ', ' + d.toFixed(1) + ' nautical miles ' + dir + ' of ' + o.name + (r.c ? ', wind ' + wind + ', ' + chopText(r.c) : '');
+      var label = r.name + ', ' + d.toFixed(1) + ' nautical miles ' + dir + ' of ' + o.name + (deep ? ', ' + deep : '') + (r.c ? ', wind ' + wind + ', ' + chopText(r.c) : '');
       /* Each row has a Route button: a route from the starting point to the place. */
       var route = '<button type="button" class="goroute" data-route="' + r.key + '" aria-label="' + esc('Route from ' + o.name + ' to ' + r.name) + '">Route</button>';
       return '<div class="goitem"><button type="button" class="gorow" data-go="' + r.key + '" aria-label="' + esc(label) + '">' +
         '<span class="badge ' + r.kind + '">' + r.badge + '</span>' +
-        '<span class="gomid"><b>' + esc(r.name) + '</b><span>' + d.toFixed(1) + ' nm ' + dir + (wind ? ', wind ' + wind : '') + '</span></span>' +
+        '<span class="gomid"><b>' + esc(r.name) + '</b><span>' + d.toFixed(1) + ' nm ' + dir + (deep ? ', ' + deep : '') + (wind ? ', wind ' + wind : '') + '</span></span>' +
         '<span class="gochop">' + chopCell + '</span></button>' + route + '</div>';
     }).join('') + '</div>';
     if (problem) html += problem;

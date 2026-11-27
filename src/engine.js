@@ -766,6 +766,62 @@ var Engine = (function () {
     return out;
   }
 
+  /* ---------- Depth ----------
+     The depth grid covers the map in cells of a quarter map unit, about 93 m. The page decodes data/depth.png into
+     grid = { W, N, k, scale, cellsPerUnit, nx, ny, offsetDm, v }, where v holds nx * ny stored values, row by row
+     from the north-west corner: 0 means no data, 1 means land, and any other value is the depth below chart datum
+     in decimeters plus offsetDm. A negative depth is a drying height. Each cell already holds the shallowest water
+     inside it; tools/depth.py made it so. */
+
+  var DEPTH_NO_DATA = 0, DEPTH_LAND = 1;
+
+  /* Chart depth at a point { lat, lon }: { chart } in meters below chart datum, { land: true } above any tide,
+     or null where the grid has no data or the point is off the grid. A point on the edge between cells takes
+     the shallowest of the cells it touches, so an edge never shows more water than either side. */
+  function depthAt(grid, p) {
+    if (!grid || !p || !isFinite(p.lat) || !isFinite(p.lon)) return null;
+    var fx = (p.lon - grid.W) * grid.k * grid.scale * grid.cellsPerUnit;
+    var fy = (grid.N - p.lat) * grid.scale * grid.cellsPerUnit;
+    var EDGE = 1e-6;   /* a point this close to a cell edge, in cells, is on it */
+    if (fx < -EDGE || fy < -EDGE || fx > grid.nx + EDGE || fy > grid.ny + EDGE) return null;
+    function sides(f, n) {
+      var r = Math.round(f), out = [];
+      if (Math.abs(f - r) > EDGE) return [Math.min(Math.floor(f), n - 1)];
+      if (r < n) out.push(r);
+      if (r > 0) out.push(r - 1);
+      return out;
+    }
+    var xs = sides(fx, grid.nx), ys = sides(fy, grid.ny), best = null;
+    for (var a = 0; a < ys.length; a++) for (var b = 0; b < xs.length; b++) {
+      var v = grid.v[ys[a] * grid.nx + xs[b]];
+      if (v === DEPTH_NO_DATA) continue;
+      if (v === DEPTH_LAND) return { land: true };
+      var m = (v - grid.offsetDm) / 10;
+      if (best === null || m < best) best = m;
+    }
+    return best === null ? null : { chart: best };
+  }
+
+  /* The tide spot nearest a point { lat, lon }, by distance on the ground. */
+  function nearestSpot(p) {
+    var k = Math.cos(p.lat * Math.PI / 180), best = null, bd = Infinity;
+    DATA.spots.forEach(function (s) {
+      var dx = (s.lon - p.lon) * k, dy = s.lat - p.lat, d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = s; }
+    });
+    return best;
+  }
+
+  /* Depth at a point at time t: chart depth plus the tide height at the nearest tide spot.
+     Returns { depth, chart, tide, spot }, { land: true, tide, spot }, or null where depthAt has nothing. */
+  function depthAtTime(grid, p, t) {
+    var d = depthAt(grid, p);
+    if (!d) return null;
+    var spot = nearestSpot(p), h = tideNow(spot, t).h, tide = h == null ? null : h;
+    if (d.land) return { land: true, tide: tide, spot: spot };
+    return { depth: tide == null ? null : d.chart + tide, chart: d.chart, tide: tide, spot: spot };
+  }
+
   /* ---------- Run home ---------- */
 
   /* The latest time to leave for home: last light, less the run, less the owner's margin. run is the trip time
@@ -784,6 +840,7 @@ var Engine = (function () {
     rampColor: rampColor, windColor: windColor, laneTime: laneTime,
     COMFORT: COMFORT, seaAngle: seaAngle, scoreLeg: scoreLeg, findPath: findPath, routeLegs: routeLegs,
     scoreRoute: scoreRoute, joinStretches: joinStretches, worstStretch: worstStretch, laneCrossings: laneCrossings,
+    depthAt: depthAt, depthAtTime: depthAtTime, nearestSpot: nearestSpot,
     parts: parts, midnight: midnight, dayStart: dayStart, addDays: addDays,
     fmtTime: fmtTime, fmtDay: fmtDay, fmtDayLong: fmtDayLong, fmtDuration: fmtDuration, isoDate: isoDate, pad2: pad2,
     spotExtremes: spotExtremes, spotCurve: spotCurve, interp: interp,

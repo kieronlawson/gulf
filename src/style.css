@@ -484,6 +484,12 @@ button:disabled:active { transform: none; }
 .probegrid dd { margin: 0; font-family: var(--mono); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .probegrid dd .sw { width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
 #probe .small { margin-top: 4px; }
+/* The depth row of the probe reading: the depth at the map's time on one line, and how it is made up under it. */
+.probedepth { margin-top: 4px; border-top: 1px solid var(--hair); padding-top: 3px; }
+.probedepth div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.probedepth span { font-size: 11px; color: var(--ink2); }
+.probedepth b { font-family: var(--mono); font-size: 12.5px; font-weight: 400; white-space: nowrap; }
+.probedepth p { margin: 1px 0 0; font-family: var(--mono); font-size: 11px; color: var(--ink2); }
 .strip { display: block; width: 100%; max-width: 420px; height: auto; margin-top: 4px; overflow: visible; }
 
 /* The route panel: A, Swap and B; the totals; the stretches. The level colors are the Week wind ramp's first five stops. */
