@@ -3,7 +3,8 @@
    top right; the layer buttons and one key at the left; the probe reading as a card at the right; and the time
    bar, with the route's strip above it, in one panel along the bottom. The iPad stores the choice. */
 
-  var full = { on: false, bar: null };
+  /* kept records the probe and the card that fullKeepClear last checked the map for. */
+  var full = { on: false, bar: null, kept: null };
   var FULL_GAP = 12;   /* pixels kept between a panel and the probe or the selected spot */
   var NARROW_PX = 760;   /* the width up to which the layout of a narrow screen applies, as in style.css */
 
@@ -14,7 +15,7 @@
   function setFull(on) {
     on = !!on && fullAllowed();
     if (on === full.on) return;
-    full.on = on;
+    full.on = on; full.kept = null;
     store.set('gulf-almanac-fullmap', on ? '1' : '0');
     document.documentElement.classList.toggle('fullmap', on);
     if (on) {
@@ -49,7 +50,8 @@
   }
 
   /* The panels never cover the probe or the selected spot: the map moves so both lie in the open part of the
-     frame, by the least distance. Where both cannot, the probe wins. At zoom 1 the map cannot move. */
+     frame, by the least distance. Where both cannot, the probe wins. At zoom 1 the map cannot move. A point the
+     owner has moved out of the frame stays out: the map moves only to uncover a point a panel covers. */
   function fullKeepClear() {
     if (!full.on || !frame.h) return;
     var fr = $('mapFrame').getBoundingClientRect();
@@ -74,8 +76,12 @@
     L += FULL_GAP; R -= FULL_GAP; T += FULL_GAP; B -= FULL_GAP;
     if (R <= L || B <= T) return;
     var vb = viewBox(), sx = fr.width / vb.w, sy = fr.height / vb.h, pts = [];
-    if (state.probe) pts.push(state.probe);
-    pts.push({ x: mapX(state.spot.lon), y: mapY(state.spot.lat) });
+    function inFrame(p) {
+      var px = fr.left + (p.x - vb.x) * sx, py = fr.top + (p.y - vb.y) * sy;
+      return px >= fr.left && px <= fr.right && py >= fr.top && py <= fr.bottom;
+    }
+    [state.probe, { x: mapX(state.spot.lon), y: mapY(state.spot.lat) }].forEach(function (p) { if (p && inFrame(p)) pts.push(p); });
+    if (!pts.length) return;
     function range(p) {
       var px = fr.left + (p.x - vb.x) * sx, py = fr.top + (p.y - vb.y) * sy;
       return { x0: L - px, x1: R - px, y0: T - py, y1: B - py };
@@ -91,13 +97,20 @@
     applyView();
   }
 
-  /* The probe card shows while there is a reading. Its height follows its content, so the map is checked again. */
+  /* The probe card shows while there is a reading. The map is checked again when the probe moves, or when the card
+     opens, closes or changes height, as its content follows the map's time. A redraw that changes neither, such as
+     the minute's tick, leaves the map where the owner put it. */
   function renderFullCard() {
     if (!full.on) return;
     var open = !!(state.probe || state.moving != null);
     $('fmCard').hidden = !open;
     $('mapFrame').classList.toggle('fm-card-open', open);
-    window.requestAnimationFrame(fullKeepClear);
+    window.requestAnimationFrame(function () {
+      var p = state.probe, key = (p ? p.x + ',' + p.y : '-') + '|' + open + '|' + $('fmCard').offsetHeight;
+      if (key === full.kept) return;
+      full.kept = key;
+      fullKeepClear();
+    });
   }
 
   function wireFull() {

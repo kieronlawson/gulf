@@ -8,6 +8,24 @@
   /* status: idle, loading, ok or failed. grid holds what Engine.depthAt reads once the file is decoded. */
   var depth = { status: 'idle', failedAt: 0, grid: null };
 
+  /* The tide of a spot at time t. Code that reads many points at one time, such as the suggestions of Where to go,
+     takes the tide from here, so each spot's tide is worked out once for each time. */
+  var tideMemo = { t: null, h: {} };
+  function spotTide(sp, t) {
+    if (tideMemo.t !== t) { tideMemo.t = t; tideMemo.h = {}; }
+    if (!(sp.id in tideMemo.h)) tideMemo.h[sp.id] = E.tideNow(sp, t).h;
+    return tideMemo.h[sp.id];
+  }
+  /* The depth at a point at time t, as Engine.depthAtTime gives it, with the tide from spotTide. Null before the
+     grid loads, and where the grid has no value. */
+  function depthAtTimeMemo(p, t) {
+    var d = depth.status === 'ok' ? E.depthAt(depth.grid, p) : null;
+    if (!d) return null;
+    var sp = E.nearestSpot(p), h = spotTide(sp, t);
+    if (d.land) return { land: true, tide: h, spot: sp };
+    return { depth: h == null ? null : d.chart + h, chart: d.chart, tide: h, spot: sp };
+  }
+
   /* The file's stored values, decoded in script by Engine.pngChunks and Engine.pngValues. The compressed data is
      inflated by DecompressionStream, which also checks it. No canvas sits in the path, so no browser can change the
      values on the way. A browser without DecompressionStream gets no depths. */

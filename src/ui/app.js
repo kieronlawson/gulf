@@ -116,6 +116,7 @@
     state.limits = L;
     store.set('gulf-almanac-limits', JSON.stringify(L));
     renderLimits(); renderWindows(); renderTimebar(); renderWeek(); renderNowSide(); renderRoute(); renderDepthLayers();
+    renderProbe();   /* Where to go leaves out water under the safe depth */
   }
 
   function stepLimit(key, dir) {
@@ -315,6 +316,12 @@
       if (act === 'route-swap') swapRoute();
       else if (act === 'route-close') closeRoute();
       else if (act === 'reload') sync();
+      else if (act === 'limits') { renderLimits(); openSheet('limits'); }
+    });
+    /* In full screen the route's strip sits in the bottom panel, with its Limits and Load now buttons. */
+    $('fmStrip').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-act]') : null, act = b && b.getAttribute('data-act');
+      if (act === 'reload') sync();
       else if (act === 'limits') { renderLimits(); openSheet('limits'); }
     });
     $('dayToggle').addEventListener('click', toggleDayDisplay);

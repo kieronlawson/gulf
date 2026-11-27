@@ -29,10 +29,8 @@
       if (d > REACH_NM) return;
       /* Once the depths load, a cell the depth grid puts on land, dry at the time, or under the safe depth once
          that is set, is no place to go. */
-      if (depth.status === 'ok') {
-        var dd = E.depthAtTime(depth.grid, { lat: mapLat(q.y), lon: mapLon(q.x) }, t), safe = state.limits.safe;
-        if (dd && (dd.land || (dd.depth != null && (dd.depth <= 0 || (safe != null && dd.depth < safe))))) return;
-      }
+      var dd = depthAtTimeMemo({ lat: mapLat(q.y), lon: mapLon(q.x) }, t), safe = state.limits.safe;
+      if (dd && (dd.land || (dd.depth != null && (dd.depth <= 0 || (safe != null && dd.depth < safe))))) return;
       var c = condAt(q.x, q.y, q.w, t);
       if (c) cand.push({ x: q.x, y: q.y, w: q.w, c: c, d: d });
     });

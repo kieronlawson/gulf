@@ -301,7 +301,8 @@
   function drawRouteMap() {
     var layer = $('ovRoute'), ends = $('ovEnds');
     if (!layer || !ends) return;
-    if (!trip || !state.layers.route) { layer.innerHTML = ''; ends.innerHTML = ''; return; }
+    /* The Route layer button belongs to the full-screen map, so it hides the line only there. */
+    if (!trip || (full.on && !state.layers.route)) { layer.innerHTML = ''; ends.innerHTML = ''; return; }
     var p = trip.path, s = '';
     function pt(x, y) { return x.toFixed(2) + ',' + y.toFixed(2); }
     var A = trip.a, B = trip.b;
