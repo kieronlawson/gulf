@@ -1,4 +1,4 @@
-/* Hauraki Gulf Almanac, Braun functionalist treatment.
+/* Gulf, Braun functionalist treatment.
    A matte off-white chassis on a linen workbench, with one recessed charcoal display.
    Accent colors carry state only: green is active, amber is the needle, vermilion is an alert. */
 
@@ -257,8 +257,10 @@ button:disabled:active { transform: none; }
 .s-mark { fill: var(--amber); }
 .s-ax { font-family: var(--mono); font-size: 7px; fill: var(--ink2); }
 
-/* The map frame. Its shape comes from the layout; the drawing fills it. */
-.mapframe { position: relative; aspect-ratio: 274.6 / 387; max-height: 75vh; max-height: 75dvh; overflow: hidden; border: 1px solid var(--hair); border-radius: 3px; background: var(--chassis); }
+/* The map frame. Its shape comes from the layout; the drawing fills it. The buttons on the map query its size.
+   The frame fills the width of its column. When 75vh caps its height, the map's shape gives way and the map shows
+   more water at the sides. Without the set width, Safari would narrow the frame to keep the map's shape. */
+.mapframe { position: relative; container: mapframe / size; width: 100%; aspect-ratio: 274.6 / 387; max-height: 75vh; max-height: 75dvh; overflow: hidden; border: 1px solid var(--hair); border-radius: 3px; background: var(--chassis); }
 #map, #map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 #map svg { display: block; cursor: crosshair; }
 /* The layers that redraw during a gesture take no pointer input, so a touch never starts on an element
@@ -397,6 +399,14 @@ button:disabled:active { transform: none; }
 .mb-layers button { width: 92px; justify-content: flex-start; }
 .mb-zoom { right: 8px; bottom: 8px; }
 .mb-zoom button { width: 44px; padding: 0; font-size: 20px; }
+/* In columns, the views and the layers each take 152 px of the frame's height, with their 8 px margin. The two
+   stacks need 12 px between them, twice the gap inside a stack, so that they read as two groups: 316 px in all.
+   A shorter frame, as on an iPad mini in landscape, puts the layers in a row along its foot. The row and its margin
+   take 236 px of the width, and the zoom buttons 52 px, with 12 px between them, so the row needs 300 px. */
+@container mapframe (height < 316px) and (width >= 300px) {
+  .mb-layers { flex-direction: row; }
+  .mb-layers button { width: 72px; padding: 0 10px; }
+}
 .mapmark { position: absolute; right: 8px; top: 8px; display: flex; align-items: flex-end; gap: 8px; padding: 4px 7px; border-radius: 3px; background: var(--chassis); opacity: .85; pointer-events: none; }
 .mapnorth { width: 9px; height: 16px; overflow: visible; }
 .mapscale { font-family: var(--mono); font-size: 10.5px; color: var(--ink2); text-align: right; }
@@ -924,7 +934,8 @@ table { border-collapse: collapse; width: 100%; }
   /* The wide map puts its buttons in rows: views along the top, layers and zoom along the bottom. */
   .dayview.compact .mapbtns { flex-direction: row; }
   .dayview.compact .mb-views button { width: auto; min-width: 76px; }
-  .dayview.compact .mb-layers button { width: 84px; }
+  /* The rows keep this width and padding on a short frame too. */
+  .dayview.compact .mb-layers button { width: 84px; padding: 0 14px; }
   .dayview.compact .mb-zoom { flex-direction: row-reverse; }
   /* The strip needs less height than the list it replaces, so the map takes the rest. A reading scrolls in the box. */
   .dayview.compact #probe { height: 150px; }
