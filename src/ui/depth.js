@@ -242,14 +242,20 @@
   }
 
   /* The key, under the scale: the time the hatching is drawn for, the tints while they show, the hatching once
-     a safe depth is set, the contour line, and the words "Not for navigation". */
+     a safe depth is set, the contour line, and the words "Not for navigation". With only the chart marks shown, it
+     names them and keeps the words "Not for navigation". */
   function renderMapKey(t, chop) {
     var el = $('mapKey');
     if (!el) return;
-    var shown = state.layers.depth && (depth.status === 'ok' || contours.status === 'ok');
+    var deep = state.layers.depth && (depth.status === 'ok' || contours.status === 'ok'), shown = deep || chartShown();
     el.hidden = !shown;
     if (!shown) return;
     var safe = state.limits.safe, rows = [], marks = '';
+    if (!deep) {
+      el.classList.remove('chopon');
+      el.innerHTML = '<b>Chart marks</b><span class="nav">Not for navigation</span>';
+      return;
+    }
     rows.push('<b>' + (safe != null && depth.status === 'ok' ? 'Depth at ' + E.fmtTime(t) : 'Chart depth') + '</b>');
     if (!chop && depth.status === 'ok') {
       rows.push('<div><span><i class="k1"></i>0\u20135</span><span><i class="k2"></i>5\u201310</span><span><i class="k3"></i>10\u201320 m</span></div>');

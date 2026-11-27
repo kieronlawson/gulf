@@ -1,6 +1,7 @@
 // Builds dist/: index.html, one self-contained page, and beside it the service worker, the web app manifest,
-// two icons, the depth grid and its contours. The page inlines the styles, astronomy-engine, the Neaps tide predictor, the
-// data and the two page scripts. The depth files are too large to inline, so the page fetches them.
+// two icons and the data files: the depth grid, its contours and the chart marks. The page inlines the styles,
+// astronomy-engine, the Neaps tide predictor, the data and the two page scripts. The data files are too large to
+// inline, so the page fetches them.
 import { build } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, readdirSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -27,7 +28,9 @@ const depthMeta = json('data/depth.json');
 const depth = { file: shipData('data/depth.png', 'depth', 'png'), contours: shipData('data/contours.json', 'contours', 'json') };
 for (const k of ['W', 'N', 'k', 'scale', 'cellsPerUnit', 'nx', 'ny']) depth[k] = depthMeta[k];
 depth.offsetDm = depthMeta.encoding.offsetDm;
-const DATA_FILES = [depth.file, depth.contours];
+/* The chart marks that tools/chartmarks.py took from the LINZ chart data. */
+const marks = shipData('data/marks.json', 'marks', 'json');
+const DATA_FILES = [depth.file, depth.contours, marks];
 
 const neaps = (await build({
   stdin: { contents: 'export { createTidePredictor } from "@neaps/tide-predictor";', resolveDir: process.cwd() },
@@ -41,11 +44,12 @@ const data = {
   coast: json('data/coast.json'),
   ferries: json('data/ferries.json'),
   depth,
+  marks,
 };
 
 /* The page script is split into files under src/ui/. They share one function scope, so the build
    joins them in this order inside a single function. Later files may use anything an earlier file declares. */
-const UI_FILES = ['core', 'day', 'tables', 'map', 'depth', 'marks', 'wheretogo', 'week', 'route', 'now', 'app'];
+const UI_FILES = ['core', 'day', 'tables', 'map', 'depth', 'chartmarks', 'marks', 'wheretogo', 'week', 'route', 'now', 'app'];
 const ui = '/* Gulf: page behavior. Needs Engine and DATA. */\n(function () {\n  \'use strict\';\n\n' +
   UI_FILES.map((f) => read(`src/ui/${f}.js`)).join('') + '})();\n';
 
