@@ -357,7 +357,8 @@
     if (!svg) return;
     var t = mapTime(), arrows = '', n1 = function (v) { return v.toFixed(1); };
     /* Arrows sit closer together once the usual 22-unit spacing would be 70 px or more on screen. */
-    var vb = viewBox(), fine = frame.h && 22 * frame.h / vb.h >= 70, g = fine ? 0.5 : 1, s = g.toFixed(2), pad = 12;
+    /* Past zoom 6 the arrows keep the size on screen they have at zoom 6, so they do not grow over the water. */
+    var vb = viewBox(), fine = frame.h && 22 * frame.h / vb.h >= 70, g = fine ? 0.5 : 1, s = (g * Math.min(1, 6 / view.z)).toFixed(3), pad = 12;
     function seen(q) { return q.x > vb.x - pad && q.x < vb.x + vb.w + pad && q.y > vb.y - pad && q.y < vb.y + vb.h + pad; }
     if (fieldShown()) {
       if (state.layers.wind) {
@@ -398,9 +399,10 @@
      The view is a center in map units and a zoom. At zoom 1 the whole map fits the frame. The viewBox takes
      the frame's shape, so the map fills whatever box the layout gives it. */
 
-  /* Zoom stops at 6. Beyond that, the coastline, simplified to about 110 m, and the 8 km current model
-     show more detail than they hold. */
-  var ZOOM_MAX = 6, NM = MAP.scale / 60;   /* map units per nautical mile */
+  /* Zoom stops at 8. There, on the largest screen, a pixel is about 20 m, and the coastline, simplified to about
+     30 m, is still true to about a pixel and a half. The 93 m depth cells and the 8 km current model hold far
+     less detail than that; the zoom serves the coastline, the chart marks and the contours. */
+  var ZOOM_MAX = 8, NM = MAP.scale / 60;   /* map units per nautical mile */
   var view = { cx: MAP.w / 2, cy: MAP.h / 2, z: 1, preset: 'whole' };
   var frame = { w: 0, h: 0 };
 

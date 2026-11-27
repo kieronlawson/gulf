@@ -1,60 +1,72 @@
-"""Rebuilds data/coast.json from the GSHHG full-resolution shoreline.
+"""Rebuilds data/coast.json, the page's coastline, from LINZ's NZ Coastlines and Islands Polygons (Topo 1:50k).
 
-Get the source data first:
-  pip download basemap-data-hires --no-deps -d wheels
-  unzip wheels/basemap_data_hires-*.whl 'mpl_toolkits/basemap_data/gshhs_f.dat' 'mpl_toolkits/basemap_data/gshhsmeta_f.dat' -d gshhs
-Needs: pip install numpy shapely
+Usage: python3 tools/coast.py [layer.json]
+It needs Python 3 and shapely (pip install shapely). Without a path, it fetches the layer inside the map's bounds
+from the LINZ Data Service, which needs a key in the environment variable LDS_KEY; the script sends the key only
+in its request to data.linz.govt.nz and never prints it. With a path to a file that exists, it reads the layer
+from there; with a path to a file that does not exist, it fetches the layer and keeps it there.
 
-TOLERANCE sets the detail. 0.0011 degrees is about 110 m and gives about 3,100 points.
-A zoomable map needs a smaller value and will make the page larger.
+Source: LINZ, NZ Coastlines and Islands Polygons (Topo 1:50k), layer 51153, CC BY 4.0.
+
+TOLERANCE sets the detail: 0.0003 degrees is about 30 m, about one pixel at the map's highest zoom on the
+largest screen. MIN_AREA drops islets and rocks under about half a hectare; the chart marks show rocks. The
+map's bounds, scale and k must not change: every other data file uses them.
 """
-import json, math
-import numpy as np
-from shapely.geometry import Polygon, box
+import json, math, os, pathlib, sys, urllib.parse, urllib.request
+from shapely.geometry import shape, box
 from shapely.ops import unary_union
 
 W, E, S, N = 174.52, 175.66, -37.26, -35.97   # map bounds, degrees
 SCALE = 300.0                                  # map units per degree of latitude
-TOLERANCE = 0.0011                             # simplification, degrees
-MIN_AREA = 2.0e-6                              # drop rocks smaller than about 2 hectares, square degrees
-BASE = 'gshhs/mpl_toolkits/basemap_data/'
+TOLERANCE = 0.0003                             # simplification, degrees
+MIN_AREA = 5.0e-7                              # drop islands smaller than about half a hectare, square degrees
+LAYER = 51153
+ROOT = pathlib.Path(__file__).resolve().parent.parent
 
-# The first cut is a little wider than the map. Its exact bounds decide where each ring starts,
-# and the simplification depends on that, so keep them to reproduce data/coast.json exactly.
-W1, E1, S1, N1 = 174.35, 175.75, -37.28, -35.95
-frame = box(W1, S1, E1, N1)
-parts = []
-with open(BASE + 'gshhsmeta_f.dat') as meta, open(BASE + 'gshhs_f.dat', 'rb') as dat:
-    for line in meta:
-        f = line.split()
-        kind, npts, south, north, offset, nbytes = int(f[0]), int(f[2]), float(f[3]), float(f[4]), int(f[5]), int(f[6])
-        if kind != 1 or north < S1 or south > N1 or npts < 4:
-            continue
-        dat.seek(offset)
-        pts = np.frombuffer(dat.read(nbytes), dtype='<f4').astype('f8').reshape(npts, 2)
-        if pts[:, 0].max() < W1 or pts[:, 0].min() > E1:
-            continue
-        poly = Polygon(pts)
-        if not poly.is_valid:
-            poly = poly.buffer(0)
-        cut = poly.intersection(frame)
-        if not cut.is_empty:
-            parts.append(cut)
 
-land = unary_union(parts).intersection(box(W, S, E, N))
-k = math.cos(math.radians(36.6))
-X = lambda lon: (lon - W) * k * SCALE
-Y = lambda lat: (N - lat) * SCALE
-path, count = '', 0
-for g in (land.geoms if hasattr(land, 'geoms') else [land]):
-    if g.geom_type != 'Polygon' or g.area < MIN_AREA:
-        continue
-    s = g.simplify(TOLERANCE, preserve_topology=True)
-    for ring in [s.exterior] + list(s.interiors):
-        pts = list(ring.coords)
-        if len(pts) >= 4:
-            path += 'M' + ' '.join('%.1f,%.1f' % (X(x), Y(y)) for x, y in pts[:-1]) + 'Z'
-            count += len(pts)
-out = {'path': path, 'w': round((E - W) * k * SCALE, 1), 'h': round((N - S) * SCALE, 1), 'W': W, 'E': E, 'S': S, 'N': N, 'k': k, 'scale': SCALE}
-json.dump(out, open('data/coast.json', 'w'), separators=(',', ':'))
-print(count, 'points,', len(path), 'bytes')
+def fetch(path):
+    key = os.environ.get('LDS_KEY')
+    if not key:
+        sys.exit('Set LDS_KEY to a LINZ Data Service key, or give the path of a saved copy of the layer.')
+    # A margin around the map keeps every shore the map shows whole.
+    q = urllib.parse.urlencode({'service': 'WFS', 'version': '2.0.0', 'request': 'GetFeature', 'typeNames': 'layer-%d' % LAYER,
+                                'outputFormat': 'application/json', 'srsName': 'EPSG:4326',
+                                'bbox': '%g,%g,%g,%g,urn:ogc:def:crs:EPSG::4326' % (S - 0.04, W - 0.07, N + 0.04, E + 0.06)})
+    try:
+        raw = urllib.request.urlopen('https://data.linz.govt.nz/services;key=%s/wfs?%s' % (key, q), timeout=600).read()
+    except Exception as e:  # the message could hold the request's address, and the address holds the key
+        sys.exit('LDS request failed: %s' % str(e).replace(key, '***'))
+    if path:
+        path.write_bytes(raw)
+    return json.loads(raw)
+
+
+def main():
+    path = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else None
+    layer = json.loads(path.read_text()) if path and path.exists() else fetch(path)
+    polys = [shape(f['geometry']) for f in layer['features']]
+    polys = [p if p.is_valid else p.buffer(0) for p in polys]
+    land = unary_union(polys).intersection(box(W, S, E, N))
+    k = math.cos(math.radians(36.6))
+    X = lambda lon: (lon - W) * k * SCALE
+    Y = lambda lat: (N - lat) * SCALE
+    path_d, count, islands = '', 0, 0
+    for g in (land.geoms if hasattr(land, 'geoms') else [land]):
+        if g.geom_type != 'Polygon' or g.area < MIN_AREA:
+            continue
+        s = g.simplify(TOLERANCE, preserve_topology=True)
+        islands += 1
+        for ring in [s.exterior] + list(s.interiors):
+            pts = list(ring.coords)
+            if len(pts) >= 4:
+                path_d += 'M' + ' '.join('%.2f,%.2f' % (X(x), Y(y)) for x, y in pts[:-1]) + 'Z'
+                count += len(pts) - 1
+    out = {'path': path_d, 'w': round((E - W) * k * SCALE, 1), 'h': round((N - S) * SCALE, 1), 'W': W, 'E': E, 'S': S, 'N': N, 'k': k,
+           'scale': SCALE, 'source': 'LINZ, NZ Coastlines and Islands Polygons (Topo 1:50k), CC BY 4.0, simplified to %g degrees.' % TOLERANCE}
+    text = json.dumps(out, separators=(',', ':'))
+    (ROOT / 'data' / 'coast.json').write_text(text)
+    print('%d land polygons, %d points, %d bytes' % (islands, count, len(text)))
+
+
+if __name__ == '__main__':
+    main()
