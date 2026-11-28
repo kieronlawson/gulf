@@ -311,8 +311,7 @@
       return '<g data-at="' + mapX(lon).toFixed(1) + ' ' + mapY(lat).toFixed(1) + '"><text class="' + cls + '" x="0" y="' + dy + '" text-anchor="middle">' + text + '</text></g>';
     }
     var s = '<svg id="mapSvg" viewBox="0 0 ' + c.w + ' ' + c.h + '" role="group" aria-label="Map of the Hauraki Gulf. Each lamp selects a tide spot. Select a point on the water to read wind, flow and chop there.">';
-    s += '<defs><pattern id="landDots" width="3" height="3" patternUnits="userSpaceOnUse"><rect class="m-landbg" width="3" height="3"/><circle class="m-landdot" cx="1.5" cy="1.5" r=".42"/></pattern>' +
-      '<pattern id="hatch" width="2.6" height="2.6" patternUnits="userSpaceOnUse"><line class="m-hatchline" x1="1.3" y1="0" x2="1.3" y2="2.6"/></pattern>' +
+    s += '<defs><pattern id="hatch" width="2.6" height="2.6" patternUnits="userSpaceOnUse"><line class="m-hatchline" x1="1.3" y1="0" x2="1.3" y2="2.6"/></pattern>' +
       '<mask id="hatchMask" maskUnits="userSpaceOnUse" x="0" y="0" width="' + c.w + '" height="' + c.h + '"><image id="hatchImg" x="0" y="0" width="0" height="0" preserveAspectRatio="none"/></mask></defs>';
     /* Under the land: the depth tints, the chop tint, the hatching of water under the safe depth, and the contours. */
     s += '<g id="ovDepthTint"></g><g id="ovTint"></g><g id="ovHatch"></g><g id="ovContours"></g><path class="m-land" d="' + c.path + '"/>';
@@ -371,7 +370,7 @@
     if (fieldShown() && state.layers.chop) {
       cells.forEach(function (q, i) {
         var c = condAt(q.x, q.y, q.w, t, chopCellDepth(i, q, t));
-        if (c && c.chop.level) tint += '<rect class="m-c' + c.chop.level + '" x="' + (q.x - 2.5) + '" y="' + (q.y - 2.5) + '" width="5.15" height="5.15"/>';
+        if (c && c.chop.level) tint += '<rect class="m-c' + c.chop.level + '" x="' + (q.x - 2.5) + '" y="' + (q.y - 2.5) + '" width="5" height="5"/>';
         /* A cell where waves likely break over shallows carries a vermilion outline: an alert. So does a cell whose
            median depth is dry under chop in open water: its wet part is shallow, and waves break at its edges. */
         if (c && (c.chop.breaking || (c.chop.depth != null && c.chop.depth <= 0 && c.chop.deep > 0))) tint += '<rect class="m-break" x="' + (q.x - 2.3) + '" y="' + (q.y - 2.3) + '" width="4.6" height="4.6"/>';
@@ -389,7 +388,7 @@
     /* Arrows sit closer together once the usual 22-unit spacing would be 70 px or more on screen. */
     /* Past zoom 6 the arrows and the calm-water dots keep the size on screen they have at zoom 6, so they do not
        grow over the water. */
-    var vb = viewBox(), fine = frame.h && 22 * frame.h / vb.h >= 70, g = fine ? 0.5 : 1, sz = g * Math.min(1, 6 / view.z), s = sz.toFixed(3), pad = 12;
+    var vb = viewBox(), fine = frame.h && 22 * frame.h / vb.h >= 70, g = fine ? 0.5 : 1, sz = 0.72 * g * Math.min(1, 6 / view.z), s = sz.toFixed(3), pad = 12;
     function seen(q) { return q.x > vb.x - pad && q.x < vb.x + vb.w + pad && q.y > vb.y - pad && q.y < vb.y + vb.h + pad; }
     if (fieldShown()) {
       if (state.layers.wind) {
@@ -398,8 +397,8 @@
           var w = windAt(q.w, t);
           if (!w) return;
           var L = clamp(2.5 + w.kn * 0.33, 3.4, 9);
-          arrows += '<path class="m-wind" transform="translate(' + q.x + ' ' + q.y + ') rotate(' + (w.from + 180).toFixed(0) + ') scale(' + s + ')" d="M0 ' + n1(-L) + 'L2.5 ' + n1(-L + 4) +
-            'L.55 ' + n1(-L + 3.2) + 'L.55 ' + n1(L) + 'L-.55 ' + n1(L) + 'L-.55 ' + n1(-L + 3.2) + 'L-2.5 ' + n1(-L + 4) + 'Z"/>';
+          arrows += '<path class="m-wind" transform="translate(' + q.x + ' ' + q.y + ') rotate(' + (w.from + 180).toFixed(0) + ') scale(' + s + ')" d="M0 ' + n1(-L) + 'L2 ' + n1(-L + 3.8) +
+            'L.36 ' + n1(-L + 3.1) + 'L.36 ' + n1(L) + 'L-.36 ' + n1(L) + 'L-.36 ' + n1(-L + 3.1) + 'L-2 ' + n1(-L + 3.8) + 'Z"/>';
         });
       }
       if (state.layers.flow) {
@@ -450,10 +449,9 @@
     return { x: view.cx - w / 2, y: view.cy - h / 2, w: w, h: h };
   }
   /* The scale for things drawn at one size on screen: pins, labels, arrows, the probe and saved places.
-     They are drawn in map units for 1.7 px per unit, the scale of a 470 px wide map, and this keeps them
-     at that size whatever the frame's size and the zoom. A lamp's tap circle is then 34 px across and a saved
-     place's 41 px: lamps cluster in the inner Gulf, and larger circles there would cover water the owner means to tap. */
-  var GLYPH_PX = 1.7;
+     They are drawn in map units for 1.4 px per unit, and this keeps them at that size whatever the frame's size
+     and the zoom. A lamp's tap circle is then 28 px across and a saved place's 34 px: lamps cluster in the inner Gulf, and larger circles there would cover water the owner means to tap. */
+  var GLYPH_PX = 1.4;
   function glyph() { var vb = viewBox(); return frame.h ? GLYPH_PX * vb.h / frame.h : 1 / view.z; }
 
   /* A point on screen, as map units. */
@@ -507,8 +505,6 @@
     Array.prototype.forEach.call(svg.querySelectorAll('[data-at]'), function (g) {
       g.setAttribute('transform', 'translate(' + g.getAttribute('data-at') + ') scale(' + s + ')');
     });
-    var dots = document.getElementById('landDots');
-    if (dots) dots.setAttribute('patternTransform', 'scale(' + s + ')');
     var hatch = document.getElementById('hatch');
     if (hatch) hatch.setAttribute('patternTransform', 'scale(' + s + ') rotate(45)');
     markContourLabels(); renderChartMarks(false); chartZoomChanged();

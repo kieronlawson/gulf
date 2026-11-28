@@ -23,16 +23,19 @@
   --btn-a: #FAF9F6;
   --btn-b: #EAE8E1;
   --btn-edge: #B5B3AA;
-  --land: #E4E2DB;
-  --land-edge: #B5B3AA;
+  --land: #DAD6CA;
+  --land-edge: #8E8A7E;
+  --wind: #2B2B28;
+  --flow: #2A6FA8;
+  --mark: #55544E;
   --t1: rgba(26, 26, 24, .055);
   --t2: rgba(26, 26, 24, .125);
   --t3: rgba(217, 56, 30, .24);
   --t4: rgba(217, 56, 30, .5);
-  --c1: rgba(26, 26, 24, .075);
-  --c2: rgba(26, 26, 24, .17);
-  --c3: rgba(217, 56, 30, .3);
-  --c4: rgba(217, 56, 30, .58);
+  --c1: rgba(46, 139, 87, .16);
+  --c2: rgba(216, 179, 30, .30);
+  --c3: rgba(229, 148, 0, .38);
+  --c4: rgba(217, 56, 30, .44);
   --sky-day: #FBFAF7;
   --sky-night: #D8D6CE;
   --p-ink: #1A1A18;
@@ -78,16 +81,19 @@
     --btn-a: #2D2E2A;
     --btn-b: #242522;
     --btn-edge: #47483F;
-    --land: #2C2D29;
-    --land-edge: #4C4D46;
+    --land: #3B3933;
+    --land-edge: #716E63;
+    --wind: #ECEBE6;
+    --flow: #7DBBEA;
+    --mark: #BDBBB3;
     --t1: rgba(236, 235, 230, .06);
     --t2: rgba(236, 235, 230, .13);
     --t3: rgba(229, 73, 46, .3);
     --t4: rgba(229, 73, 46, .58);
-    --c1: rgba(236, 235, 230, .08);
-    --c2: rgba(236, 235, 230, .18);
-    --c3: rgba(229, 73, 46, .34);
-    --c4: rgba(229, 73, 46, .62);
+    --c1: rgba(55, 165, 107, .24);
+    --c2: rgba(226, 189, 46, .26);
+    --c3: rgba(240, 160, 26, .34);
+    --c4: rgba(229, 73, 46, .42);
     --sky-day: #4B4C46;
     --sky-night: #2B2C28;
     --p-ink: #ECEBE6;
@@ -127,16 +133,19 @@
   --btn-a: #2D2E2A;
   --btn-b: #242522;
   --btn-edge: #47483F;
-  --land: #2C2D29;
-  --land-edge: #4C4D46;
+  --land: #3B3933;
+  --land-edge: #716E63;
+  --wind: #ECEBE6;
+  --flow: #7DBBEA;
+  --mark: #BDBBB3;
   --t1: rgba(236, 235, 230, .06);
   --t2: rgba(236, 235, 230, .13);
   --t3: rgba(229, 73, 46, .3);
   --t4: rgba(229, 73, 46, .58);
-  --c1: rgba(236, 235, 230, .08);
-  --c2: rgba(236, 235, 230, .18);
-  --c3: rgba(229, 73, 46, .34);
-  --c4: rgba(229, 73, 46, .62);
+  --c1: rgba(55, 165, 107, .24);
+  --c2: rgba(226, 189, 46, .26);
+  --c3: rgba(240, 160, 26, .34);
+  --c4: rgba(229, 73, 46, .42);
   --sky-day: #4B4C46;
   --sky-night: #2B2C28;
   --p-ink: #ECEBE6;
@@ -274,12 +283,12 @@ button:disabled:active { transform: none; }
 /* The layers that redraw during a gesture take no pointer input, so a touch never starts on an element
    that a redraw then removes. */
 #ovTint, #ovReach, #ovArrows, #ovProbe, #ovYou { pointer-events: none; }
-.m-land { fill: url(#landDots); stroke: var(--land-edge); stroke-width: .9px; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.m-land { fill: var(--land); stroke: var(--land-edge); stroke-width: .9px; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .mapnorth path { fill: var(--ink2); }
 .mapnorth line { stroke: var(--ink2); stroke-width: 1.2; }
-.m-landbg { fill: var(--land); }
-.m-landdot { fill: var(--grille); }
 .m-c1 { fill: var(--c1); } .m-c2 { fill: var(--c2); } .m-c3 { fill: var(--c3); } .m-c4 { fill: var(--c4); }
+/* The tint's cells meet edge to edge. Crisp edges snap them to whole pixels, so they tile with no seam and no overlap. */
+.m-c1, .m-c2, .m-c3, .m-c4 { shape-rendering: crispEdges; }
 .m-break { fill: none; stroke: var(--red); stroke-width: 1.2px; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
 .s-break { fill: none; stroke: var(--red); stroke-width: 1.2px; stroke-dasharray: 3 2; }
 .gobreak { color: var(--red); }
@@ -295,10 +304,10 @@ button:disabled:active { transform: none; }
 .lab0 .m-clab.t0, .lab1 .m-clab { display: inline; }
 .m-hatchline { stroke: var(--depth-hatch); stroke-width: .55; }
 .m-hatchbg { fill: url(#hatch); }
-.m-wind { fill: var(--ink); }
-.m-flow { fill: none; stroke: var(--ink2); stroke-width: .95; stroke-linecap: round; stroke-linejoin: round; }
+.m-wind { fill: var(--wind); stroke: var(--chassis); stroke-width: .5; paint-order: stroke; stroke-linejoin: round; }
+.m-flow { fill: none; stroke: var(--flow); stroke-width: .8; stroke-linecap: round; stroke-linejoin: round; }
 .m-flow.near { stroke-dasharray: 1.3 1.5; }
-.m-flowdot { fill: var(--ink2); }
+.m-flowdot { fill: var(--flow); }
 .m-probe { fill: none; stroke: var(--amber); stroke-width: 1.5; }
 .m-tick { stroke: var(--ink2); stroke-width: 1px; vector-effect: non-scaling-stroke; }
 .m-water { font-size: 8.4px; fill: var(--ink2); letter-spacing: .07em; }
@@ -465,12 +474,12 @@ button:disabled:active { transform: none; }
 .mapkey .kc { height: 0; border: 0; border-top: 1.5px solid var(--depth-line); }
 .mapkey.chopon .kc { border-top-color: var(--depth-line-chop); }
 .mapkey .nav { color: var(--ink); font-weight: 600; }
-/* Chart marks, in ink, at one size on screen; outlines of areas keep one width at any zoom. */
+/* Chart marks, in the marks' gray, at one size on screen; outlines of areas keep one width at any zoom. */
 #ovAreas, #ovMarks { pointer-events: none; }
-.cm path, .cm circle, .cm rect { fill: none; stroke: var(--ink); stroke-width: .9; stroke-linejoin: round; }
+.cm path, .cm circle, .cm rect { fill: none; stroke: var(--mark); stroke-width: .8; stroke-linejoin: round; }
 .cm .cm-ring { stroke-dasharray: .9 1.1; }
 .cm .cm-buoy { fill: var(--chassis); }
-.cm .cm-fill { fill: var(--ink); stroke: var(--chassis); stroke-width: .6; }
+.cm .cm-fill { fill: var(--mark); stroke: var(--chassis); stroke-width: .6; }
 .cm-area { fill: none; stroke: var(--ink2); stroke-width: 1px; vector-effect: non-scaling-stroke; }
 .cm-R { stroke-dasharray: 7 3; }
 .cm-F { stroke-dasharray: 2 2; }
