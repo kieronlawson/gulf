@@ -1,4 +1,4 @@
-"""Writes data/contours.json: depth contours at 2, 5, 10, 20, 30 and 50 m below chart datum, drawn from
+"""Writes data/contours.json: depth contours at 2, 5, 10, 20, 30, 40 and 50 m below chart datum, drawn from
 data/depth.png, so the lines agree with the depths the page gives. Not for navigation.
 
 Usage: python3 tools/contours.py
@@ -25,7 +25,7 @@ import numpy as np
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import depth  # noqa: E402  tools/depth.py: the PNG reader
 
-DEPTHS = [2, 5, 10, 20, 30, 50]
+DEPTHS = [2, 5, 10, 20, 30, 40, 50]
 LAND_M = -10.0              # the depth a land cell counts as: above every contour
 TOLERANCE = 0.12            # map units, about 45 m: the most a simplified line moves from the traced one
 MIN_LOOP = 2.0              # map units, about 740 m: closed lines shorter than this are dropped
